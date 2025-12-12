@@ -60,13 +60,13 @@ export default async function handler(request, response) {
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
     // --- 3. LOOP DE ROTAÇÃO DE CHAVES (FAILOVER) ---
-    // Embaralha as chaves para distribuir a carga, mas se uma falhar, tenta a próxima da lista
+    // Embaralha as chaves para distribuir a carga
     const shuffledKeys = validKeys.map(k => k.val).sort(() => 0.5 - Math.random());
     
     let lastError = null;
     let successResponse = null;
 
-    console.log(`🔄 [Gemini Router] Iniciando tentativa com ${shuffledKeys.length} chaves disponíveis.`);
+    console.log(`🔄 [Gemini Router] Iniciando tentativa com ${shuffledKeys.length} chaves.`);
 
     for (const apiKey of shuffledKeys) {
         try {
@@ -98,8 +98,6 @@ export default async function handler(request, response) {
             });
 
             if (!aiResponse.text) {
-                // Se a resposta veio vazia (erro de recitação ou filtro), isso não é culpa da chave,
-                // mas vamos tratar como erro para tentar outra chave se for o caso, ou abortar.
                 throw new Error(aiResponse.candidates?.[0]?.finishReason || "EMPTY_RESPONSE");
             }
 
@@ -117,11 +115,10 @@ export default async function handler(request, response) {
 
             if (isQuotaError || isServerError) {
                 console.warn(`⚠️ Chave falhou (${isQuotaError ? 'Cota' : 'Server'}). Tentando próxima...`);
-                continue; // Tenta a próxima chave do loop
+                continue; // Tenta a próxima
             } else {
-                // Se for outro erro (ex: 400 Bad Request), a culpa é do prompt, então aborta.
                 console.error(`❌ Erro fatal na chave: ${msg}`);
-                break; 
+                break; // Se for erro de prompt ou formato, não adianta trocar a chave
             }
         }
     }
@@ -130,12 +127,11 @@ export default async function handler(request, response) {
     if (successResponse) {
         return response.status(200).json({ text: successResponse });
     } else {
-        // Se todas as chaves falharam
         console.error("❌ TODAS AS CHAVES FALHARAM.");
         const errorMsg = lastError?.message || 'Erro desconhecido em todas as chaves.';
         
         if (errorMsg.includes('429') || errorMsg.includes('Quota')) {
-            return response.status(429).json({ error: 'QUOTA_EXCEEDED: Todas as chaves atingiram o limite. Tente novamente em 1 minuto.' });
+            return response.status(429).json({ error: 'QUOTA_EXCEEDED: Todas as chaves atingiram o limite.' });
         }
         
         return response.status(500).json({ error: errorMsg });

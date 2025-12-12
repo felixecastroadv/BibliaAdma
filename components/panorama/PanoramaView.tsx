@@ -50,7 +50,9 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
 
   const processAndPaginate = (html: string) => {
     if (!html) { setPages([]); return; }
+    // Divide o conteúdo baseado na tag hr
     const rawPages = html.split('<hr class="page-break">');
+    // Filtra páginas vazias ou muito curtas (erros de geração)
     const cleanedPages = rawPages.map(p => cleanText(p)).filter(p => p.length > 50);
     setPages(cleanedPages.length > 0 ? cleanedPages : [cleanText(html)]);
   };
@@ -76,7 +78,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
     return blocks.map((block, idx) => {
         const trimmed = block.trim();
 
-        // 1. TÍTULO PRINCIPAL (PANORÂMA BÍBLICO...)
+        // 1. TÍTULO PRINCIPAL
         if (trimmed.includes('PANORÂMA BÍBLICO') || trimmed.includes('PANORAMA BÍBLICO')) {
              return (
                 <div key={idx} className="mb-8 text-center border-b-2 border-[#8B0000] dark:border-[#ff6b6b] pb-4 pt-2">
@@ -87,7 +89,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
             );
         }
 
-        // 2. SUBTÍTULOS ELEGANTES (Detecta ###, números romanos/arábicos iniciais, ou títulos em caixa alta curtos)
+        // 2. SUBTÍTULOS ELEGANTES (Detecta ###, números romanos/arábicos iniciais)
         const isHeader = trimmed.startsWith('###') || /^\d+\./.test(trimmed) || /^[IVX]+\./.test(trimmed);
         
         if (isHeader) {
@@ -103,7 +105,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
             );
         }
 
-        // 3. CAIXAS DE DESTAQUE (Curiosidades / Perguntas)
+        // 3. CAIXAS DE DESTAQUE
         if (trimmed.toUpperCase().includes('CURIOSIDADE') || trimmed.toUpperCase().includes('ATENÇÃO:') || trimmed.endsWith('?')) {
             return (
                 <div key={idx} className="my-6 mx-2 font-cormorant text-lg text-[#1a0f0f] dark:text-gray-200 font-medium italic bg-[#C5A059]/10 dark:bg-[#C5A059]/10 p-6 rounded-lg border-y border-[#C5A059]/40 shadow-sm">
@@ -113,7 +115,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
             );
         }
         
-        // 4. TEXTO PADRÃO (Justificado e Elegante)
+        // 4. TEXTO PADRÃO
         return (
             <p key={idx} className="font-cormorant text-xl leading-loose text-gray-900 dark:text-gray-300 text-justify indent-8 mb-4 tracking-wide">
                 {parseInlineStyles(trimmed)}
@@ -148,85 +150,85 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
     const existing = (await db.entities.PanoramaBiblico.filter({ study_key: studyKey }))[0] || {};
     const currentText = target === 'student' ? (existing.student_content || '') : (existing.teacher_content || '');
     
-    // Contexto aumentado para garantir continuidade fluida
-    const lastContext = currentText.slice(-4000); 
+    // Contexto aumentado
+    const lastContext = currentText.slice(-3000); 
 
     const basePersona = `
         VOCÊ É O PROFESSOR MICHEL FELIX.
         
-        IDENTIDADE VISUAL E ESTRUTURAL (OBRIGATÓRIO PARA TODAS AS PÁGINAS):
-        1. **Estilo:** LIVRO ACADÊMICO DE LUXO.
-        2. **Formatação de Títulos (CRÍTICO):** 
-           - USE SEMPRE "###" ANTES DE CADA NOVO TÓPICO. Ex: "### 2. A QUEDA DO HOMEM"
-           - Isso cria as linhas douradas e centralização. NÃO use apenas negrito para títulos.
-        3. **Densidade:** 
-           - O usuário exige MUITO TEXTO.
-           - Mínimo de 800 a 1000 palavras nesta geração.
-           - Parágrafos longos e bem explicados.
-        
-        CONTEÚDO:
-        - Teologia: Arminiana / Pentecostal.
-        - Etimologia: Sempre traga o original (Hebraico/Grego).
+        ESTILO:
+        1. **Teologia:** Arminiana / Pentecostal Clássica.
+        2. **Profundidade:** EXAUSTIVA. Não faça resumos. Explore cada palavra, cada conexão hebraica/grega.
+        3. **Formatação:** USE "###" ANTES DE CADA TÍTULO. Ex: "### 1. A CRIAÇÃO".
+        4. **Divisão:** GERAR CONTEÚDO PARA 3 PÁGINAS DENSAS.
+        5. **Separador:** Insira a tag <hr class="page-break"> entre as páginas.
     `;
     
-    const instructions = customInstructions ? `\nINSTRUÇÕES ADICIONAIS DO USUÁRIO: ${customInstructions}` : "";
+    const instructions = customInstructions ? `\nPEDIDO ESPECIAL: ${customInstructions}` : "";
     
-    // Instrução de continuação ajustada para manter o padrão
     const continuationInstructions = `
-        MODO DE CONTINUAÇÃO (PÁGINA ${pages.length + 1}).
-        
-        CONTEXTO ANTERIOR: "...${lastContext.slice(-500)}..."
+        MODO CONTINUAÇÃO (PÁGINA ${pages.length + 1} em diante).
+        CONTEXTO: "...${lastContext.slice(-400)}..."
         
         TAREFA:
-        1. Continue o assunto IMEDIATAMENTE, sem resumos.
-        2. MANTENHA A FORMATAÇÃO: Use "### TÍTULO" para novas seções.
-        3. Se estiver no meio de um tópico, termine-o com profundidade e inicie outro.
-        4. Escreva mais 1000 palavras densas.
+        1. Continue a explicação IMEDIATAMENTE.
+        2. APROFUNDE-SE. Se estiver explicando um versículo, gaste 300 palavras nele.
+        3. Gere texto suficiente para preencher MAIS 2 ou 3 PÁGINAS.
+        4. Use <hr class="page-break"> para separar.
     `;
 
     let specificPrompt = "";
 
     if (target === 'student') {
         specificPrompt = `
-        OBJETIVO: AULA DO ALUNO (${book} ${chapter}).
+        Crie a AULA DO ALUNO para ${book} ${chapter}.
         ${instructions}
         
         ${mode === 'continue' ? continuationInstructions : `
-        INÍCIO DA AULA (PÁGINA 1).
-        Cabeçalho Obrigatório: "PANORÂMA BÍBLICO - ${book.toUpperCase()} (Prof. Michel Felix)"
+        INÍCIO.
+        Cabeçalho: "PANORÂMA BÍBLICO - ${book.toUpperCase()} (Prof. Michel Felix)"
         
-        Estrutura Obrigatória:
-        ### 1. INTRODUÇÃO GERAL
-        (3 parágrafos densos)
+        OBJETIVO: Criar um material que parece um livro de 3000 palavras.
         
-        ### 2. ANÁLISE INICIAL
-        (Explicação versículo a versículo detalhada)
+        PÁGINA 1:
+        ### 1. INTRODUÇÃO E CENÁRIO (Seja detalhista)
+        ### 2. AUTORIA E DATAÇÃO (Análise técnica)
+        
+        <hr class="page-break">
+        
+        PÁGINA 2:
+        ### 3. ANÁLISE DOS PRIMEIROS VERSÍCULOS
+        (Explique palavra por palavra se necessário).
         `}
-        
-        REQUISITOS FINAIS:
-        - Priorize TEXTO CORRIDO e DENSO.
-        - NÃO seja sucinto. Escreva como se fosse um livro pago.
         `;
     } else {
         specificPrompt = `
-        OBJETIVO: MANUAL DO PROFESSOR (${book} ${chapter}).
+        Crie o MANUAL DO PROFESSOR para ${book} ${chapter}.
         ${instructions}
         
         ${mode === 'continue' ? continuationInstructions : `
-        INÍCIO DA AULA (PÁGINA 1).
-        Cabeçalho Obrigatório: "PANORÂMA BÍBLICO - ${book.toUpperCase()} (Manual do Mestre)"
-        `}
+        INÍCIO.
+        Cabeçalho: "PANORÂMA BÍBLICO - ${book.toUpperCase()} (Manual do Mestre)"
         
-        DIFERENCIAL:
-        - Use "### TÍTULO" para separar seções de Arqueologia, Exegese e Aplicação.
-        - Escreva 1200 palavras.
+        OBJETIVO: Análise técnica profunda para professores experientes.
+        
+        PÁGINA 1:
+        ### 1. ALVOS DA LIÇÃO
+        ### 2. EXEGESE DO TEXTO ORIGINAL (Hebraico/Grego)
+        
+        <hr class="page-break">
+        
+        PÁGINA 2:
+        ### 3. REFUTANDO HERESIAS COMUNS
+        (Seja apologético e firme).
+        `}
         `;
     }
 
     try {
         const result = await generateContent(`${basePersona}\n${specificPrompt}`);
         if (!result || result.trim() === 'undefined' || result.length < 50) {
-            throw new Error("Conteúdo vazio. Tente novamente.");
+            throw new Error("A IA retornou vazio. Tente novamente.");
         }
         
         const separator = (mode === 'continue' && currentText.length > 0) ? '<hr class="page-break">' : '';
@@ -244,7 +246,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
         else await db.entities.PanoramaBiblico.create(data);
 
         await loadContent();
-        onShowToast('Conteúdo gerado! Padrão Michel Felix aplicado.', 'success');
+        onShowToast('Conteúdo gerado! (Densidade Alta)', 'success');
         if (mode === 'continue') setTimeout(() => setCurrentPage(pages.length), 500); 
 
     } catch (e: any) {
@@ -259,7 +261,10 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
     if (!content) return;
     const newPages = [...pages];
     newPages.splice(currentPage, 1);
+    
+    // Reconstrói o HTML com o separador correto
     const newHtml = newPages.join('<hr class="page-break">');
+    
     const target = activeTab;
     const data = {
         ...content,
@@ -330,7 +335,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
                     <textarea 
                         value={customInstructions}
                         onChange={(e) => setCustomInstructions(e.target.value)}
-                        placeholder="Instruções para a IA (Ex: Foque na arqueologia, refute tal heresia...)"
+                        placeholder="Ex: Foque na Trindade, refute o Unicismo, use grego koinê..."
                         className="w-full p-2 text-xs text-black rounded mb-2 font-montserrat"
                         rows={2}
                     />
@@ -341,14 +346,14 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
                         disabled={isGenerating}
                         className="flex-1 px-3 py-2 border border-[#C5A059] rounded text-xs hover:bg-[#C5A059] hover:text-[#1a0f0f] transition disabled:opacity-50 font-bold"
                     >
-                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'INÍCIO (1.000+ palavras)'}
+                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'INÍCIO (Exaustivo)'}
                     </button>
                     <button 
                         onClick={() => handleGenerate('continue')} 
                         disabled={isGenerating}
                         className="flex-1 px-3 py-2 bg-[#C5A059] text-[#1a0f0f] font-bold rounded text-xs hover:bg-white transition disabled:opacity-50"
                     >
-                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'CONTINUAR (+1.000)'}
+                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'CONTINUAR (Aprofundar)'}
                     </button>
                     {pages.length > 0 && (
                         <button onClick={handleDeletePage} className="px-3 py-2 bg-red-900 text-white rounded hover:bg-red-700 transition">

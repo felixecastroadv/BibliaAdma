@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Key, ShieldCheck, RefreshCw, Calendar, Loader2, Save, AlertTriangle, Database, CheckCircle, XCircle, Info } from 'lucide-react';
+import { ChevronLeft, Key, ShieldCheck, RefreshCw, Calendar, Loader2, Save, AlertTriangle, Database, CheckCircle, XCircle, Info, BookOpen } from 'lucide-react';
 import { getStoredApiKey, setStoredApiKey, generateContent } from '../../services/geminiService';
 import { BIBLE_BOOKS, generateVerseKey } from '../../constants';
 import { db } from '../../services/database';
@@ -11,6 +11,9 @@ export default function AdminPanel({ onShowToast, onBack }: any) {
   const [dictBook, setDictBook] = useState('Gênesis');
   const [dictChapter, setDictChapter] = useState(1);
   const [dictVerses, setDictVerses] = useState(1);
+  const [commentBook, setCommentBook] = useState('Gênesis');
+  const [commentChapter, setCommentChapter] = useState(1);
+  const [commentVerses, setCommentVerses] = useState(1);
   const [devotionalDays, setDevotionalDays] = useState(7);
   const [isGenerating, setIsGenerating] = useState(false);
   const [dbStatus, setDbStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
@@ -93,6 +96,39 @@ export default function AdminPanel({ onShowToast, onBack }: any) {
     onShowToast('Geração em lote concluída.', 'success');
   };
 
+  const generateCommentaryBatch = async () => {
+    setIsGenerating(true);
+    onShowToast(`Gerando comentários para ${commentBook} ${commentChapter} (Versos 1-${commentVerses})...`, 'info');
+
+    for(let i=1; i<=commentVerses; i++) {
+        const verseKey = generateVerseKey(commentBook, commentChapter, i);
+        const prompt = `
+            Você é o Prof. Michel Felix (Arminiano, Pentecostal Clássico, Arqueólogo).
+            Comente ${commentBook} ${commentChapter}:${i}.
+            Linguagem acessível, teologicamente profunda. 2-3 parágrafos densos.
+        `;
+        try {
+            const text = await generateContent(prompt);
+            const data = { 
+                book: commentBook, 
+                chapter: commentChapter, 
+                verse: i, 
+                verse_key: verseKey, 
+                commentary_text: text 
+            };
+            
+            const existing = await db.entities.Commentary.filter({ verse_key: verseKey });
+            if(existing.length > 0) await db.entities.Commentary.delete(existing[0].id);
+            
+            await db.entities.Commentary.create(data);
+        } catch(e) {
+            console.error(`Error generating comment for verse ${i}`, e);
+        }
+    }
+    setIsGenerating(false);
+    onShowToast('Lote de comentários gerado!', 'success');
+  };
+
   const generateDevotionalBatch = async () => {
     setIsGenerating(true);
     onShowToast(`Gerando ${devotionalDays} devocionais futuros...`, 'info');
@@ -132,6 +168,7 @@ export default function AdminPanel({ onShowToast, onBack }: any) {
                 <AlertTriangle className="w-4 h-4"/> Configuração
             </button>
             <button onClick={() => setActiveTab('ebd')} className={`flex-1 py-3 px-4 font-cinzel font-bold whitespace-nowrap ${activeTab === 'ebd' ? 'text-[#8B0000] dark:text-[#ff6b6b] border-b-2 border-[#8B0000]' : 'text-gray-500 dark:text-gray-400'}`}>Editor Chefe</button>
+            <button onClick={() => setActiveTab('comment')} className={`flex-1 py-3 px-4 font-cinzel font-bold whitespace-nowrap ${activeTab === 'comment' ? 'text-[#8B0000] dark:text-[#ff6b6b] border-b-2 border-[#8B0000]' : 'text-gray-500 dark:text-gray-400'}`}>Comentário</button>
             <button onClick={() => setActiveTab('dict')} className={`flex-1 py-3 px-4 font-cinzel font-bold whitespace-nowrap ${activeTab === 'dict' ? 'text-[#8B0000] dark:text-[#ff6b6b] border-b-2 border-[#8B0000]' : 'text-gray-500 dark:text-gray-400'}`}>Dicionário</button>
             <button onClick={() => setActiveTab('devo')} className={`flex-1 py-3 px-4 font-cinzel font-bold whitespace-nowrap ${activeTab === 'devo' ? 'text-[#8B0000] dark:text-[#ff6b6b] border-b-2 border-[#8B0000]' : 'text-gray-500 dark:text-gray-400'}`}>Devocional</button>
         </div>
@@ -223,6 +260,25 @@ export default function AdminPanel({ onShowToast, onBack }: any) {
              </div>
         )}
 
+        {activeTab === 'comment' && (
+            <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow-md border border-[#C5A059]/30">
+                 <h2 className="font-cinzel font-bold text-lg mb-4 flex items-center gap-2 dark:text-white"><BookOpen/> Gerador de Comentários (Prof.)</h2>
+                 <div className="grid grid-cols-2 gap-4 mb-4">
+                         <select value={commentBook} onChange={(e) => setCommentBook(e.target.value)} className="p-2 border rounded dark:bg-gray-800 dark:text-white">
+                            {BIBLE_BOOKS.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
+                         </select>
+                         <input type="number" value={commentChapter} onChange={(e) => setCommentChapter(Number(e.target.value))} className="p-2 border rounded dark:bg-gray-800 dark:text-white" min={1} placeholder="Capítulo" />
+                </div>
+                <div className="mb-4">
+                    <label className="block text-sm font-bold mb-1 dark:text-gray-300">Qtd Versículos:</label>
+                    <input type="number" value={commentVerses} onChange={(e) => setCommentVerses(Number(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-800 dark:text-white" min={1} max={50} />
+                </div>
+                <button onClick={generateCommentaryBatch} disabled={isGenerating} className="w-full bg-[#8B0000] text-white py-3 rounded font-bold font-cinzel flex justify-center items-center gap-2">
+                    {isGenerating ? <Loader2 className="animate-spin"/> : 'Gerar Comentários em Lote'}
+                </button>
+            </div>
+        )}
+
         {activeTab === 'dict' && (
             <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow-md border border-[#C5A059]/30">
                  <h2 className="font-cinzel font-bold text-lg mb-4 flex items-center gap-2 dark:text-white"><RefreshCw/> Gerador de Dicionário em Lote</h2>
@@ -237,7 +293,7 @@ export default function AdminPanel({ onShowToast, onBack }: any) {
                     <input type="number" value={dictVerses} onChange={(e) => setDictVerses(Number(e.target.value))} className="w-full p-2 border rounded dark:bg-gray-800 dark:text-white" min={1} max={50} />
                 </div>
                 <button onClick={generateDictionaryBatch} disabled={isGenerating} className="w-full bg-[#8B0000] text-white py-3 rounded font-bold font-cinzel flex justify-center items-center gap-2">
-                    {isGenerating ? <Loader2 className="animate-spin"/> : 'Gerar Lote'}
+                    {isGenerating ? <Loader2 className="animate-spin"/> : 'Gerar Dicionários em Lote'}
                 </button>
             </div>
         )}
