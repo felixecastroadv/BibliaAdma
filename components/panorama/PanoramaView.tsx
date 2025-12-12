@@ -87,9 +87,10 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
             );
         }
 
-        // 2. SUBTÍTULOS ELEGANTES (Detecta ### ou números romanos/arabicos iniciais)
-        // Estilo: Centralizado, com linhas douradas laterais, igual página 1
-        if (trimmed.startsWith('###') || /^\d+\./.test(trimmed) || /^[IVX]+\./.test(trimmed)) {
+        // 2. SUBTÍTULOS ELEGANTES (Detecta ###, números romanos/arábicos iniciais, ou títulos em caixa alta curtos)
+        const isHeader = trimmed.startsWith('###') || /^\d+\./.test(trimmed) || /^[IVX]+\./.test(trimmed);
+        
+        if (isHeader) {
             const title = trimmed.replace(/###/g, '').trim();
             return (
                 <div key={idx} className="mt-10 mb-6 flex items-center justify-center gap-4">
@@ -153,20 +154,19 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
     const basePersona = `
         VOCÊ É O PROFESSOR MICHEL FELIX.
         
-        IDENTIDADE VISUAL E ESTRUTURAL (IMPORTANTE):
-        1. **Estilo Literário:** Escreva como um LIVRO ACADÊMICO DE TEOLOGIA, não como um blog.
-        2. **Densidade:** Cada parágrafo deve ser robusto, com no mínimo 5 ou 6 linhas. Evite frases soltas.
-        3. **Formatação de Títulos:** 
-           - USE SEMPRE "###" ANTES DE CADA SUBTÍTULO. Ex: "### 1. O INÍCIO DE TUDO"
-           - Isso garante que o App formate o título com as linhas douradas e centralização.
-        4. **Conteúdo:** 
-           - Teologia: Arminiana / Pentecostal.
-           - Etimologia: Sempre traga o original (Hebraico/Grego) transliterado.
-           - Aplicação: Conecte o passado ao presente.
+        IDENTIDADE VISUAL E ESTRUTURAL (OBRIGATÓRIO PARA TODAS AS PÁGINAS):
+        1. **Estilo:** LIVRO ACADÊMICO DE LUXO.
+        2. **Formatação de Títulos (CRÍTICO):** 
+           - USE SEMPRE "###" ANTES DE CADA NOVO TÓPICO. Ex: "### 2. A QUEDA DO HOMEM"
+           - Isso cria as linhas douradas e centralização. NÃO use apenas negrito para títulos.
+        3. **Densidade:** 
+           - O usuário exige MUITO TEXTO.
+           - Mínimo de 800 a 1000 palavras nesta geração.
+           - Parágrafos longos e bem explicados.
         
-        REGRA DE OURO - VOLUME DE TEXTO:
-        - Você PRECISA escrever MUITO. O usuário quer páginas densas e cheias de conteúdo.
-        - Mínimo de 1000 palavras por geração. Não seja sucinto.
+        CONTEÚDO:
+        - Teologia: Arminiana / Pentecostal.
+        - Etimologia: Sempre traga o original (Hebraico/Grego).
     `;
     
     const instructions = customInstructions ? `\nINSTRUÇÕES ADICIONAIS DO USUÁRIO: ${customInstructions}` : "";
@@ -178,39 +178,38 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
         CONTEXTO ANTERIOR: "...${lastContext.slice(-500)}..."
         
         TAREFA:
-        1. Identifique o tópico exato onde parou.
-        2. Continue o texto IMEDIATAMENTE, mantendo a profundidade.
-        3. NÃO FAÇA RESUMOS DO QUE JÁ FOI DITO.
-        4. Crie NOVOS tópicos usando "### NÚMERO. TÍTULO".
-        5. Escreva mais 1000 palavras densas.
+        1. Continue o assunto IMEDIATAMENTE, sem resumos.
+        2. MANTENHA A FORMATAÇÃO: Use "### TÍTULO" para novas seções.
+        3. Se estiver no meio de um tópico, termine-o com profundidade e inicie outro.
+        4. Escreva mais 1000 palavras densas.
     `;
 
     let specificPrompt = "";
 
     if (target === 'student') {
         specificPrompt = `
-        OBJETIVO: Escrever a AULA DO ALUNO para ${book} Capítulo ${chapter}.
+        OBJETIVO: AULA DO ALUNO (${book} ${chapter}).
         ${instructions}
         
         ${mode === 'continue' ? continuationInstructions : `
         INÍCIO DA AULA (PÁGINA 1).
-        Cabeçalho Obrigatório na primeira linha: "PANORÂMA BÍBLICO - ${book.toUpperCase()} (Prof. Michel Felix)"
+        Cabeçalho Obrigatório: "PANORÂMA BÍBLICO - ${book.toUpperCase()} (Prof. Michel Felix)"
         
-        Estrutura sugerida para esta parte:
-        ### 1. INTRODUÇÃO E CONTEXTO HISTÓRICO
-        (Escreva 3 parágrafos densos sobre autor, data e cenário)
+        Estrutura Obrigatória:
+        ### 1. INTRODUÇÃO GERAL
+        (3 parágrafos densos)
         
-        ### 2. ANÁLISE DOS PRIMEIROS VERSÍCULOS
-        (Escreva detalhadamente sobre o início do capítulo)
+        ### 2. ANÁLISE INICIAL
+        (Explicação versículo a versículo detalhada)
         `}
         
         REQUISITOS FINAIS:
-        - Use <hr class="page-break"> APENAS se o texto exceder 1200 palavras para forçar quebra.
         - Priorize TEXTO CORRIDO e DENSO.
+        - NÃO seja sucinto. Escreva como se fosse um livro pago.
         `;
     } else {
         specificPrompt = `
-        OBJETIVO: MANUAL DO PROFESSOR (TEOLOGIA AVANÇADA) para ${book} Capítulo ${chapter}.
+        OBJETIVO: MANUAL DO PROFESSOR (${book} ${chapter}).
         ${instructions}
         
         ${mode === 'continue' ? continuationInstructions : `
@@ -219,11 +218,8 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
         `}
         
         DIFERENCIAL:
-        - Foque em Curiosidades Arqueológicas.
-        - Explique termos difíceis.
-        - Crie seções com "### TÍTULO".
-        
-        Escreva 1200 palavras.
+        - Use "### TÍTULO" para separar seções de Arqueologia, Exegese e Aplicação.
+        - Escreva 1200 palavras.
         `;
     }
 

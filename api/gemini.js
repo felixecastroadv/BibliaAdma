@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 
 // Configuração para Vercel Serverless Functions
 export const config = {
-  maxDuration: 60,
+  maxDuration: 60, // Aumenta tempo limite para permitir múltiplas tentativas
 };
 
 export default async function handler(request, response) {
@@ -24,8 +24,7 @@ export default async function handler(request, response) {
   }
 
   try {
-    // --- SISTEMA DE ROTAÇÃO DE CHAVES (ROUND ROBIN) ---
-    // Mapeia as chaves do ambiente. Agora suporta até API_KEY_10 para o usuário ter liberdade de escalar.
+    // --- 1. COLETA DE TODAS AS CHAVES ---
     const envKeys = [
         { name: 'API_KEY', val: process.env.API_KEY },
         { name: 'Biblia_ADMA_API', val: process.env.Biblia_ADMA_API },
@@ -40,29 +39,15 @@ export default async function handler(request, response) {
         { name: 'API_KEY_10', val: process.env.API_KEY_10 }
     ];
 
-    // Filtra apenas as chaves válidas (não vazias e com tamanho mínimo de chave google)
     const validKeys = envKeys.filter(k => k.val && k.val.length > 20);
-
-    // --- LOG DE DIAGNÓSTICO (Visível nos Logs da Vercel) ---
-    // Isso ajuda você a saber se suas chaves foram carregadas corretamente
-    if (validKeys.length > 0) {
-        console.log(`✅ [Gemini Load Balancer] ${validKeys.length} chaves ativas: ${validKeys.map(k => `${k.name} (...${k.val.slice(-4)})`).join(', ')}`);
-    } else {
-        console.error("❌ [Gemini Load Balancer] Nenhuma chave encontrada!");
-    }
 
     if (validKeys.length === 0) {
          return response.status(500).json({ 
-             error: 'CONFIGURAÇÃO PENDENTE: Nenhuma Chave de API válida encontrada na Vercel. Adicione API_KEY, API_KEY_2, etc nas Variáveis de Ambiente.' 
+             error: 'CONFIGURAÇÃO PENDENTE: Nenhuma Chave de API válida encontrada na Vercel.' 
          });
     }
 
-    // Extrai apenas os valores das chaves para uso
-    const keys = validKeys.map(k => k.val);
-
-    // Escolhe uma chave aleatória para distribuir a carga
-    const randomKey = keys[Math.floor(Math.random() * keys.length)];
-
+    // --- 2. PREPARAÇÃO DO BODY ---
     let body = request.body;
     if (typeof body === 'string') {
         try {
@@ -71,60 +56,93 @@ export default async function handler(request, response) {
             return response.status(400).json({ error: 'Invalid JSON body' });
         }
     }
-
     const { prompt, schema } = body || {};
+    if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
-    if (!prompt) {
-        return response.status(400).json({ error: 'Prompt é obrigatório' });
-    }
+    // --- 3. LOOP DE ROTAÇÃO DE CHAVES (FAILOVER) ---
+    // Embaralha as chaves para distribuir a carga, mas se uma falhar, tenta a próxima da lista
+    const shuffledKeys = validKeys.map(k => k.val).sort(() => 0.5 - Math.random());
     
-    const ai = new GoogleGenAI({ apiKey: randomKey });
-    const modelId = "gemini-2.5-flash"; 
+    let lastError = null;
+    let successResponse = null;
 
-    const aiConfig = {
-        temperature: 0.9, 
-        topP: 0.95,
-        topK: 40,
-        safetySettings: [
-            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-        ],
-    };
+    console.log(`🔄 [Gemini Router] Iniciando tentativa com ${shuffledKeys.length} chaves disponíveis.`);
 
-    if (schema) {
-        aiConfig.responseMimeType = "application/json";
-        aiConfig.responseSchema = schema;
+    for (const apiKey of shuffledKeys) {
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            const modelId = "gemini-2.5-flash"; 
+
+            const aiConfig = {
+                temperature: 0.9, 
+                topP: 0.95,
+                topK: 40,
+                safetySettings: [
+                    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+                ],
+            };
+
+            if (schema) {
+                aiConfig.responseMimeType = "application/json";
+                aiConfig.responseSchema = schema;
+            }
+
+            // Tenta gerar com a chave atual
+            const aiResponse = await ai.models.generateContent({
+                model: modelId,
+                contents: [{ parts: [{ text: prompt }] }],
+                config: aiConfig
+            });
+
+            if (!aiResponse.text) {
+                // Se a resposta veio vazia (erro de recitação ou filtro), isso não é culpa da chave,
+                // mas vamos tratar como erro para tentar outra chave se for o caso, ou abortar.
+                throw new Error(aiResponse.candidates?.[0]?.finishReason || "EMPTY_RESPONSE");
+            }
+
+            // SUCESSO!
+            successResponse = aiResponse.text;
+            break; // Sai do loop
+
+        } catch (error) {
+            lastError = error;
+            const msg = error.message || '';
+            
+            // Verifica se é erro de Cota (429) ou Serviço Indisponível (503)
+            const isQuotaError = msg.includes('429') || msg.includes('Quota') || msg.includes('Too Many Requests');
+            const isServerError = msg.includes('503') || msg.includes('500') || msg.includes('Overloaded');
+
+            if (isQuotaError || isServerError) {
+                console.warn(`⚠️ Chave falhou (${isQuotaError ? 'Cota' : 'Server'}). Tentando próxima...`);
+                continue; // Tenta a próxima chave do loop
+            } else {
+                // Se for outro erro (ex: 400 Bad Request), a culpa é do prompt, então aborta.
+                console.error(`❌ Erro fatal na chave: ${msg}`);
+                break; 
+            }
+        }
     }
 
-    const aiResponse = await ai.models.generateContent({
-        model: modelId,
-        contents: [{ parts: [{ text: prompt }] }],
-        config: aiConfig
-    });
-
-    if (!aiResponse.text) {
-        const finishReason = aiResponse.candidates?.[0]?.finishReason;
-        let customError = `A IA não retornou texto. Motivo: ${finishReason}`;
+    // --- 4. RESPOSTA FINAL ---
+    if (successResponse) {
+        return response.status(200).json({ text: successResponse });
+    } else {
+        // Se todas as chaves falharam
+        console.error("❌ TODAS AS CHAVES FALHARAM.");
+        const errorMsg = lastError?.message || 'Erro desconhecido em todas as chaves.';
         
-        if (finishReason === 'RECITATION') {
-            customError = "RECITATION_ERROR"; 
+        if (errorMsg.includes('429') || errorMsg.includes('Quota')) {
+            return response.status(429).json({ error: 'QUOTA_EXCEEDED: Todas as chaves atingiram o limite. Tente novamente em 1 minuto.' });
         }
         
-        return response.status(500).json({ error: customError });
+        return response.status(500).json({ error: errorMsg });
     }
-
-    return response.status(200).json({ text: aiResponse.text });
 
   } catch (error) {
-    console.error("Gemini API Error:", error);
-    
-    // Tratamento específico para erro de Cota
-    if (error.message && (error.message.includes('429') || error.message.includes('Quota') || error.message.includes('Too Many Requests'))) {
-        return response.status(429).json({ error: 'QUOTA_EXCEEDED' });
-    }
-
-    return response.status(500).json({ error: error.message || 'Erro interno na IA.' });
+    console.error("Gemini Critical Error:", error);
+    return response.status(500).json({ error: 'Erro crítico no servidor.' });
   }
 }
