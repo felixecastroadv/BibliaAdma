@@ -60,9 +60,9 @@ export const generateContent = async (
     } 
     
     // --- MODO 2: Server-Side (Vercel - Produção) ---
-    // Adicionamos um Timeout de 15 segundos para não travar a tela
+    // Adicionamos um Timeout de 60 segundos (antes era padrão do browser/15s)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos limite
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 segundos limite
 
     try {
         const response = await fetch('/api/gemini', {
@@ -85,6 +85,11 @@ export const generateContent = async (
                  throw new Error(errData.error);
             }
 
+            // Erro 504 Gateway Timeout é comum na Vercel se passar do limite
+            if (response.status === 504) {
+                 throw new Error("O servidor demorou muito para responder (Vercel Timeout). Tente usar textos menores.");
+            }
+
             throw new Error(errData.error || `Erro de Comunicação (${response.status})`);
         }
 
@@ -94,7 +99,7 @@ export const generateContent = async (
     } catch (fetchError: any) {
         clearTimeout(timeoutId);
         if (fetchError.name === 'AbortError') {
-            throw new Error("O servidor demorou muito para responder (Timeout). Tente novamente.");
+            throw new Error("O servidor demorou muito para responder (Timeout > 60s). Tente novamente ou use gerações menores.");
         }
         throw fetchError;
     }

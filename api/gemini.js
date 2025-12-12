@@ -1,5 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
 
+// Configuração para Vercel Serverless Functions
+// Permite execução de até 60 segundos (padrão é 10s no plano Hobby)
+export const config = {
+  maxDuration: 60,
+};
+
 export default async function handler(request, response) {
   // CORS Configuration
   response.setHeader('Access-Control-Allow-Credentials', true);
@@ -49,21 +55,21 @@ export default async function handler(request, response) {
     // Using gemini-2.5-flash as requested for free tier optimization
     const modelId = "gemini-2.5-flash";
 
-    const config = {
+    const aiConfig = {
         temperature: 0.7,
         topP: 0.95,
         topK: 40,
     };
 
     if (schema) {
-        config.responseMimeType = "application/json";
-        config.responseSchema = schema;
+        aiConfig.responseMimeType = "application/json";
+        aiConfig.responseSchema = schema;
     }
 
     const aiResponse = await ai.models.generateContent({
         model: modelId,
         contents: [{ parts: [{ text: prompt }] }],
-        config: config
+        config: aiConfig
     });
 
     return response.status(200).json({ text: aiResponse.text });
