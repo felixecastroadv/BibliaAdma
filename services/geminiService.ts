@@ -28,43 +28,48 @@ function processResponse(text: string | undefined, jsonSchema: any) {
     return text;
 }
 
+// Função de espera para o Retry (Backoff)
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export const generateContent = async (
   prompt: string, 
   jsonSchema?: any
 ) => {
-  try {
-    const adminKey = getStoredApiKey();
-    
-    // --- MODO 1: Client-Side (Chave salva no navegador - Admin/Teste Local) ---
-    if (adminKey) {
-        console.log("Using Client-Side API Key");
-        const ai = new GoogleGenAI({ apiKey: adminKey });
-        const config: any = {
-            temperature: 0.7,
-            topP: 0.95,
-            topK: 40,
-        };
+  const MAX_RETRIES = 3; // Tenta até 3 vezes antes de desistir
+  let attempt = 0;
 
-        if (jsonSchema) {
-            config.responseMimeType = "application/json";
-            config.responseSchema = jsonSchema;
-        }
-
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: [{ parts: [{ text: prompt }] }],
-            config: config
-        });
+  while (attempt < MAX_RETRIES) {
+      try {
+        const adminKey = getStoredApiKey();
         
-        return processResponse(response.text, jsonSchema);
-    } 
-    
-    // --- MODO 2: Server-Side (Vercel - Produção) ---
-    // Adicionamos um Timeout de 60 segundos (antes era padrão do browser/15s)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 segundos limite
+        // --- MODO CLIENTE (Chave pessoal do Admin) ---
+        // Aqui não fazemos retry complexo pois usa uma chave direta, sem rotação
+        if (adminKey) {
+            const ai = new GoogleGenAI({ apiKey: adminKey });
+            const config: any = {
+                temperature: 0.9, // Temperatura alta para criatividade
+                topP: 0.95,
+                topK: 40,
+            };
 
-    try {
+            if (jsonSchema) {
+                config.responseMimeType = "application/json";
+                config.responseSchema = jsonSchema;
+            }
+
+            const response = await ai.models.generateContent({
+                model: "gemini-2.5-flash",
+                contents: [{ parts: [{ text: prompt }] }],
+                config: config
+            });
+            
+            return processResponse(response.text, jsonSchema);
+        } 
+        
+        // --- MODO SERVER (Com Rotação de Chaves + Retry) ---
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s timeout (margem para retries)
+
         const response = await fetch('/api/gemini', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -72,45 +77,51 @@ export const generateContent = async (
             signal: controller.signal
         });
 
-        clearTimeout(timeoutId); // Limpa o timer se respondeu a tempo
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
             
-            if (response.status === 404) {
-                throw new Error("API Backend não encontrada. Se estiver rodando localmente, configure a Chave no Painel Admin para usar o Modo Cliente.");
+            // Tratamento de erros específicos para decidir se tenta de novo
+            if (response.status === 429 || errData.error === 'QUOTA_EXCEEDED') {
+                throw new Error("QUOTA_RETRY");
             }
-            
-            if (response.status === 500 && (errData.error?.includes('API_KEY') || errData.error?.includes('CONFIGURAÇÃO'))) {
-                 throw new Error(errData.error);
-            }
-
-            // Erro 504 Gateway Timeout é comum na Vercel se passar do limite
             if (response.status === 504) {
-                 throw new Error("O servidor demorou muito para responder (Vercel Timeout). Tente usar textos menores.");
+                 throw new Error("TIMEOUT_RETRY");
+            }
+            if (errData.error === 'RECITATION_ERROR') {
+                throw new Error("A IA bloqueou por Direitos Autorais (RECITATION). Tente pedir para 'Explicar com suas palavras' ou reduzir citações diretas.");
             }
 
-            throw new Error(errData.error || `Erro de Comunicação (${response.status})`);
+            throw new Error(errData.error || `Erro (${response.status})`);
         }
 
         const data = await response.json();
         return processResponse(data.text, jsonSchema);
 
-    } catch (fetchError: any) {
-        clearTimeout(timeoutId);
-        if (fetchError.name === 'AbortError') {
-            throw new Error("O servidor demorou muito para responder (Timeout > 60s). Tente novamente ou use gerações menores.");
-        }
-        throw fetchError;
-    }
+      } catch (error: any) {
+        attempt++;
+        
+        const isQuota = error.message === "QUOTA_RETRY" || error.message?.includes("429");
+        const isTimeout = error.message === "TIMEOUT_RETRY";
 
-  } catch (error: any) {
-    console.error("Gemini Service Error:", error);
-    
-    if (error.message?.includes("429") || error.message?.includes("Quota")) {
-        throw new Error("Limite de cotas da API excedido. Use uma chave pessoal no Painel Admin.");
-    }
-    
-    throw error;
+        // Se atingiu o limite de tentativas, lança o erro final para o usuário ver
+        if (attempt >= MAX_RETRIES) {
+            if (isQuota) throw new Error("O sistema está com alto tráfego. Aguarde 30 segundos e tente novamente.");
+            if (isTimeout) throw new Error("A IA demorou muito para responder. Tente um conteúdo menor.");
+            throw error;
+        }
+
+        // Se for erro de Cota ou Timeout, espera e tenta de novo (Backoff Exponencial)
+        if (isQuota || isTimeout) {
+            const waitTime = attempt * 2500; // Espera 2.5s, depois 5s...
+            console.log(`⚠️ Tentativa ${attempt} falhou (${error.message}). Retentando em ${waitTime}ms...`);
+            await delay(waitTime);
+            continue; // Volta para o início do loop e tenta de novo (provavelmente pegará outra chave no servidor)
+        }
+
+        // Erros fatais (como 400 Bad Request) não devem ser retentados
+        throw error;
+      }
   }
 };

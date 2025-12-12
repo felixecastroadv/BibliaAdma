@@ -1,7 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
 // Configuração para Vercel Serverless Functions
-// Permite execução de até 60 segundos (padrão é 10s no plano Hobby)
 export const config = {
   maxDuration: 60,
 };
@@ -25,14 +24,39 @@ export default async function handler(request, response) {
   }
 
   try {
-    const apiKey = process.env.API_KEY || process.env.Biblia_ADMA_API;
+    // --- SISTEMA DE ROTAÇÃO DE CHAVES (ROUND ROBIN) ---
+    // Mapeia as chaves do ambiente com seus nomes para log de debug
+    const envKeys = [
+        { name: 'API_KEY', val: process.env.API_KEY },
+        { name: 'Biblia_ADMA_API', val: process.env.Biblia_ADMA_API },
+        { name: 'API_KEY_2', val: process.env.API_KEY_2 },
+        { name: 'API_KEY_3', val: process.env.API_KEY_3 },
+        { name: 'API_KEY_4', val: process.env.API_KEY_4 },
+        { name: 'API_KEY_5', val: process.env.API_KEY_5 }
+    ];
 
-    if (!apiKey) {
-         console.error("CRITICAL ERROR: API Key is missing in Vercel Environment Variables.");
+    // Filtra apenas as chaves válidas (não vazias e com tamanho mínimo)
+    const validKeys = envKeys.filter(k => k.val && k.val.length > 10);
+
+    // --- LOG DE DIAGNÓSTICO (Visível nos Logs da Vercel) ---
+    // Isso ajuda você a saber se suas chaves foram carregadas corretamente
+    if (validKeys.length > 0) {
+        console.log(`✅ [Gemini Load Balancer] Chaves ativas: ${validKeys.map(k => `${k.name} (...${k.val.slice(-4)})`).join(', ')}`);
+    } else {
+        console.error("❌ [Gemini Load Balancer] Nenhuma chave encontrada!");
+    }
+
+    if (validKeys.length === 0) {
          return response.status(500).json({ 
-             error: 'CONFIGURAÇÃO PENDENTE: A Chave de API não foi encontrada. Verifique se a variável Biblia_ADMA_API está configurada na Vercel.' 
+             error: 'CONFIGURAÇÃO PENDENTE: Nenhuma Chave de API válida encontrada na Vercel. Adicione API_KEY, API_KEY_2, etc nas Variáveis de Ambiente.' 
          });
     }
+
+    // Extrai apenas os valores das chaves para uso
+    const keys = validKeys.map(k => k.val);
+
+    // Escolhe uma chave aleatória para distribuir a carga
+    const randomKey = keys[Math.floor(Math.random() * keys.length)];
 
     let body = request.body;
     if (typeof body === 'string') {
@@ -49,11 +73,10 @@ export default async function handler(request, response) {
         return response.status(400).json({ error: 'Prompt é obrigatório' });
     }
     
-    const ai = new GoogleGenAI({ apiKey });
-    const modelId = "gemini-2.5-flash";
+    const ai = new GoogleGenAI({ apiKey: randomKey });
+    const modelId = "gemini-2.5-flash"; 
 
     const aiConfig = {
-        // Aumentei a temperatura para evitar RECITATION (cópia exata)
         temperature: 0.9, 
         topP: 0.95,
         topK: 40,
@@ -77,13 +100,11 @@ export default async function handler(request, response) {
     });
 
     if (!aiResponse.text) {
-        console.error("Gemini returned empty text. Candidates:", JSON.stringify(aiResponse.candidates));
         const finishReason = aiResponse.candidates?.[0]?.finishReason;
-        
         let customError = `A IA não retornou texto. Motivo: ${finishReason}`;
         
         if (finishReason === 'RECITATION') {
-            customError = "A IA bloqueou por Direitos Autorais (RECITATION). O texto pedido é muito semelhante a um livro ou bíblia existente. Tente pedir para 'Explicar com suas palavras' ou 'Resumir' nas instruções extras.";
+            customError = "RECITATION_ERROR"; 
         }
         
         return response.status(500).json({ error: customError });
@@ -93,6 +114,11 @@ export default async function handler(request, response) {
 
   } catch (error) {
     console.error("Gemini API Error:", error);
+    
+    if (error.message && (error.message.includes('429') || error.message.includes('Quota'))) {
+        return response.status(429).json({ error: 'QUOTA_EXCEEDED' });
+    }
+
     return response.status(500).json({ error: error.message || 'Erro interno na IA.' });
   }
 }
