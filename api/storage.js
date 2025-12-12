@@ -15,12 +15,16 @@ export default async function handler(request, response) {
 
   try {
     const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    
+    // ATUALIZAÇÃO: Suporte para chaves antigas (ANON) e novas (PUBLISHABLE_DEFAULT) do Supabase
+    const supabaseKey = process.env.SUPABASE_ANON_KEY || 
+                        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
+                        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
         console.error("Supabase credentials missing.");
         return response.status(500).json({ 
-            error: "BANCO DE DADOS DESCONECTADO: Configure SUPABASE_URL e SUPABASE_ANON_KEY na Vercel." 
+            error: "BANCO DE DADOS DESCONECTADO: Configure SUPABASE_URL e a CHAVE (ANON ou PUBLISHABLE) na Vercel." 
         });
     }
 

@@ -15,7 +15,9 @@
     "@supabase/supabase-js": "^2.87.1",
     "lucide-react": "^0.561.0",
     "framer-motion": "^12.23.26",
-    "date-fns": "^4.1.0"
+    "date-fns": "^4.1.0",
+    "vite": "^7.2.7",
+    "@vitejs/plugin-react": "^5.1.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
