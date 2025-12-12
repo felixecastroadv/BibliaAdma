@@ -72,42 +72,49 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
 
   const renderFormattedText = (text: string) => {
     const blocks = text.split('\n').filter(b => b.trim().length > 0);
+    
     return blocks.map((block, idx) => {
         const trimmed = block.trim();
-        // Cabeçalho estilo Michel Felix (PANORÂMA BÍBLICO)
+
+        // 1. TÍTULO PRINCIPAL (PANORÂMA BÍBLICO...)
         if (trimmed.includes('PANORÂMA BÍBLICO') || trimmed.includes('PANORAMA BÍBLICO')) {
              return (
-                <div key={idx} className="mb-6 text-center border-b-2 border-[#8B0000] pb-2">
-                    <h1 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#ff6b6b] uppercase tracking-wide">
+                <div key={idx} className="mb-8 text-center border-b-2 border-[#8B0000] dark:border-[#ff6b6b] pb-4 pt-2">
+                    <h1 className="font-cinzel font-bold text-2xl md:text-3xl text-[#8B0000] dark:text-[#ff6b6b] uppercase tracking-widest drop-shadow-sm">
                         {trimmed}
                     </h1>
                 </div>
             );
         }
 
-        // Subtítulos Numerados (Ex: 1) O NASCIMENTO...)
-        if (/^\d+\)/.test(trimmed) || (trimmed === trimmed.toUpperCase() && trimmed.length < 80 && trimmed.length > 5)) {
-            const title = trimmed.replace(/#+/g, '').trim();
+        // 2. SUBTÍTULOS ELEGANTES (Detecta ### ou números romanos/arabicos iniciais)
+        // Estilo: Centralizado, com linhas douradas laterais, igual página 1
+        if (trimmed.startsWith('###') || /^\d+\./.test(trimmed) || /^[IVX]+\./.test(trimmed)) {
+            const title = trimmed.replace(/###/g, '').trim();
             return (
-                <div key={idx} className="mt-6 mb-3">
-                    <h3 className="font-cinzel font-bold text-lg text-[#1a0f0f] dark:text-gray-100 uppercase tracking-wide border-l-4 border-[#C5A059] pl-3">
+                <div key={idx} className="mt-10 mb-6 flex items-center justify-center gap-4">
+                    <div className="h-[1px] bg-[#C5A059] w-8 md:w-16 opacity-60"></div>
+                    <h3 className="font-cinzel font-bold text-xl text-[#1a0f0f] dark:text-[#E0E0E0] uppercase tracking-wide text-center">
                         {title}
                     </h3>
+                    <div className="h-[1px] bg-[#C5A059] w-8 md:w-16 opacity-60"></div>
                 </div>
             );
         }
 
-        // Perguntas ou Curiosidades
-        if (trimmed.toUpperCase().includes('CURIOSIDADE') || trimmed.endsWith('?')) {
+        // 3. CAIXAS DE DESTAQUE (Curiosidades / Perguntas)
+        if (trimmed.toUpperCase().includes('CURIOSIDADE') || trimmed.toUpperCase().includes('ATENÇÃO:') || trimmed.endsWith('?')) {
             return (
-                <div key={idx} className="font-cormorant text-lg text-[#1a0f0f] dark:text-gray-200 font-bold italic bg-[#C5A059]/10 dark:bg-[#C5A059]/20 p-3 rounded mb-4 border border-[#C5A059]/30">
-                    {parseInlineStyles(trimmed)}
+                <div key={idx} className="my-6 mx-2 font-cormorant text-lg text-[#1a0f0f] dark:text-gray-200 font-medium italic bg-[#C5A059]/10 dark:bg-[#C5A059]/10 p-6 rounded-lg border-y border-[#C5A059]/40 shadow-sm">
+                    <Sparkles className="w-5 h-5 text-[#C5A059] mb-2 mx-auto opacity-70" />
+                    <div className="text-center">{parseInlineStyles(trimmed)}</div>
                 </div>
             );
         }
         
+        // 4. TEXTO PADRÃO (Justificado e Elegante)
         return (
-            <p key={idx} className="font-cormorant text-xl leading-loose text-gray-900 dark:text-gray-300 text-justify indent-8 mb-4">
+            <p key={idx} className="font-cormorant text-xl leading-loose text-gray-900 dark:text-gray-300 text-justify indent-8 mb-4 tracking-wide">
                 {parseInlineStyles(trimmed)}
             </p>
         );
@@ -139,74 +146,93 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
     const studyKey = generateChapterKey(book, chapter);
     const existing = (await db.entities.PanoramaBiblico.filter({ study_key: studyKey }))[0] || {};
     const currentText = target === 'student' ? (existing.student_content || '') : (existing.teacher_content || '');
-    const lastContext = currentText.slice(-3000); 
+    
+    // Contexto aumentado para garantir continuidade fluida
+    const lastContext = currentText.slice(-4000); 
 
     const basePersona = `
         VOCÊ É O PROFESSOR MICHEL FELIX.
         
-        SUA IDENTIDADE E ESTILO DE ESCRITA:
-        1. **Teologia:** Arminiana e Pentecostal Clássica.
-        2. **Tom de Voz:** Educador, profundo, reverente, mas acessível.
-        3. **Estrutura:**
-           - TÍTULO: "PANORÂMA BÍBLICO - [LIVRO] (Escrito por: [Autor] em [Data])".
-           - SUBTÍTULOS: Numerados (1), 2)...) com TÍTULO EM CAIXA ALTA e CRONOLOGIA.
-        4. **Marcas Registradas:**
-           - **Etimologia:** SEMPRE explique palavras chaves no original entre parênteses. 
-           - **Tipologia:** Conecte o evento com Jesus ou a Igreja.
-           - **Curiosidades:** Inclua curiosidades históricas ou arqueológicas.
+        IDENTIDADE VISUAL E ESTRUTURAL (IMPORTANTE):
+        1. **Estilo Literário:** Escreva como um LIVRO ACADÊMICO DE TEOLOGIA, não como um blog.
+        2. **Densidade:** Cada parágrafo deve ser robusto, com no mínimo 5 ou 6 linhas. Evite frases soltas.
+        3. **Formatação de Títulos:** 
+           - USE SEMPRE "###" ANTES DE CADA SUBTÍTULO. Ex: "### 1. O INÍCIO DE TUDO"
+           - Isso garante que o App formate o título com as linhas douradas e centralização.
+        4. **Conteúdo:** 
+           - Teologia: Arminiana / Pentecostal.
+           - Etimologia: Sempre traga o original (Hebraico/Grego) transliterado.
+           - Aplicação: Conecte o passado ao presente.
         
-        5. **REGRA ANTI-RECITATION (CRUCIAL):**
-           - **NUNCA** copie o texto bíblico na íntegra. O Google bloqueará se você fizer isso.
-           - **PARAFRASEIE** os versículos. Explique o conceito com suas próprias palavras.
-           - Não cite trechos longos de livros ou comentários conhecidos. Seja original na escrita.
+        REGRA DE OURO - VOLUME DE TEXTO:
+        - Você PRECISA escrever MUITO. O usuário quer páginas densas e cheias de conteúdo.
+        - Mínimo de 1000 palavras por geração. Não seja sucinto.
     `;
     
-    let specificPrompt = "";
     const instructions = customInstructions ? `\nINSTRUÇÕES ADICIONAIS DO USUÁRIO: ${customInstructions}` : "";
+    
+    // Instrução de continuação ajustada para manter o padrão
     const continuationInstructions = `
-        CONTINUAÇÃO DO TEXTO.
-        SITUAÇÃO: Você está escrevendo a PARTE ${pages.length + 1}.
-        ÚLTIMO CONTEXTO (Para manter a coesão): "...${lastContext.slice(-500)}..."
-        REGRA: Não repita o cabeçalho. Continue o tópico de onde parou.
+        MODO DE CONTINUAÇÃO (PÁGINA ${pages.length + 1}).
+        
+        CONTEXTO ANTERIOR: "...${lastContext.slice(-500)}..."
+        
+        TAREFA:
+        1. Identifique o tópico exato onde parou.
+        2. Continue o texto IMEDIATAMENTE, mantendo a profundidade.
+        3. NÃO FAÇA RESUMOS DO QUE JÁ FOI DITO.
+        4. Crie NOVOS tópicos usando "### NÚMERO. TÍTULO".
+        5. Escreva mais 1000 palavras densas.
     `;
+
+    let specificPrompt = "";
 
     if (target === 'student') {
         specificPrompt = `
-        OBJETIVO: Escrever uma AULA COMPLETA (Estilo Apostila) sobre ${book} Capítulo ${chapter}.
+        OBJETIVO: Escrever a AULA DO ALUNO para ${book} Capítulo ${chapter}.
         ${instructions}
         
         ${mode === 'continue' ? continuationInstructions : `
-        INÍCIO DA AULA.
-        Comece com o cabeçalho padrão: "PANORÂMA BÍBLICO - ${book.toUpperCase()}..."
-        Em seguida, desenvolva o capítulo versículo por versículo (agrupando-os).
+        INÍCIO DA AULA (PÁGINA 1).
+        Cabeçalho Obrigatório na primeira linha: "PANORÂMA BÍBLICO - ${book.toUpperCase()} (Prof. Michel Felix)"
+        
+        Estrutura sugerida para esta parte:
+        ### 1. INTRODUÇÃO E CONTEXTO HISTÓRICO
+        (Escreva 3 parágrafos densos sobre autor, data e cenário)
+        
+        ### 2. ANÁLISE DOS PRIMEIROS VERSÍCULOS
+        (Escreva detalhadamente sobre o início do capítulo)
         `}
         
-        IMPORTANTE: Gere cerca de 1000 palavras originais. Use <hr class="page-break"> para separar seções.
+        REQUISITOS FINAIS:
+        - Use <hr class="page-break"> APENAS se o texto exceder 1200 palavras para forçar quebra.
+        - Priorize TEXTO CORRIDO e DENSO.
         `;
     } else {
         specificPrompt = `
-        OBJETIVO: MANUAL DO PROFESSOR (Conteúdo Aprofundado) sobre ${book} Capítulo ${chapter}.
+        OBJETIVO: MANUAL DO PROFESSOR (TEOLOGIA AVANÇADA) para ${book} Capítulo ${chapter}.
         ${instructions}
         
         ${mode === 'continue' ? continuationInstructions : `
-        INÍCIO DA AULA.
-        Comece com o cabeçalho padrão: "PANORÂMA BÍBLICO - ${book.toUpperCase()}..."
+        INÍCIO DA AULA (PÁGINA 1).
+        Cabeçalho Obrigatório: "PANORÂMA BÍBLICO - ${book.toUpperCase()} (Manual do Mestre)"
         `}
         
         DIFERENCIAL:
-        - Aprofunde na ETIMOLOGIA (Hebraico/Grego).
-        - Curiosidades Arqueológicas.
-        - Tipologia.
+        - Foque em Curiosidades Arqueológicas.
+        - Explique termos difíceis.
+        - Crie seções com "### TÍTULO".
         
-        IMPORTANTE: Gere cerca de 1200 palavras. Use <hr class="page-break">.
+        Escreva 1200 palavras.
         `;
     }
 
     try {
         const result = await generateContent(`${basePersona}\n${specificPrompt}`);
         if (!result || result.trim() === 'undefined' || result.length < 50) {
-            throw new Error("Conteúdo vazio. Tente novamente com instruções diferentes.");
+            throw new Error("Conteúdo vazio. Tente novamente.");
         }
+        
         const separator = (mode === 'continue' && currentText.length > 0) ? '<hr class="page-break">' : '';
         const newTotal = mode === 'continue' ? (currentText + separator + result) : result;
         
@@ -222,7 +248,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
         else await db.entities.PanoramaBiblico.create(data);
 
         await loadContent();
-        onShowToast('Conteúdo gerado no estilo Michel Felix!', 'success');
+        onShowToast('Conteúdo gerado! Padrão Michel Felix aplicado.', 'success');
         if (mode === 'continue') setTimeout(() => setCurrentPage(pages.length), 500); 
 
     } catch (e: any) {
@@ -319,14 +345,14 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
                         disabled={isGenerating}
                         className="flex-1 px-3 py-2 border border-[#C5A059] rounded text-xs hover:bg-[#C5A059] hover:text-[#1a0f0f] transition disabled:opacity-50 font-bold"
                     >
-                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'INÍCIO (3 págs)'}
+                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'INÍCIO (1.000+ palavras)'}
                     </button>
                     <button 
                         onClick={() => handleGenerate('continue')} 
                         disabled={isGenerating}
                         className="flex-1 px-3 py-2 bg-[#C5A059] text-[#1a0f0f] font-bold rounded text-xs hover:bg-white transition disabled:opacity-50"
                     >
-                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'CONTINUAR (+3)'}
+                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'CONTINUAR (+1.000)'}
                     </button>
                     {pages.length > 0 && (
                         <button onClick={handleDeletePage} className="px-3 py-2 bg-red-900 text-white rounded hover:bg-red-700 transition">
@@ -363,20 +389,19 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
                     />
                  </div>
             ) : content && pages.length > 0 ? (
-                <div className="bg-white dark:bg-dark-card shadow-2xl p-6 md:p-12 min-h-[800px] border border-[#C5A059]/20 relative">
-                     {/* Decorative Header handled by renderFormattedText if present, otherwise default */}
-                     {!content.student_content.includes('PANORÂMA') && (
-                         <div className="text-center mb-8 border-b-2 border-[#C5A059] pb-4">
-                            <span className="font-montserrat text-xs tracking-[0.3em] text-[#C5A059] uppercase">Teologia Sistemática ADMA</span>
-                            <h1 className="font-cinzel text-2xl md:text-3xl font-bold text-[#600018] dark:text-[#ff6b6b] mt-2 mb-2">{content.title}</h1>
-                            <div className="w-20 h-1 bg-[#C5A059] mx-auto rounded-full"></div>
-                         </div>
+                <div className="bg-white dark:bg-dark-card shadow-2xl p-8 md:p-16 min-h-[900px] border border-[#C5A059]/20 relative">
+                     {/* Se não tiver cabeçalho explícito na string, renderiza um padrão para não ficar vazio */}
+                     {(!content.student_content.includes('PANORÂMA') && currentPage === 0) && (
+                         <div className="mb-8 text-center border-b-2 border-[#8B0000] dark:border-[#ff6b6b] pb-4 pt-2">
+                            <h1 className="font-cinzel font-bold text-2xl md:text-3xl text-[#8B0000] dark:text-[#ff6b6b] uppercase tracking-widest drop-shadow-sm">
+                                PANORÂMA BÍBLICO - {content.book} {content.chapter}
+                            </h1>
+                        </div>
                      )}
                      
                      <div className="space-y-6">
                         {renderFormattedText(pages[currentPage])}
 
-                        {/* Botão de Conclusão na Última Página */}
                         {currentPage === pages.length - 1 && hasAccess && !isEditing && (
                             <div className="mt-12 pt-8 border-t border-[#C5A059]/30 text-center animate-in fade-in slide-in-from-bottom-8 duration-1000">
                                 <Sparkles className="w-8 h-8 text-[#C5A059] mx-auto mb-4 animate-pulse" />
@@ -399,7 +424,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
                         )}
                      </div>
                      <div className="absolute bottom-4 right-8 text-[#C5A059] font-cinzel text-sm">
-                        {currentPage + 1}
+                        {currentPage + 1} / {pages.length}
                      </div>
                 </div>
             ) : (

@@ -25,23 +25,28 @@ export default async function handler(request, response) {
 
   try {
     // --- SISTEMA DE ROTAÇÃO DE CHAVES (ROUND ROBIN) ---
-    // Mapeia as chaves do ambiente com seus nomes para log de debug
+    // Mapeia as chaves do ambiente. Agora suporta até API_KEY_10 para o usuário ter liberdade de escalar.
     const envKeys = [
         { name: 'API_KEY', val: process.env.API_KEY },
         { name: 'Biblia_ADMA_API', val: process.env.Biblia_ADMA_API },
         { name: 'API_KEY_2', val: process.env.API_KEY_2 },
         { name: 'API_KEY_3', val: process.env.API_KEY_3 },
         { name: 'API_KEY_4', val: process.env.API_KEY_4 },
-        { name: 'API_KEY_5', val: process.env.API_KEY_5 }
+        { name: 'API_KEY_5', val: process.env.API_KEY_5 },
+        { name: 'API_KEY_6', val: process.env.API_KEY_6 },
+        { name: 'API_KEY_7', val: process.env.API_KEY_7 },
+        { name: 'API_KEY_8', val: process.env.API_KEY_8 },
+        { name: 'API_KEY_9', val: process.env.API_KEY_9 },
+        { name: 'API_KEY_10', val: process.env.API_KEY_10 }
     ];
 
-    // Filtra apenas as chaves válidas (não vazias e com tamanho mínimo)
-    const validKeys = envKeys.filter(k => k.val && k.val.length > 10);
+    // Filtra apenas as chaves válidas (não vazias e com tamanho mínimo de chave google)
+    const validKeys = envKeys.filter(k => k.val && k.val.length > 20);
 
     // --- LOG DE DIAGNÓSTICO (Visível nos Logs da Vercel) ---
     // Isso ajuda você a saber se suas chaves foram carregadas corretamente
     if (validKeys.length > 0) {
-        console.log(`✅ [Gemini Load Balancer] Chaves ativas: ${validKeys.map(k => `${k.name} (...${k.val.slice(-4)})`).join(', ')}`);
+        console.log(`✅ [Gemini Load Balancer] ${validKeys.length} chaves ativas: ${validKeys.map(k => `${k.name} (...${k.val.slice(-4)})`).join(', ')}`);
     } else {
         console.error("❌ [Gemini Load Balancer] Nenhuma chave encontrada!");
     }
@@ -115,7 +120,8 @@ export default async function handler(request, response) {
   } catch (error) {
     console.error("Gemini API Error:", error);
     
-    if (error.message && (error.message.includes('429') || error.message.includes('Quota'))) {
+    // Tratamento específico para erro de Cota
+    if (error.message && (error.message.includes('429') || error.message.includes('Quota') || error.message.includes('Too Many Requests'))) {
         return response.status(429).json({ error: 'QUOTA_EXCEEDED' });
     }
 
