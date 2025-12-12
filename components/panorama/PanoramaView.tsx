@@ -74,29 +74,40 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
     const blocks = text.split('\n').filter(b => b.trim().length > 0);
     return blocks.map((block, idx) => {
         const trimmed = block.trim();
-        if (trimmed.startsWith('#') || (trimmed === trimmed.toUpperCase() && trimmed.length < 60 && trimmed.length > 5)) {
-            const title = trimmed.replace(/#+/g, '').trim();
-            return (
-                <div key={idx} className="mt-8 mb-4">
-                    <div className="flex items-center justify-center gap-4 mb-2">
-                        <div className="h-[1px] bg-[#C5A059] w-12 opacity-50"></div>
-                        <h3 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#ff6b6b] text-center uppercase tracking-wide">
-                            {title}
-                        </h3>
-                        <div className="h-[1px] bg-[#C5A059] w-12 opacity-50"></div>
-                    </div>
+        // Cabeçalho estilo Michel Felix (PANORÂMA BÍBLICO)
+        if (trimmed.includes('PANORÂMA BÍBLICO') || trimmed.includes('PANORAMA BÍBLICO')) {
+             return (
+                <div key={idx} className="mb-6 text-center border-b-2 border-[#8B0000] pb-2">
+                    <h1 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#ff6b6b] uppercase tracking-wide">
+                        {trimmed}
+                    </h1>
                 </div>
             );
         }
-        if (trimmed.endsWith('?') || trimmed.startsWith('PERGUNTA:') || trimmed.includes('?')) {
+
+        // Subtítulos Numerados (Ex: 1) O NASCIMENTO...)
+        if (/^\d+\)/.test(trimmed) || (trimmed === trimmed.toUpperCase() && trimmed.length < 80 && trimmed.length > 5)) {
+            const title = trimmed.replace(/#+/g, '').trim();
             return (
-                <div key={idx} className="font-cormorant text-lg text-[#1a0f0f] dark:text-gray-100 font-bold italic bg-[#C5A059]/10 dark:bg-[#C5A059]/20 p-3 border-l-4 border-[#C5A059] rounded-r mb-4">
+                <div key={idx} className="mt-6 mb-3">
+                    <h3 className="font-cinzel font-bold text-lg text-[#1a0f0f] dark:text-gray-100 uppercase tracking-wide border-l-4 border-[#C5A059] pl-3">
+                        {title}
+                    </h3>
+                </div>
+            );
+        }
+
+        // Perguntas ou Curiosidades
+        if (trimmed.toUpperCase().includes('CURIOSIDADE') || trimmed.endsWith('?')) {
+            return (
+                <div key={idx} className="font-cormorant text-lg text-[#1a0f0f] dark:text-gray-200 font-bold italic bg-[#C5A059]/10 dark:bg-[#C5A059]/20 p-3 rounded mb-4 border border-[#C5A059]/30">
                     {parseInlineStyles(trimmed)}
                 </div>
             );
         }
+        
         return (
-            <p key={idx} className="font-cormorant text-xl leading-loose text-gray-900 dark:text-gray-200 text-justify indent-8 mb-4">
+            <p key={idx} className="font-cormorant text-xl leading-loose text-gray-900 dark:text-gray-300 text-justify indent-8 mb-4">
                 {parseInlineStyles(trimmed)}
             </p>
         );
@@ -132,30 +143,64 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
 
     const basePersona = `
         VOCÊ É O PROFESSOR MICHEL FELIX.
-        DIRETRIZES INTERNAS: Base teológica Arminiana e Pentecostal Clássica.
-        ESTILO: CLARO, ACESSÍVEL, LUXUOSO, CULTO.
-        REGRA: NUNCA ESCREVA O VERSÍCULO BÍBLICO POR EXTENSO. USE APENAS REFERÊNCIA.
-        FORMATAÇÃO: SEM MARKDOWN DE LISTA. USE ### PARA TÍTULOS.
+        
+        SUA IDENTIDADE E ESTILO DE ESCRITA (MIMETISMO ESTRITO):
+        1. **Teologia:** Arminiana e Pentecostal Clássica (Assembleia de Deus).
+        2. **Tom de Voz:** Educador, profundo, reverente, mas acessível. Usa exclamações para ênfase espiritual.
+        3. **Estrutura Fundamental:**
+           - TÍTULO: "PANORÂMA BÍBLICO - [LIVRO] (Escrito por: [Autor] em [Data])".
+           - SUBTÍTULOS: Numerados (1), 2), 3)...) com TÍTULO EM CAIXA ALTA e CRONOLOGIA (Ex: CRONOLOGIA: 1462 a.C.).
+        4. **Marcas Registradas (OBRIGATÓRIO USAR):**
+           - **Etimologia:** SEMPRE explique palavras chaves no original entre parênteses. 
+             Exemplo: "...o nome Jetro (Yitrô: excelência, abundância)..." ou "...clamar (za'aq: gritar por socorro)...".
+           - **Cronologia:** Estime sempre o ano aproximado A.C. dos eventos.
+           - **Tipologia:** Conecte o evento do Antigo Testamento com Jesus ou a Igreja. (Ex: José é um tipo de Cristo; A Páscoa aponta para a Ceia).
+           - **Curiosidades:** Inclua seções chamadas "CURIOSIDADES ARQUEOLÓGICAS" ou "CONTEXTO HISTÓRICO".
+        5. **Formatação:**
+           - NÃO use Markdown de listas (bolinhas ou números automáticos). O texto deve ser corrido e fluido.
+           - Use **negrito** para destacar nomes e conceitos chaves.
+           - Separe páginas virtuais com a tag exata: <hr class="page-break">
     `;
     
     let specificPrompt = "";
-    const instructions = customInstructions ? `\nINSTRUÇÕES: ${customInstructions}` : "";
-    const continuationInstructions = `CONTINUE O TEXTO. SITUAÇÃO: PARTE ${pages.length + 1}. ÚLTIMO CONTEXTO: "...${lastContext.slice(-500)}..."`;
+    const instructions = customInstructions ? `\nINSTRUÇÕES ADICIONAIS DO USUÁRIO: ${customInstructions}` : "";
+    const continuationInstructions = `
+        CONTINUAÇÃO DO TEXTO.
+        SITUAÇÃO: Você está escrevendo a PARTE ${pages.length + 1}.
+        ÚLTIMO CONTEXTO (Para manter a coesão): "...${lastContext.slice(-500)}..."
+        REGRA: Não repita o cabeçalho "PANORÂMA BÍBLICO". Continue o tópico de onde parou ou inicie o próximo ponto numérico.
+    `;
 
     if (target === 'student') {
         specificPrompt = `
-        OBJETIVO: APOSTILA DO ALUNO ${book} ${chapter}.
+        OBJETIVO: Escrever uma AULA COMPLETA (Estilo Apostila) sobre ${book} Capítulo ${chapter}.
         ${instructions}
-        ${mode === 'continue' ? continuationInstructions : `INÍCIO.`}
-        REGRAS: 3 PÁGINAS (~2000 palavras). Separe páginas com <hr class="page-break">.
+        
+        ${mode === 'continue' ? continuationInstructions : `
+        INÍCIO DA AULA.
+        Comece com o cabeçalho padrão: "PANORÂMA BÍBLICO - ${book.toUpperCase()}..."
+        Em seguida, desenvolva o capítulo versículo por versículo (agrupando-os), focando na explicação histórica e aplicação prática.
+        `}
+        
+        REGRAS DE EXTENSÃO: Gere texto suficiente para preencher 3 PÁGINAS (~2000 palavras). Use <hr class="page-break"> entre as seções.
         `;
     } else {
         specificPrompt = `
-        OBJETIVO: MANUAL DO PROFESSOR ${book} ${chapter}.
+        OBJETIVO: MANUAL DO PROFESSOR (Conteúdo Aprofundado) sobre ${book} Capítulo ${chapter}.
         ${instructions}
-        ${mode === 'continue' ? continuationInstructions : `INÍCIO.`}
-        REGRAS: 3 PÁGINAS (~2500 palavras). Separe páginas com <hr class="page-break">.
-        INCLUA: NUANCES ORIGINAIS, DOUTRINA, PEDAGOGIA.
+        
+        ${mode === 'continue' ? continuationInstructions : `
+        INÍCIO DA AULA.
+        Comece com o cabeçalho padrão: "PANORÂMA BÍBLICO - ${book.toUpperCase()}..."
+        `}
+        
+        DIFERENCIAL DO PROFESSOR:
+        - Aprofunde muito mais na ETIMOLOGIA (Hebraico/Grego).
+        - Traga "CURIOSIDADES ARQUEOLÓGICAS" detalhadas (Ex: costumes da época, geografia).
+        - Forneça "REFLEXÕES HOMILÉTICAS" para o professor aplicar em sala.
+        - Conecte com o Novo Testamento (Tipologia) de forma explícita.
+        
+        REGRAS DE EXTENSÃO: Gere texto denso para 3 PÁGINAS (~2500 palavras). Use <hr class="page-break">.
         `;
     }
 
@@ -179,7 +224,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
         else await db.entities.PanoramaBiblico.create(data);
 
         await loadContent();
-        onShowToast('Conteúdo gerado com sucesso!', 'success');
+        onShowToast('Conteúdo gerado no estilo Michel Felix!', 'success');
         if (mode === 'continue') setTimeout(() => setCurrentPage(pages.length), 500); 
 
     } catch (e: any) {
@@ -265,7 +310,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
                     <textarea 
                         value={customInstructions}
                         onChange={(e) => setCustomInstructions(e.target.value)}
-                        placeholder="Instruções para a IA..."
+                        placeholder="Instruções para a IA (Ex: Foque na arqueologia, refute tal heresia...)"
                         className="w-full p-2 text-xs text-black rounded mb-2 font-montserrat"
                         rows={2}
                     />
@@ -321,11 +366,15 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
                  </div>
             ) : content && pages.length > 0 ? (
                 <div className="bg-white dark:bg-dark-card shadow-2xl p-6 md:p-12 min-h-[800px] border border-[#C5A059]/20 relative">
-                     <div className="text-center mb-8 border-b-2 border-[#C5A059] pb-4">
-                        <span className="font-montserrat text-xs tracking-[0.3em] text-[#C5A059] uppercase">Teologia Sistemática ADMA</span>
-                        <h1 className="font-cinzel text-2xl md:text-3xl font-bold text-[#600018] dark:text-[#ff6b6b] mt-2 mb-2">{content.title}</h1>
-                        <div className="w-20 h-1 bg-[#C5A059] mx-auto rounded-full"></div>
-                     </div>
+                     {/* Decorative Header handled by renderFormattedText if present, otherwise default */}
+                     {!content.student_content.includes('PANORÂMA') && (
+                         <div className="text-center mb-8 border-b-2 border-[#C5A059] pb-4">
+                            <span className="font-montserrat text-xs tracking-[0.3em] text-[#C5A059] uppercase">Teologia Sistemática ADMA</span>
+                            <h1 className="font-cinzel text-2xl md:text-3xl font-bold text-[#600018] dark:text-[#ff6b6b] mt-2 mb-2">{content.title}</h1>
+                            <div className="w-20 h-1 bg-[#C5A059] mx-auto rounded-full"></div>
+                         </div>
+                     )}
+                     
                      <div className="space-y-6">
                         {renderFormattedText(pages[currentPage])}
                      </div>
