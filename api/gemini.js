@@ -25,7 +25,6 @@ export default async function handler(request, response) {
   }
 
   try {
-    // ATUALIZAÇÃO: Aceita tanto API_KEY quanto o nome personalizado que você criou (Biblia_ADMA_API)
     const apiKey = process.env.API_KEY || process.env.Biblia_ADMA_API;
 
     if (!apiKey) {
@@ -51,15 +50,13 @@ export default async function handler(request, response) {
     }
     
     const ai = new GoogleGenAI({ apiKey });
-    
-    // Using gemini-2.5-flash as requested for free tier optimization
     const modelId = "gemini-2.5-flash";
 
     const aiConfig = {
-        temperature: 0.7,
+        // Aumentei a temperatura para evitar RECITATION (cópia exata)
+        temperature: 0.9, 
         topP: 0.95,
         topK: 40,
-        // Configurações de segurança permissivas para conteúdo bíblico (guerras, sacrifícios, etc)
         safetySettings: [
             { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
             { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
@@ -81,9 +78,15 @@ export default async function handler(request, response) {
 
     if (!aiResponse.text) {
         console.error("Gemini returned empty text. Candidates:", JSON.stringify(aiResponse.candidates));
-        // Tenta extrair motivo do bloqueio se houver
         const finishReason = aiResponse.candidates?.[0]?.finishReason;
-        return response.status(500).json({ error: `A IA não retornou texto. Motivo: ${finishReason || 'Desconhecido'}` });
+        
+        let customError = `A IA não retornou texto. Motivo: ${finishReason}`;
+        
+        if (finishReason === 'RECITATION') {
+            customError = "A IA bloqueou por Direitos Autorais (RECITATION). O texto pedido é muito semelhante a um livro ou bíblia existente. Tente pedir para 'Explicar com suas palavras' ou 'Resumir' nas instruções extras.";
+        }
+        
+        return response.status(500).json({ error: customError });
     }
 
     return response.status(200).json({ text: aiResponse.text });
