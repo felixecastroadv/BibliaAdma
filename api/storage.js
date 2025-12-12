@@ -1,5 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
+// --- CONFIGURAÇÃO MANUAL (FALLBACK) ---
+// Se as variáveis de ambiente falharem, o sistema usará estes dados automaticamente.
+const MANUAL_SUPABASE_URL = "https://nnhatyvrtlbkyfadumqo.supabase.co";
+const MANUAL_SUPABASE_KEY = "sb_publishable_0uZeWa8FXTH-u-ki_NRHsQ_nYALzy9j";
+
 export default async function handler(request, response) {
   response.setHeader('Access-Control-Allow-Credentials', true);
   response.setHeader('Access-Control-Allow-Origin', '*');
@@ -14,17 +19,24 @@ export default async function handler(request, response) {
   }
 
   try {
-    const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    // ORDEM DE PRIORIDADE:
+    // 1. Variável de Ambiente da Vercel (SUPABASE_URL)
+    // 2. Variável Pública (NEXT_PUBLIC_SUPABASE_URL)
+    // 3. Valor Manual (Copiado do seu painel)
+    const supabaseUrl = process.env.SUPABASE_URL || 
+                        process.env.NEXT_PUBLIC_SUPABASE_URL || 
+                        MANUAL_SUPABASE_URL;
     
-    // ATUALIZAÇÃO: Suporte para chaves antigas (ANON) e novas (PUBLISHABLE_DEFAULT) do Supabase
+    // Mesma lógica para a chave: suporta nomes antigos e novos
     const supabaseKey = process.env.SUPABASE_ANON_KEY || 
                         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
-                        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+                        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||
+                        MANUAL_SUPABASE_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
         console.error("Supabase credentials missing.");
         return response.status(500).json({ 
-            error: "BANCO DE DADOS DESCONECTADO: Configure SUPABASE_URL e a CHAVE (ANON ou PUBLISHABLE) na Vercel." 
+            error: "BANCO DE DADOS DESCONECTADO: As credenciais do Supabase não foram encontradas." 
         });
     }
 
@@ -34,13 +46,14 @@ export default async function handler(request, response) {
 
     // Health Check / Table Verify
     if (method === 'POST' && body.action === 'ping') {
-        // Try to select just one row to verify table existence and connection
+        // Tenta selecionar apenas uma linha para verificar conexão e existência da tabela
         const { error } = await supabase.from('adma_content').select('id').limit(1);
         
         if (error) {
              console.error("Supabase Ping Error:", error);
+             // Código 42P01 no Postgres significa "undefined table"
              if (error.message.includes('relation "adma_content" does not exist') || error.code === '42P01') {
-                 return response.status(500).json({ error: 'TABELA INEXISTENTE: Crie a tabela "adma_content" no SQL Editor do Supabase.' });
+                 return response.status(500).json({ error: 'TABELA INEXISTENTE: A conexão funcionou, mas a tabela "adma_content" não existe. Crie-a no SQL Editor do Supabase.' });
              }
              return response.status(500).json({ error: `Erro de Conexão: ${error.message}` });
         }
