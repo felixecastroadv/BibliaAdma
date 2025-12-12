@@ -182,7 +182,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
         Em seguida, desenvolva o capítulo versículo por versículo (agrupando-os), focando na explicação histórica e aplicação prática.
         `}
         
-        REGRAS DE EXTENSÃO: Gere texto suficiente para preencher 3 PÁGINAS (~2000 palavras). Use <hr class="page-break"> entre as seções.
+        REGRAS DE EXTENSÃO: Gere texto suficiente para preencher cerca de 1000 a 1200 palavras. Use <hr class="page-break"> entre as seções se necessário.
         `;
     } else {
         specificPrompt = `
@@ -200,14 +200,14 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
         - Forneça "REFLEXÕES HOMILÉTICAS" para o professor aplicar em sala.
         - Conecte com o Novo Testamento (Tipologia) de forma explícita.
         
-        REGRAS DE EXTENSÃO: Gere texto denso para 3 PÁGINAS (~2500 palavras). Use <hr class="page-break">.
+        REGRAS DE EXTENSÃO: Gere texto denso com cerca de 1200 palavras. Use <hr class="page-break">.
         `;
     }
 
     try {
         const result = await generateContent(`${basePersona}\n${specificPrompt}`);
         if (!result || result.trim() === 'undefined' || result.length < 50) {
-            throw new Error("A IA gerou um conteúdo vazio.");
+            throw new Error("A IA gerou um conteúdo vazio. Verifique se a chave de API é válida ou se o texto é muito longo.");
         }
         const separator = (mode === 'continue' && currentText.length > 0) ? '<hr class="page-break">' : '';
         const newTotal = mode === 'continue' ? (currentText + separator + result) : result;

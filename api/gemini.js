@@ -59,6 +59,13 @@ export default async function handler(request, response) {
         temperature: 0.7,
         topP: 0.95,
         topK: 40,
+        // Configurações de segurança permissivas para conteúdo bíblico (guerras, sacrifícios, etc)
+        safetySettings: [
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+        ],
     };
 
     if (schema) {
@@ -71,6 +78,13 @@ export default async function handler(request, response) {
         contents: [{ parts: [{ text: prompt }] }],
         config: aiConfig
     });
+
+    if (!aiResponse.text) {
+        console.error("Gemini returned empty text. Candidates:", JSON.stringify(aiResponse.candidates));
+        // Tenta extrair motivo do bloqueio se houver
+        const finishReason = aiResponse.candidates?.[0]?.finishReason;
+        return response.status(500).json({ error: `A IA não retornou texto. Motivo: ${finishReason || 'Desconhecido'}` });
+    }
 
     return response.status(200).json({ text: aiResponse.text });
 
