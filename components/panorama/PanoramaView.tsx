@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, GraduationCap, Lock, BookOpen, ChevronRight, Volume2, Sparkles, Loader2, Book, Trash2, Edit, Save, X } from 'lucide-react';
+import { ChevronLeft, GraduationCap, Lock, BookOpen, ChevronRight, Volume2, Sparkles, Loader2, Book, Trash2, Edit, Save, X, CheckCircle } from 'lucide-react';
 import { db } from '../../services/database';
 import { BIBLE_BOOKS, generateChapterKey } from '../../constants';
 import { EBDContent } from '../../types';
@@ -375,6 +375,28 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
                      
                      <div className="space-y-6">
                         {renderFormattedText(pages[currentPage])}
+
+                        {/* Botão de Conclusão na Última Página */}
+                        {currentPage === pages.length - 1 && hasAccess && !isEditing && (
+                            <div className="mt-12 pt-8 border-t border-[#C5A059]/30 text-center animate-in fade-in slide-in-from-bottom-8 duration-1000">
+                                <Sparkles className="w-8 h-8 text-[#C5A059] mx-auto mb-4 animate-pulse" />
+                                <h3 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#ff6b6b] mb-2">
+                                    Estudo Finalizado
+                                </h3>
+                                <p className="font-cormorant text-gray-600 dark:text-gray-300 italic mb-6">
+                                    Que este conhecimento edifique sua vida espiritual.
+                                </p>
+                                <button 
+                                    onClick={() => {
+                                        onShowToast('Estudo concluído! Parabéns!', 'success');
+                                        setTimeout(onBack, 2000);
+                                    }}
+                                    className="bg-green-700 hover:bg-green-800 text-white px-8 py-4 rounded-xl font-cinzel font-bold text-lg shadow-lg hover:shadow-xl transition-all flex items-center gap-3 mx-auto transform hover:scale-105"
+                                >
+                                    <CheckCircle className="w-6 h-6" /> Concluir Estudo
+                                </button>
+                            </div>
+                        )}
                      </div>
                      <div className="absolute bottom-4 right-8 text-[#C5A059] font-cinzel text-sm">
                         {currentPage + 1}
