@@ -19,12 +19,13 @@ export default async function handler(request, response) {
   }
 
   try {
-    const apiKey = process.env.API_KEY;
+    // ATUALIZAÇÃO: Aceita tanto API_KEY quanto o nome personalizado que você criou (Biblia_ADMA_API)
+    const apiKey = process.env.API_KEY || process.env.Biblia_ADMA_API;
 
     if (!apiKey) {
          console.error("CRITICAL ERROR: API Key is missing in Vercel Environment Variables.");
          return response.status(500).json({ 
-             error: 'CONFIGURAÇÃO PENDENTE: A Chave de API (API_KEY) não foi configurada no servidor (Vercel).' 
+             error: 'CONFIGURAÇÃO PENDENTE: A Chave de API não foi encontrada. Verifique se a variável Biblia_ADMA_API está configurada na Vercel.' 
          });
     }
 
