@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, GraduationCap, ShieldCheck, Trophy, Calendar, ListChecks, Mail, CheckCircle2, Moon, Sun, Download } from 'lucide-react';
+import { BookOpen, GraduationCap, ShieldCheck, Trophy, Calendar, ListChecks, Mail, CheckCircle2, Moon, Sun, Download, Instagram } from 'lucide-react';
 import { CHURCH_NAME, TOTAL_CHAPTERS, APP_VERSION } from '../../constants';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -171,6 +171,19 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                     <span className="font-cinzel font-bold text-[#C5A059]">Painel Editor Chefe (Admin)</span>
                 </motion.button>
             )}
+        </div>
+
+        {/* Instagram Button */}
+        <div className="px-6 mt-2">
+            <a 
+                href="https://www.instagram.com/adma.vilardosteles/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white p-4 rounded-xl shadow-lg flex items-center justify-center gap-3 active:scale-95 transition-transform"
+            >
+                <Instagram className="w-6 h-6" />
+                <span className="font-cinzel font-bold">Nos Siga no Insta</span>
+            </a>
         </div>
         
         <div className="text-center mt-4 opacity-60 pb-10 flex flex-col items-center gap-1">
