@@ -1,3 +1,4 @@
+
 const apiCall = async (action: 'list' | 'save' | 'delete', collection: string, payload: any = {}) => {
     try {
         const res = await fetch('/api/storage', {
@@ -8,10 +9,8 @@ const apiCall = async (action: 'list' | 'save' | 'delete', collection: string, p
         
         if (!res.ok) {
             // Se falhar o save na nuvem para conteúdo compartilhado, lançamos erro
-            if (action === 'save' && ['commentary', 'dictionary', 'panorama', 'devotional', 'chapter_metadata'].includes(collection)) {
+            if (action === 'save') {
                 console.warn(`Failed to save to cloud: ${collection}`);
-                // Em produção, talvez queiramos continuar localmente ou avisar o usuário
-                // throw new Error('FALHA DE SINCRONIZAÇÃO'); 
             }
             if (action === 'list') return [];
             return null;
@@ -28,41 +27,46 @@ const apiCall = async (action: 'list' | 'save' | 'delete', collection: string, p
 
 export const db = {
   entities: {
-    // Local Storage (User Specific - Mantém progresso individual)
+    // --- AGORA NA NUVEM: PROGRESSO DE LEITURA (RANKING GLOBAL) ---
     ReadingProgress: {
       filter: async (query: any) => {
-        const data = JSON.parse(localStorage.getItem('adma_progress') || '[]');
-        return data.filter((item: any) => 
-          Object.keys(query).every(key => item[key] === query[key])
-        );
+        // Busca na nuvem para saber se o usuário já existe
+        const data = await apiCall('list', 'reading_progress');
+        return data.filter((item: any) => item.user_email === query.user_email);
       },
       create: async (data: any) => {
-        const all = JSON.parse(localStorage.getItem('adma_progress') || '[]');
-        const newItem = { ...data, id: Date.now().toString() };
-        all.push(newItem);
-        localStorage.setItem('adma_progress', JSON.stringify(all));
+        const newItem = { ...data, id: data.id || Date.now().toString() };
+        await apiCall('save', 'reading_progress', { item: newItem });
         return newItem;
       },
       update: async (id: string, updates: any) => {
-        const all = JSON.parse(localStorage.getItem('adma_progress') || '[]');
-        const idx = all.findIndex((i: any) => i.id === id);
-        if (idx !== -1) {
-          all[idx] = { ...all[idx], ...updates };
-          localStorage.setItem('adma_progress', JSON.stringify(all));
-          return all[idx];
+        // 1. Busca todos (limitação da API genérica, em app real buscaria por ID)
+        const all = await apiCall('list', 'reading_progress');
+        // 2. Encontra o usuário
+        const existing = all.find((i: any) => i.id === id);
+        
+        if (existing) {
+             // 3. Mescla os dados antigos com os novos
+             const updated = { ...existing, ...updates };
+             // 4. Salva o objeto completo atualizado
+             await apiCall('save', 'reading_progress', { item: updated });
+             return updated;
         }
         return null;
       },
       list: async (sort: string, limit: number) => {
-        let all = JSON.parse(localStorage.getItem('adma_progress') || '[]');
-        all.sort((a: any, b: any) => b.total_chapters - a.total_chapters);
-        return all.slice(0, limit);
+        const data = await apiCall('list', 'reading_progress');
+        
+        // Ordena por Total de Capítulos (Decrescente)
+        data.sort((a: any, b: any) => (b.total_chapters || 0) - (a.total_chapters || 0));
+        
+        // Retorna apenas os top 'limit' (ex: 100)
+        return data.slice(0, limit);
       }
     },
     
-    // Cloud Storage (Universal Content - Everyone sees the same)
+    // --- OUTROS CONTEÚDOS ---
     
-    // Agora METADADOS são universais (quem abrir primeiro, cria para todos)
     ChapterMetadata: {
         filter: async (query: any) => {
             const data = await apiCall('list', 'chapter_metadata');
