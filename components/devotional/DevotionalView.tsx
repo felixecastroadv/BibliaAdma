@@ -64,18 +64,19 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
     const instruction = customInstruction || `TEMA CENTRAL: ${randomTheme}`;
     
     const prompt = `
-        Você é Michel Felix, teólogo Pentecostal Clássico. Crie um devocional para ${format(currentDate, 'dd/MM/yyyy')}.
+        ATUE COMO: Michel Felix, teólogo Pentecostal Clássico.
+        TAREFA: Criar um devocional para ${format(currentDate, 'dd/MM/yyyy')}.
         ${instruction}
         
-        REGRAS DE FORMATAÇÃO (ESTRITAS):
-        1. SEM MARKDOWN: Não use asteriscos (**), negrito ou caracteres especiais no texto. Texto limpo.
-        2. TAMANHO DO CORPO: Aprox. 400 palavras.
-        3. TAMANHO DA ORAÇÃO: Aprox. 100 palavras.
+        REGRAS DE FORMATAÇÃO VISUAL (CRÍTICO):
+        1. O campo 'body' DEVE conter quebras de linha duplas (\n\n) para separar os parágrafos. O texto NÃO pode ser um bloco único.
+        2. SEM MARKDOWN: Não use asteriscos (**), negrito ou caracteres especiais. Apenas texto puro.
+        3. TAMANHO: Aprox. 500 palavras no total.
 
-        ESTRUTURA OBRIGATÓRIA DO CORPO (Exatamente 3 parágrafos):
-        - Parágrafo 1 (O Texto): Explique o texto base, focando na intenção do autor, contexto histórico/cultural ou análise textual.
-        - Parágrafo 2 (A Aplicação): Aplique essa verdade teológica à vida cotidiana do leitor hoje.
-        - Parágrafo 3 (A Prática): Conclusão reflexiva que leve à prática ("melhor do que ouvir é praticar"), visando nos tornar melhores cristãos na vida real.
+        ESTRUTURA OBRIGATÓRIA DO CORPO (3 PARÁGRAFOS DISTINTOS):
+        - Parágrafo 1 (O Texto): Explique o texto base, focando na intenção do autor, contexto histórico/cultural e análise das palavras originais.
+        - Parágrafo 2 (A Aplicação): Aplique essa verdade teológica à vida cotidiana do leitor hoje. Use exemplos práticos.
+        - Parágrafo 3 (A Prática): Conclusão reflexiva que leve à prática ("melhor do que ouvir é praticar"), visando o crescimento espiritual.
 
         ORAÇÃO:
         - Uma oração contextualizada com o ensino acima.
@@ -89,7 +90,7 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
             title: { type: Type.STRING },
             reference: { type: Type.STRING },
             verse_text: { type: Type.STRING },
-            body: { type: Type.STRING },
+            body: { type: Type.STRING, description: "Texto do devocional com parágrafos separados por \\n\\n" },
             prayer: { type: Type.STRING }
         },
         required: ["title", "reference", "verse_text", "body", "prayer"]
@@ -103,7 +104,7 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
         if(existing.length > 0) await db.entities.Devotional.delete(existing[0].id!);
         await db.entities.Devotional.create(data);
         setDevotional(data);
-        if (customInstruction) onShowToast('Devocional regenerado!', 'success');
+        if (customInstruction) onShowToast('Devocional regenerado com nova formatação!', 'success');
         setShowAdminControls(false);
     } catch (e) {
         console.error(e);
@@ -119,8 +120,8 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
         window.speechSynthesis.cancel();
         setIsPlaying(false);
     } else {
-        // Limpa asteriscos para a leitura não falar "asterisco asterisco"
-        const cleanBody = devotional.body.replace(/\*\*/g, '').replace(/\*/g, '');
+        // Limpa asteriscos para a leitura não falar "asterisco asterisco" e quebras excessivas
+        const cleanBody = devotional.body.replace(/\*\*/g, '').replace(/\*/g, '').replace(/\n/g, ' ');
         const text = `${devotional.title}. ${devotional.reference}. ${devotional.verse_text}. ${cleanBody}. Oração: ${devotional.prayer}`;
         const utter = new SpeechSynthesisUtterance(text);
         utter.lang = 'pt-BR';

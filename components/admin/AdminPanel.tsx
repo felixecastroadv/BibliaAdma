@@ -4,6 +4,7 @@ import { getStoredApiKey, setStoredApiKey, generateContent } from '../../service
 import { BIBLE_BOOKS, generateVerseKey } from '../../constants';
 import { db } from '../../services/database';
 import { addDays, format } from 'date-fns';
+import { Type } from "@google/genai";
 
 export default function AdminPanel({ onShowToast, onBack }: any) {
   const [apiKey, setApiKey] = useState('');
@@ -145,26 +146,56 @@ export default function AdminPanel({ onShowToast, onBack }: any) {
     setIsGenerating(true);
     onShowToast(`Gerando ${devotionalDays} devocionais futuros...`, 'info');
     const today = new Date();
+    
+    // Schema estrito igual ao do gerador individual
+    const schema = {
+        type: Type.OBJECT,
+        properties: {
+            title: { type: Type.STRING },
+            reference: { type: Type.STRING },
+            verse_text: { type: Type.STRING },
+            body: { type: Type.STRING, description: "Texto com parágrafos separados por \\n\\n" },
+            prayer: { type: Type.STRING }
+        },
+        required: ["title", "reference", "verse_text", "body", "prayer"]
+    };
+
     for (let i = 0; i < devotionalDays; i++) {
         const date = addDays(today, i);
         const dateKey = format(date, 'yyyy-MM-dd');
+        
         const prompt = `
-            Michel Felix - Devocional para ${format(date, 'dd/MM/yyyy')}.
-            TEMA: Livre escolha teológica edificante.
-            JSON: { "title", "reference", "verse_text", "body", "prayer" }
+            ATUE COMO: Michel Felix, teólogo Pentecostal Clássico.
+            TAREFA: Criar um devocional para ${format(date, 'dd/MM/yyyy')}.
+            TEMA: Livre escolha teológica edificante e encorajadora.
+            
+            REGRAS DE FORMATAÇÃO VISUAL (CRÍTICO):
+            1. O campo 'body' DEVE conter quebras de linha duplas (\n\n) para separar os parágrafos. O texto NÃO pode ser um bloco único.
+            2. SEM MARKDOWN.
+
+            ESTRUTURA OBRIGATÓRIA DO CORPO (3 PARÁGRAFOS):
+            - Parágrafo 1: Contexto e Exegese.
+            - Parágrafo 2: Aplicação cotidiana.
+            - Parágrafo 3: Conclusão prática.
+
+            Retorne JSON.
         `;
+
         try {
-            const resultRaw = await generateContent(prompt);
-            const jsonStr = resultRaw.replace(/```json/g, '').replace(/```/g, '').trim();
-            const res = JSON.parse(jsonStr);
-            const data = { date: dateKey, ...res, is_published: true };
+            const res = await generateContent(prompt, schema);
+            // Se veio string direta (fallback), tenta parsear, senão usa o objeto
+            const resObj = (typeof res === 'string') ? JSON.parse(res) : res;
+
+            const data = { date: dateKey, ...resObj, is_published: true };
+            
             const existing = await db.entities.Devotional.filter({ date: dateKey });
             if(existing.length > 0) await db.entities.Devotional.delete(existing[0].id);
+            
             await db.entities.Devotional.create(data);
-        } catch(e) { console.error(e); }
+        } catch(e) { console.error(`Erro ao gerar devocional para ${dateKey}`, e); }
     }
     setIsGenerating(false);
-    onShowToast('Lote de devocionais gerado!', 'success');
+    onShowToast('Lote de devocionais gerado com sucesso!', 'success');
   };
 
   return (
