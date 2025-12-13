@@ -56,7 +56,9 @@ export default function App() {
             user_name: user?.user_name || email, 
             chapters_read: [], 
             total_chapters: 0,
-            active_plans: [] // Inicializa planos vazios
+            active_plans: [],
+            ebd_read: [], // Novo
+            total_ebd_read: 0 // Novo
         });
         setUserProgress(newP);
     }
@@ -116,7 +118,13 @@ export default function App() {
         case 'admin':
             return <AdminPanel onBack={() => setView('dashboard')} onShowToast={showToast} />;
         case 'panorama':
-            return <PanoramaView onBack={() => setView('dashboard')} isAdmin={isAdmin} onShowToast={showToast} />;
+            return <PanoramaView 
+                onBack={() => setView('dashboard')} 
+                isAdmin={isAdmin} 
+                onShowToast={showToast}
+                userProgress={userProgress} // Passando progresso
+                onProgressUpdate={setUserProgress} // Passando função de update
+            />;
         case 'devotional':
             return <DevotionalView onBack={() => setView('dashboard')} onShowToast={showToast} isAdmin={isAdmin} />;
         case 'plans':

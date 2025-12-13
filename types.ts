@@ -27,7 +27,9 @@ export interface UserProgress {
   total_chapters: number;
   last_book: string;
   last_chapter: number;
-  active_plans?: ActivePlan[]; // Novo campo
+  active_plans?: ActivePlan[];
+  ebd_read?: string[]; // Lista de chaves de estudos EBD lidos (ex: "genesis_1")
+  total_ebd_read?: number; // Total de estudos concluídos
   id?: string;
 }
 

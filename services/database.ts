@@ -54,11 +54,15 @@ export const db = {
         }
         return null;
       },
-      list: async (sort: string, limit: number) => {
+      list: async (sort: 'chapters' | 'ebd', limit: number) => {
         const data = await apiCall('list', 'reading_progress');
         
-        // Ordena por Total de Capítulos (Decrescente)
-        data.sort((a: any, b: any) => (b.total_chapters || 0) - (a.total_chapters || 0));
+        // Ordena dinamicamente baseado no parâmetro sort
+        if (sort === 'ebd') {
+            data.sort((a: any, b: any) => (b.total_ebd_read || 0) - (a.total_ebd_read || 0));
+        } else {
+            data.sort((a: any, b: any) => (b.total_chapters || 0) - (a.total_chapters || 0));
+        }
         
         // Retorna apenas os top 'limit' (ex: 100)
         return data.slice(0, limit);

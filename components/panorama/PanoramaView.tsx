@@ -5,7 +5,7 @@ import { BIBLE_BOOKS, generateChapterKey } from '../../constants';
 import { EBDContent } from '../../types';
 import { generateContent } from '../../services/geminiService';
 
-export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
+export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgress, onProgressUpdate }: any) {
   const [book, setBook] = useState('Gênesis');
   const [chapter, setChapter] = useState(1);
   const [content, setContent] = useState<EBDContent | null>(null);
@@ -27,6 +27,10 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
   const [selectedVoice, setSelectedVoice] = useState<string>('');
   const [playbackRate, setPlaybackRate] = useState(1);
 
+  // Status de Leitura
+  const studyKey = generateChapterKey(book, chapter);
+  const isRead = userProgress?.ebd_read?.includes(studyKey);
+
   useEffect(() => { loadContent(); }, [book, chapter]);
 
   useEffect(() => {
@@ -43,7 +47,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
     }
   }, []);
 
-  // Monitora mudança de velocidade para aplicar em tempo real
   useEffect(() => {
     if (isPlaying) {
         window.speechSynthesis.cancel();
@@ -108,7 +111,21 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
     }
   };
 
-  // ... (manter funções de renderFormattedText, handleStartEditing, handleSaveManualEdit, handleGenerate, handleDeletePage do código original)
+  const handleMarkAsRead = async () => {
+      if (!userProgress || isRead) return;
+
+      const newReadList = [...(userProgress.ebd_read || []), studyKey];
+      const newTotal = (userProgress.total_ebd_read || 0) + 1;
+
+      const updated = await db.entities.ReadingProgress.update(userProgress.id, {
+          ebd_read: newReadList,
+          total_ebd_read: newTotal
+      });
+
+      if (onProgressUpdate) onProgressUpdate(updated);
+      onShowToast('Estudo EBD concluído! Adicionado ao Ranking.', 'success');
+  };
+
   const parseInlineStyles = (text: string) => {
     const parts = text.split(/(\*\*.*?\*\*|\*.*?\*)/g);
     return parts.map((part, index) => {
@@ -426,9 +443,30 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
                      <div className="space-y-6">
                         {renderFormattedText(pages[currentPage])}
                      </div>
+                     
+                     {/* Paginação */}
                      <div className="absolute bottom-4 right-8 text-[#C5A059] font-cinzel text-sm">
                         {currentPage + 1} / {pages.length}
                      </div>
+
+                     {/* Botão de Conclusão na Última Página */}
+                     {currentPage === pages.length - 1 && userProgress && (
+                         <div className="mt-12 text-center">
+                             <button
+                                onClick={handleMarkAsRead}
+                                disabled={isRead}
+                                className={`px-8 py-4 rounded-full font-cinzel font-bold text-lg shadow-lg flex items-center justify-center gap-2 mx-auto transition-all transform hover:scale-105 ${
+                                    isRead 
+                                    ? 'bg-green-600 text-white cursor-default'
+                                    : 'bg-gradient-to-r from-[#C5A059] to-[#8B0000] text-white hover:shadow-xl animate-pulse'
+                                }`}
+                             >
+                                 {isRead ? <CheckCircle className="w-6 h-6" /> : <GraduationCap className="w-6 h-6" />}
+                                 {isRead ? 'ESTUDO CONCLUÍDO' : 'CONCLUIR ESTUDO'}
+                             </button>
+                             {isRead && <p className="text-xs text-green-600 mt-2 font-bold">Registrado no Ranking de EBD</p>}
+                         </div>
+                     )}
                 </div>
             ) : (
                 <div className="text-center py-20 text-gray-500 dark:text-gray-400">
