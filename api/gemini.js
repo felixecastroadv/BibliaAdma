@@ -2,11 +2,11 @@ import { GoogleGenAI } from "@google/genai";
 
 // Configuração para Vercel Serverless Functions
 export const config = {
-  maxDuration: 60, // Aumenta tempo limite para permitir múltiplas tentativas
+  maxDuration: 60, // Tempo máximo de execução (segundos)
 };
 
 export default async function handler(request, response) {
-  // CORS Configuration
+  // Configuração de CORS
   response.setHeader('Access-Control-Allow-Credentials', true);
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -24,26 +24,29 @@ export default async function handler(request, response) {
   }
 
   try {
-    // --- 1. COLETA DE TODAS AS CHAVES ---
-    const envKeys = [
-        { name: 'API_KEY', val: process.env.API_KEY },
-        { name: 'Biblia_ADMA_API', val: process.env.Biblia_ADMA_API },
-        { name: 'API_KEY_2', val: process.env.API_KEY_2 },
-        { name: 'API_KEY_3', val: process.env.API_KEY_3 },
-        { name: 'API_KEY_4', val: process.env.API_KEY_4 },
-        { name: 'API_KEY_5', val: process.env.API_KEY_5 },
-        { name: 'API_KEY_6', val: process.env.API_KEY_6 },
-        { name: 'API_KEY_7', val: process.env.API_KEY_7 },
-        { name: 'API_KEY_8', val: process.env.API_KEY_8 },
-        { name: 'API_KEY_9', val: process.env.API_KEY_9 },
-        { name: 'API_KEY_10', val: process.env.API_KEY_10 }
-    ];
+    // --- 1. COLETA MASSIVA DE CHAVES (POOL) ---
+    const allKeys = [];
 
-    const validKeys = envKeys.filter(k => k.val && k.val.length > 20);
+    // Adiciona chaves nomeadas específicas que você já usa
+    if (process.env.API_KEY) allKeys.push(process.env.API_KEY);
+    if (process.env.Biblia_ADMA_API) allKeys.push(process.env.Biblia_ADMA_API);
+
+    // Adiciona chaves numeradas automaticamente de 1 até 50
+    // Isso permite que você adicione API_KEY_15, API_KEY_20 na Vercel sem mexer no código
+    for (let i = 1; i <= 50; i++) {
+        const keyName = `API_KEY_${i}`;
+        const val = process.env[keyName];
+        if (val && val.length > 10) {
+            allKeys.push(val);
+        }
+    }
+
+    // Remove duplicatas e chaves inválidas
+    const validKeys = [...new Set(allKeys)].filter(k => k && !k.startsWith('vck_'));
 
     if (validKeys.length === 0) {
          return response.status(500).json({ 
-             error: 'CONFIGURAÇÃO PENDENTE: Nenhuma Chave de API válida encontrada na Vercel.' 
+             error: 'CONFIGURAÇÃO PENDENTE: Nenhuma Chave de API válida encontrada (API_KEY_1...50).' 
          });
     }
 
@@ -59,22 +62,27 @@ export default async function handler(request, response) {
     const { prompt, schema } = body || {};
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
-    // --- 3. LOOP DE ROTAÇÃO DE CHAVES (FAILOVER) ---
-    // Embaralha as chaves para distribuir a carga
-    const shuffledKeys = validKeys.map(k => k.val).sort(() => 0.5 - Math.random());
+    // --- 3. LOOP DE ROTAÇÃO DE CHAVES (FAILOVER INTELIGENTE) ---
+    // Embaralha as chaves para distribuir a carga (Load Balancing)
+    const shuffledKeys = validKeys.sort(() => 0.5 - Math.random());
     
     let lastError = null;
     let successResponse = null;
+    let attempts = 0;
 
-    console.log(`🔄 [Gemini Router] Iniciando tentativa com ${shuffledKeys.length} chaves.`);
+    console.log(`🔄 [Gemini Pool] Iniciando com ${validKeys.length} chaves disponíveis.`);
 
     for (const apiKey of shuffledKeys) {
+        attempts++;
         try {
+            // Configura o cliente com a chave atual do loop
             const ai = new GoogleGenAI({ apiKey });
+            
+            // Modelo Flash é mais rápido e econômico
             const modelId = "gemini-2.5-flash"; 
 
             const aiConfig = {
-                temperature: 0.9, 
+                temperature: 0.7, // Levemente criativo, mas focado
                 topP: 0.95,
                 topK: 40,
                 safetySettings: [
@@ -90,7 +98,7 @@ export default async function handler(request, response) {
                 aiConfig.responseSchema = schema;
             }
 
-            // Tenta gerar com a chave atual
+            // Tenta gerar
             const aiResponse = await ai.models.generateContent({
                 model: modelId,
                 contents: [{ parts: [{ text: prompt }] }],
@@ -98,27 +106,30 @@ export default async function handler(request, response) {
             });
 
             if (!aiResponse.text) {
-                throw new Error(aiResponse.candidates?.[0]?.finishReason || "EMPTY_RESPONSE");
+                // Se a resposta for vazia mas sem erro explícito, forçamos um erro para trocar a chave
+                throw new Error(aiResponse.candidates?.[0]?.finishReason || "EMPTY_RESPONSE_RETRY");
             }
 
             // SUCESSO!
             successResponse = aiResponse.text;
-            break; // Sai do loop
+            // console.log(`✅ Sucesso na tentativa ${attempts}`);
+            break; // Sai do loop imediatamente
 
         } catch (error) {
             lastError = error;
             const msg = error.message || '';
             
-            // Verifica se é erro de Cota (429) ou Serviço Indisponível (503)
-            const isQuotaError = msg.includes('429') || msg.includes('Quota') || msg.includes('Too Many Requests');
-            const isServerError = msg.includes('503') || msg.includes('500') || msg.includes('Overloaded');
+            // Lista de erros que indicam que devemos tentar a PRÓXIMA chave
+            const isQuotaError = msg.includes('429') || msg.includes('Quota') || msg.includes('Too Many Requests') || msg.includes('Exhausted');
+            const isServerError = msg.includes('503') || msg.includes('500') || msg.includes('Overloaded') || msg.includes('EMPTY_RESPONSE');
 
             if (isQuotaError || isServerError) {
-                console.warn(`⚠️ Chave falhou (${isQuotaError ? 'Cota' : 'Server'}). Tentando próxima...`);
-                continue; // Tenta a próxima
+                console.warn(`⚠️ Chave ${attempts} falhou (${isQuotaError ? 'Cota' : 'Erro'}). Trocando para próxima...`);
+                continue; // Pula para a próxima iteração do loop (próxima chave)
             } else {
-                console.error(`❌ Erro fatal na chave: ${msg}`);
-                break; // Se for erro de prompt ou formato, não adianta trocar a chave
+                // Se for um erro do usuário (ex: Prompt inválido), paramos para não gastar todas as chaves à toa
+                console.error(`❌ Erro fatal (não é cota): ${msg}`);
+                break; 
             }
         }
     }
@@ -127,18 +138,22 @@ export default async function handler(request, response) {
     if (successResponse) {
         return response.status(200).json({ text: successResponse });
     } else {
-        console.error("❌ TODAS AS CHAVES FALHARAM.");
-        const errorMsg = lastError?.message || 'Erro desconhecido em todas as chaves.';
+        // Se chegou aqui, TODAS as chaves do array falharam
+        console.error("❌ FALHA TOTAL: Todas as chaves do pool foram testadas e falharam.");
+        
+        const errorMsg = lastError?.message || 'Erro desconhecido.';
         
         if (errorMsg.includes('429') || errorMsg.includes('Quota')) {
-            return response.status(429).json({ error: 'QUOTA_EXCEEDED: Todas as chaves atingiram o limite.' });
+            return response.status(429).json({ 
+                error: 'SISTEMA SOBRECARREGADO: Todas as chaves de API atingiram o limite simultaneamente. Tente novamente em 2 minutos.' 
+            });
         }
         
-        return response.status(500).json({ error: errorMsg });
+        return response.status(500).json({ error: `Erro na geração: ${errorMsg}` });
     }
 
   } catch (error) {
-    console.error("Gemini Critical Error:", error);
-    return response.status(500).json({ error: 'Erro crítico no servidor.' });
+    console.error("Gemini Critical Server Error:", error);
+    return response.status(500).json({ error: 'Erro interno crítico no servidor.' });
   }
 }
