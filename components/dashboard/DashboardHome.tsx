@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { BookOpen, GraduationCap, ShieldCheck, Trophy, Calendar, ListChecks, Mail, CheckCircle2, Moon, Sun } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { BookOpen, GraduationCap, ShieldCheck, Trophy, Calendar, ListChecks, Mail, CheckCircle2, Moon, Sun, Download } from 'lucide-react';
 import { CHURCH_NAME, TOTAL_CHAPTERS, APP_VERSION } from '../../constants';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface DashboardProps {
     onNavigate: (view: string, params?: any) => void;
@@ -15,6 +15,26 @@ interface DashboardProps {
 
 export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user, userProgress, darkMode, toggleDarkMode }: DashboardProps) {
   const [clicks, setClicks] = useState(0);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    // Captura o evento de instalação do Chrome
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
 
   const handleLogoClick = () => {
     const newClicks = clicks + 1;
@@ -41,8 +61,23 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
     <div className="min-h-screen bg-[#F5F5DC] dark:bg-dark-bg transition-colors duration-300">
         {/* Hero */}
         <div className="bg-gradient-to-b from-[#8B0000] to-[#600018] text-white p-8 rounded-b-[40px] shadow-xl relative overflow-hidden pb-16">
-            <div className="absolute top-4 right-4 z-20">
-                <button onClick={toggleDarkMode} className="p-2 rounded-full bg-white/10 backdrop-blur-md">
+            <div className="absolute top-4 right-4 z-20 flex gap-2">
+                <AnimatePresence>
+                    {deferredPrompt && (
+                        <motion.button 
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            onClick={handleInstallClick} 
+                            className="p-2 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/30 flex items-center gap-2 px-3 transition-all"
+                            title="Instalar App"
+                        >
+                            <Download className="w-5 h-5" />
+                            <span className="text-xs font-bold hidden md:inline">Instalar</span>
+                        </motion.button>
+                    )}
+                </AnimatePresence>
+                <button onClick={toggleDarkMode} className="p-2 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all">
                     {darkMode ? <Sun className="w-5 h-5 text-yellow-300" /> : <Moon className="w-5 h-5 text-white" />}
                 </button>
             </div>
