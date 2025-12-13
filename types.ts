@@ -13,6 +13,13 @@ export interface ReadingPlan {
   estimatedDays: number;
 }
 
+export interface ActivePlan {
+  planId: string;
+  startDate: string; // ISO Date
+  isCompleted: boolean;
+  completedDate?: string;
+}
+
 export interface UserProgress {
   user_email: string;
   user_name: string;
@@ -20,6 +27,7 @@ export interface UserProgress {
   total_chapters: number;
   last_book: string;
   last_chapter: number;
+  active_plans?: ActivePlan[]; // Novo campo
   id?: string;
 }
 

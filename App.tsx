@@ -52,7 +52,11 @@ export default function App() {
     if (p.length) setUserProgress(p[0]);
     else {
         const newP = await db.entities.ReadingProgress.create({ 
-            user_email: email, user_name: user?.user_name || email, chapters_read: [], total_chapters: 0 
+            user_email: email, 
+            user_name: user?.user_name || email, 
+            chapters_read: [], 
+            total_chapters: 0,
+            active_plans: [] // Inicializa planos vazios
         });
         setUserProgress(newP);
     }
@@ -116,13 +120,13 @@ export default function App() {
         case 'devotional':
             return <DevotionalView onBack={() => setView('dashboard')} onShowToast={showToast} isAdmin={isAdmin} />;
         case 'plans':
-            return <PlansView onBack={() => setView('dashboard')} onNavigate={handleNavigate} />;
+            return <PlansView onBack={() => setView('dashboard')} onNavigate={handleNavigate} userProgress={userProgress} />;
         case 'ranking':
             return <RankingView onBack={() => setView('dashboard')} />;
         case 'messages':
             return <MessagesView onBack={() => setView('dashboard')} />;
         default:
-            return <div>Page not found</div>;
+            return <div className="dark:text-white">Page not found</div>;
     }
   };
 
