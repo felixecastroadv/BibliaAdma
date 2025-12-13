@@ -77,6 +77,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
     return blocks.map((block, idx) => {
         const trimmed = block.trim();
 
+        // 1. TÍTULO PRINCIPAL (Cabeçalho do Livro)
         if (trimmed.includes('PANORÂMA BÍBLICO') || trimmed.includes('PANORAMA BÍBLICO')) {
              return (
                 <div key={idx} className="mb-8 text-center border-b-2 border-[#8B0000] dark:border-[#ff6b6b] pb-4 pt-2">
@@ -87,11 +88,14 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
             );
         }
 
-        const isHeader = trimmed.startsWith('###') || /^\d+\./.test(trimmed) || /^[IVX]+\./.test(trimmed);
+        // 2. SUBTÍTULOS DE SEÇÃO (Começam com ### ou Numeral Romano ex: I., II.)
+        // Alteração: Removemos o /^\d+\./ daqui para não pegar listas numeradas comuns
+        const isHeader = trimmed.startsWith('###') || /^[IVX]+\./.test(trimmed);
+        
         if (isHeader) {
             const title = trimmed.replace(/###/g, '').trim();
             return (
-                <div key={idx} className="mt-8 mb-4 flex items-center justify-center gap-4">
+                <div key={idx} className="mt-8 mb-6 flex items-center justify-center gap-4">
                     <div className="h-[1px] bg-[#C5A059] w-8 md:w-16 opacity-60"></div>
                     <h3 className="font-cinzel font-bold text-xl text-[#1a0f0f] dark:text-[#E0E0E0] uppercase tracking-wide text-center">
                         {title}
@@ -101,15 +105,46 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
             );
         }
 
+        // 3. LISTAS NUMERADAS "PREMIUM" (1. Título: Texto...)
+        // Detecta linhas que começam com número e ponto (ex: "1. Condições...")
+        const isListItem = /^\d+\./.test(trimmed);
+        if (isListItem) {
+            // Separa o número do resto do texto para estilizar separadamente
+            const firstSpaceIndex = trimmed.indexOf(' ');
+            const numberPart = trimmed.substring(0, firstSpaceIndex > -1 ? firstSpaceIndex : trimmed.length); // "1."
+            const textPart = firstSpaceIndex > -1 ? trimmed.substring(firstSpaceIndex + 1) : "";
+
+            return (
+                <div key={idx} className="mb-6 flex gap-4 items-start group">
+                    {/* Número Dourado Estilizado */}
+                    <div className="flex-shrink-0 mt-1 w-8 text-right">
+                         <span className="font-cinzel font-bold text-xl text-[#C5A059] dark:text-[#C5A059]">
+                            {numberPart}
+                         </span>
+                    </div>
+                    {/* Texto Justificado e Elegante */}
+                    <div className="flex-1">
+                        <p className="font-cormorant text-xl leading-loose text-gray-900 dark:text-gray-300 text-justify border-l-2 border-[#C5A059]/20 pl-4">
+                            {parseInlineStyles(textPart)}
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+
+        // 4. CAIXAS DE DESTAQUE (Curiosidades)
         if (trimmed.toUpperCase().includes('CURIOSIDADE') || trimmed.toUpperCase().includes('ATENÇÃO:') || trimmed.endsWith('?')) {
             return (
-                <div key={idx} className="my-6 mx-2 font-cormorant text-lg text-[#1a0f0f] dark:text-gray-200 font-medium italic bg-[#C5A059]/10 dark:bg-[#C5A059]/10 p-6 rounded-lg border-y border-[#C5A059]/40 shadow-sm">
-                    <Sparkles className="w-5 h-5 text-[#C5A059] mb-2 mx-auto opacity-70" />
-                    <div className="text-center">{parseInlineStyles(trimmed)}</div>
+                <div key={idx} className="my-6 mx-2 font-cormorant text-lg text-[#1a0f0f] dark:text-gray-200 font-medium italic bg-[#C5A059]/10 dark:bg-[#C5A059]/10 p-6 rounded-lg border-y border-[#C5A059]/40 shadow-sm text-justify">
+                    <div className="flex justify-center mb-2">
+                        <Sparkles className="w-5 h-5 text-[#C5A059] opacity-70" />
+                    </div>
+                    <div>{parseInlineStyles(trimmed)}</div>
                 </div>
             );
         }
         
+        // 5. TEXTO PADRÃO (Parágrafos)
         return (
             <p key={idx} className="font-cormorant text-xl leading-loose text-gray-900 dark:text-gray-300 text-justify indent-8 mb-4 tracking-wide">
                 {parseInlineStyles(trimmed)}
@@ -168,6 +203,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
         4. CURIOSIDADES ARQUEOLÓGICAS/CIENTÍFICAS:
            - Crie um tópico específico chamado "### CURIOSIDADES E ARQUEOLOGIA".
            - Traga dados históricos, materiais usados, costumes egípcios/babilônicos, geografia física.
+           - Ao listar itens, use numeração simples (1., 2., 3.) para que o sistema formate elegantemente.
 
         5. TOM TEOLÓGICO:
            - Didático, Arminiano (Enfatize a escolha humana), Pentecostal (Aberto ao sobrenatural).
@@ -237,6 +273,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
         
         PÁGINA 2: APROFUNDAMENTO ARQUEOLÓGICO
         - ### CURIOSIDADES E ARQUEOLOGIA (Detalhes de costumes, geografia, ciência).
+        - Use listas numeradas (1., 2., 3.) para elencar os fatos.
         - Exegese técnica (Hebraico/Grego).
         <hr class="page-break">
         
