@@ -50,9 +50,11 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
 
   const processAndPaginate = (html: string) => {
     if (!html) { setPages([]); return; }
-    // Divide o conteúdo baseado na tag hr
-    const rawPages = html.split('<hr class="page-break">');
-    // Filtra páginas vazias ou muito curtas (erros de geração)
+    // Divide o conteúdo baseado em qualquer tag <hr> (com ou sem classe)
+    // Regex: <hr seguido de qualquer coisa até fechar >
+    const rawPages = html.split(/<hr[^>]*>/i);
+    
+    // Filtra páginas vazias ou muito curtas (erros de geração ou quebras duplas)
     const cleanedPages = rawPages.map(p => cleanText(p)).filter(p => p.length > 50);
     setPages(cleanedPages.length > 0 ? cleanedPages : [cleanText(html)]);
   };
@@ -95,7 +97,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
         if (isHeader) {
             const title = trimmed.replace(/###/g, '').trim();
             return (
-                <div key={idx} className="mt-10 mb-6 flex items-center justify-center gap-4">
+                <div key={idx} className="mt-8 mb-4 flex items-center justify-center gap-4">
                     <div className="h-[1px] bg-[#C5A059] w-8 md:w-16 opacity-60"></div>
                     <h3 className="font-cinzel font-bold text-xl text-[#1a0f0f] dark:text-[#E0E0E0] uppercase tracking-wide text-center">
                         {title}
@@ -156,25 +158,25 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
     const basePersona = `
         VOCÊ É O PROFESSOR MICHEL FELIX.
         
-        ESTILO:
+        ESTILO & REGRAS:
         1. **Teologia:** Arminiana / Pentecostal Clássica.
-        2. **Profundidade:** EXAUSTIVA. Não faça resumos. Explore cada palavra, cada conexão hebraica/grega.
-        3. **Formatação:** USE "###" ANTES DE CADA TÍTULO. Ex: "### 1. A CRIAÇÃO".
-        4. **Divisão:** GERAR CONTEÚDO PARA 3 PÁGINAS DENSAS.
-        5. **Separador:** Insira a tag <hr class="page-break"> entre as páginas.
+        2. **Profundidade:** EXAUSTIVA, mas com LEITURA AGRADÁVEL.
+        3. **PAGINAÇÃO OBRIGATÓRIA:** É PROIBIDO criar blocos gigantes de texto.
+           - A CADA TÓPICO PRINCIPAL ou a cada 500 palavras, VOCÊ DEVE INSERIR A TAG: <hr class="page-break">
+           - Isso dividirá o conteúdo em "páginas" virtuais no app.
+        4. **Formatação:** USE "###" ANTES DE CADA TÍTULO.
     `;
     
     const instructions = customInstructions ? `\nPEDIDO ESPECIAL: ${customInstructions}` : "";
     
     const continuationInstructions = `
         MODO CONTINUAÇÃO (PÁGINA ${pages.length + 1} em diante).
-        CONTEXTO: "...${lastContext.slice(-400)}..."
+        CONTEXTO ANTERIOR: "...${lastContext.slice(-400)}..."
         
         TAREFA:
-        1. Continue a explicação IMEDIATAMENTE.
-        2. APROFUNDE-SE. Se estiver explicando um versículo, gaste 300 palavras nele.
-        3. Gere texto suficiente para preencher MAIS 2 ou 3 PÁGINAS.
-        4. Use <hr class="page-break"> para separar.
+        1. Continue a explicação IMEDIATAMENTE de onde parou.
+        2. IMPORTANTE: Insira <hr class="page-break"> logo após concluir o raciocínio atual para criar uma nova página, e continue escrevendo.
+        3. Gere conteúdo suficiente para mais 3 ou 4 páginas curtas.
     `;
 
     let specificPrompt = "";
@@ -188,17 +190,21 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
         INÍCIO.
         Cabeçalho: "PANORÂMA BÍBLICO - ${book.toUpperCase()} (Prof. Michel Felix)"
         
-        OBJETIVO: Criar um material que parece um livro de 3000 palavras.
+        ESTRUTURA SUGERIDA (Use <hr class="page-break"> entre cada item):
         
         PÁGINA 1:
-        ### 1. INTRODUÇÃO E CENÁRIO (Seja detalhista)
-        ### 2. AUTORIA E DATAÇÃO (Análise técnica)
-        
+        ### 1. INTRODUÇÃO E CENÁRIO
+        [Explique o contexto histórico/geográfico detalhadamente]
         <hr class="page-break">
         
         PÁGINA 2:
-        ### 3. ANÁLISE DOS PRIMEIROS VERSÍCULOS
-        (Explique palavra por palavra se necessário).
+        ### 2. ESTRUTURA LITERÁRIA
+        [Fale sobre o autor, data e estilo]
+        <hr class="page-break">
+        
+        PÁGINA 3:
+        ### 3. ANÁLISE INICIAL (v.1-5)
+        [Explique os primeiros versículos]
         `}
         `;
     } else {
@@ -210,17 +216,21 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
         INÍCIO.
         Cabeçalho: "PANORÂMA BÍBLICO - ${book.toUpperCase()} (Manual do Mestre)"
         
-        OBJETIVO: Análise técnica profunda para professores experientes.
+        ESTRUTURA SUGERIDA (Use <hr class="page-break"> entre cada item):
         
         PÁGINA 1:
-        ### 1. ALVOS DA LIÇÃO
-        ### 2. EXEGESE DO TEXTO ORIGINAL (Hebraico/Grego)
-        
+        ### 1. ALVOS DA LIÇÃO & VISÃO GERAL
+        [Resumo teológico denso]
         <hr class="page-break">
         
         PÁGINA 2:
-        ### 3. REFUTANDO HERESIAS COMUNS
-        (Seja apologético e firme).
+        ### 2. EXEGESE DO ORIGINAL
+        [Palavras chaves em Hebraico/Grego]
+        <hr class="page-break">
+        
+        PÁGINA 3:
+        ### 3. APROFUNDAMENTO DOUTRINÁRIO
+        [Refutação de heresias e pontos difíceis]
         `}
         `;
     }
@@ -231,7 +241,15 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
             throw new Error("A IA retornou vazio. Tente novamente.");
         }
         
-        const separator = (mode === 'continue' && currentText.length > 0) ? '<hr class="page-break">' : '';
+        // Garante que se for continuação, começa com quebra se não tiver
+        let separator = '';
+        if (mode === 'continue' && currentText.length > 0) {
+            // Verifica se o texto anterior já não termina com hr
+            if (!currentText.trim().endsWith('>')) {
+                separator = '<hr class="page-break">';
+            }
+        }
+
         const newTotal = mode === 'continue' ? (currentText + separator + result) : result;
         
         const data = {
@@ -246,7 +264,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
         else await db.entities.PanoramaBiblico.create(data);
 
         await loadContent();
-        onShowToast('Conteúdo gerado! (Densidade Alta)', 'success');
+        onShowToast('Conteúdo gerado e paginado!', 'success');
         if (mode === 'continue') setTimeout(() => setCurrentPage(pages.length), 500); 
 
     } catch (e: any) {
@@ -346,14 +364,14 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
                         disabled={isGenerating}
                         className="flex-1 px-3 py-2 border border-[#C5A059] rounded text-xs hover:bg-[#C5A059] hover:text-[#1a0f0f] transition disabled:opacity-50 font-bold"
                     >
-                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'INÍCIO (Exaustivo)'}
+                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'INÍCIO (Paginado)'}
                     </button>
                     <button 
                         onClick={() => handleGenerate('continue')} 
                         disabled={isGenerating}
                         className="flex-1 px-3 py-2 bg-[#C5A059] text-[#1a0f0f] font-bold rounded text-xs hover:bg-white transition disabled:opacity-50"
                     >
-                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'CONTINUAR (Aprofundar)'}
+                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'CONTINUAR (Mais Páginas)'}
                     </button>
                     {pages.length > 0 && (
                         <button onClick={handleDeletePage} className="px-3 py-2 bg-red-900 text-white rounded hover:bg-red-700 transition">
@@ -390,7 +408,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
                     />
                  </div>
             ) : content && pages.length > 0 ? (
-                <div className="bg-white dark:bg-dark-card shadow-2xl p-8 md:p-16 min-h-[900px] border border-[#C5A059]/20 relative">
+                <div className="bg-white dark:bg-dark-card shadow-2xl p-8 md:p-16 min-h-[600px] border border-[#C5A059]/20 relative">
                      {/* Se não tiver cabeçalho explícito na string, renderiza um padrão para não ficar vazio */}
                      {(!content.student_content.includes('PANORÂMA') && currentPage === 0) && (
                          <div className="mb-8 text-center border-b-2 border-[#8B0000] dark:border-[#ff6b6b] pb-4 pt-2">
@@ -407,20 +425,11 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
                             <div className="mt-12 pt-8 border-t border-[#C5A059]/30 text-center animate-in fade-in slide-in-from-bottom-8 duration-1000">
                                 <Sparkles className="w-8 h-8 text-[#C5A059] mx-auto mb-4 animate-pulse" />
                                 <h3 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#ff6b6b] mb-2">
-                                    Estudo Finalizado
+                                    Fim desta seção
                                 </h3>
                                 <p className="font-cormorant text-gray-600 dark:text-gray-300 italic mb-6">
-                                    Que este conhecimento edifique sua vida espiritual.
+                                    Use "Continuar" no painel acima se desejar expandir.
                                 </p>
-                                <button 
-                                    onClick={() => {
-                                        onShowToast('Estudo concluído! Parabéns!', 'success');
-                                        setTimeout(onBack, 2000);
-                                    }}
-                                    className="bg-green-700 hover:bg-green-800 text-white px-8 py-4 rounded-xl font-cinzel font-bold text-lg shadow-lg hover:shadow-xl transition-all flex items-center gap-3 mx-auto transform hover:scale-105"
-                                >
-                                    <CheckCircle className="w-6 h-6" /> Concluir Estudo
-                                </button>
                             </div>
                         )}
                      </div>
