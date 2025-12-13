@@ -58,15 +58,31 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
 
   const generateDevotional = async (customInstruction?: string) => {
     if (!isAdmin) return;
+    
     const themes = ['santidade', 'arrebatamento', 'perseverança', 'amor a Deus', 'conversão', 'arrependimento', 'avivamento', 'fé', 'esperança', 'oração'];
     const randomTheme = themes[Math.floor(Math.random() * themes.length)];
     const instruction = customInstruction || `TEMA CENTRAL: ${randomTheme}`;
+    
     const prompt = `
-        Você é Michel Felix, teólogo Pentecostal Clássico. Crie um devocional PROFUNDO para ${format(currentDate, 'dd/MM/yyyy')}.
+        Você é Michel Felix, teólogo Pentecostal Clássico. Crie um devocional para ${format(currentDate, 'dd/MM/yyyy')}.
         ${instruction}
-        ESTRUTURA OBRIGATÓRIA (Mínimo 650 palavras): TÍTULO, REFERÊNCIA, CORPO, ORAÇÃO.
+        
+        REGRAS DE FORMATAÇÃO (ESTRITAS):
+        1. SEM MARKDOWN: Não use asteriscos (**), negrito ou caracteres especiais no texto. Texto limpo.
+        2. TAMANHO DO CORPO: Aprox. 400 palavras.
+        3. TAMANHO DA ORAÇÃO: Aprox. 100 palavras.
+
+        ESTRUTURA OBRIGATÓRIA DO CORPO (Exatamente 3 parágrafos):
+        - Parágrafo 1 (O Texto): Explique o texto base, focando na intenção do autor, contexto histórico/cultural ou análise textual.
+        - Parágrafo 2 (A Aplicação): Aplique essa verdade teológica à vida cotidiana do leitor hoje.
+        - Parágrafo 3 (A Prática): Conclusão reflexiva que leve à prática ("melhor do que ouvir é praticar"), visando nos tornar melhores cristãos na vida real.
+
+        ORAÇÃO:
+        - Uma oração contextualizada com o ensino acima.
+
         Retorne JSON válido.
     `;
+
     const schema = {
         type: Type.OBJECT,
         properties: {
@@ -103,7 +119,9 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
         window.speechSynthesis.cancel();
         setIsPlaying(false);
     } else {
-        const text = `${devotional.title}. ${devotional.reference}. ${devotional.verse_text}. ${devotional.body}. Oração: ${devotional.prayer}`;
+        // Limpa asteriscos para a leitura não falar "asterisco asterisco"
+        const cleanBody = devotional.body.replace(/\*\*/g, '').replace(/\*/g, '');
+        const text = `${devotional.title}. ${devotional.reference}. ${devotional.verse_text}. ${cleanBody}. Oração: ${devotional.prayer}`;
         const utter = new SpeechSynthesisUtterance(text);
         utter.lang = 'pt-BR';
         const voice = voices.find(v => v.name === selectedVoice);
@@ -116,6 +134,11 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
 
   const handlePrevDay = () => setCurrentDate(addDays(currentDate, -1));
   const handleNextDay = () => setCurrentDate(addDays(currentDate, 1));
+
+  // Função auxiliar para limpar visualmente caso a IA ainda mande markdown
+  const cleanTextDisplay = (text: string) => {
+    return text.replace(/\*\*/g, '').replace(/##/g, '').trim();
+  };
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] dark:bg-dark-bg transition-colors duration-300">
@@ -189,20 +212,20 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
             </div>
         ) : devotional ? (
             <div className="bg-white dark:bg-dark-card p-8 rounded-2xl shadow-xl border border-[#C5A059]/30 animate-in slide-in-from-bottom-5">
-                <h2 className="font-cinzel text-3xl font-bold text-[#1a0f0f] dark:text-[#ff6b6b] mb-2">{devotional.title}</h2>
+                <h2 className="font-cinzel text-3xl font-bold text-[#1a0f0f] dark:text-[#ff6b6b] mb-2">{cleanTextDisplay(devotional.title)}</h2>
                 <p className="font-montserrat text-sm text-gray-500 dark:text-gray-400 mb-6">{devotional.reference}</p>
                 
                 <blockquote className="border-l-4 border-[#8B0000] pl-4 italic text-lg font-cormorant text-gray-700 dark:text-gray-300 mb-6 bg-[#F5F5DC] dark:bg-gray-800 p-4 rounded-r shadow-inner">
-                    "{devotional.verse_text}"
+                    "{cleanTextDisplay(devotional.verse_text)}"
                 </blockquote>
 
                 <div className="font-cormorant text-lg leading-loose text-gray-800 dark:text-gray-200 whitespace-pre-wrap mb-8 text-justify">
-                    {devotional.body}
+                    {cleanTextDisplay(devotional.body)}
                 </div>
 
                 <div className="bg-[#1a0f0f] dark:bg-black text-white p-6 rounded-xl shadow-lg">
                     <h3 className="font-cinzel font-bold mb-2 text-[#C5A059]">Oração</h3>
-                    <p className="font-cormorant italic">{devotional.prayer}</p>
+                    <p className="font-cormorant italic">{cleanTextDisplay(devotional.prayer)}</p>
                 </div>
             </div>
         ) : (
