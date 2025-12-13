@@ -131,23 +131,26 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
     try {
         const prompt = `
             ATUE COMO: Professor Michel Felix.
-            TAREFA: Escrever um comentário exegético profundo sobre ${book} ${chapter}:${verseNumber}.
+            TAREFA: Comentário bíblico devocional e teológico sobre ${book} ${chapter}:${verseNumber}.
             TEXTO BÍBLICO: "${verse}"
 
-            DIRETRIZES DA PERSONA (NÃO QUEBRE A PERSONAGEM):
-            1. VIÉS TEOLÓGICO (IMPLÍCITO): Arminiano (responsabilidade humana) e Pentecostal Clássico (poder do Espírito).
-            2. CONHECIMENTO (IMPLÍCITO): Arqueologia e História do Antigo Oriente/Greco-Romana.
-            3. TOM: Solene, Culto, Apaixonado e Acadêmico.
+            ESTILO DE ESCRITA (VIBRANTE E ACESSÍVEL):
+            - Escreva como um professor apaixonado ensinando seus alunos na igreja.
+            - Use linguagem culta, mas ACESSÍVEL e ENVOLVENTE (não use termos acadêmicos difíceis desnecessariamente).
+            - Pode usar exclamações e perguntas retóricas para engajar (Ex: "Que promessa maravilhosa!", "E o que isso nos ensina?").
+            - O texto deve ter "fogo" (unção) e profundidade ao mesmo tempo.
 
+            DIRETRIZES DE PERSONA (IMPLÍCITAS - PROIBIDO SE APRESENTAR):
+            1. VIÉS: Arminiano e Pentecostal. (Aplique isso na interpretação do texto, mas NÃO diga "Eu sou pentecostal").
+            2. EXPERTISE: Use dados históricos ou arqueológicos para enriquecer o texto, mas apresente-os naturalmente, como parte da narrativa.
+            
             REGRAS DE OURO (O QUE NÃO FAZER):
-            - PROIBIDO usar frases como: "Como arqueólogo...", "Para nós pentecostais...", "Na visão arminiana...", "Eu acredito que...".
-            - PROIBIDO se auto-intitular ou explicar sua posição teológica. Apenas APLIQUE-A na interpretação.
-            - O texto deve parecer uma enciclopédia teológica viva, não um artigo de opinião.
+            - NÃO inicie com "Prezados", "Neste versículo", "Como arqueólogo", "Para nós pentecostais".
+            - Comece direto no assunto, talvez admirando a profundidade do texto (Ex: "Ah, que versículo poderoso!").
+            - NÃO seja seco ou excessivamente acadêmico. Seja inspirador.
 
             ESTRUTURA:
-            - 2 a 3 parágrafos densos.
-            - Comece contextualizando (história/arqueologia) de forma fluida.
-            - Termine com uma aplicação espiritual poderosa.
+            - 2 a 3 parágrafos fluídos.
         `;
         const text = await generateContent(prompt);
         const data = { book, chapter, verse: verseNumber, verse_key: verseKey, commentary_text: text };
@@ -207,7 +210,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                                 {commentary ? (
                                     <>
                                         <div className="prose prose-lg font-cormorant text-gray-900 dark:text-gray-200">
-                                            <p className="whitespace-pre-line leading-relaxed">{commentary.commentary_text}</p>
+                                            <p className="whitespace-pre-line leading-relaxed text-justify">{commentary.commentary_text}</p>
                                         </div>
                                         {isAdmin && (
                                             <button onClick={generateCommentary} className="w-full mt-4 py-2 border border-[#8B0000] text-[#8B0000] dark:text-[#ff6b6b] dark:border-[#ff6b6b] rounded font-cinzel text-sm flex items-center justify-center gap-2 hover:bg-[#8B0000]/5">
