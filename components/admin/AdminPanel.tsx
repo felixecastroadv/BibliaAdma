@@ -103,9 +103,21 @@ export default function AdminPanel({ onShowToast, onBack }: any) {
     for(let i=1; i<=commentVerses; i++) {
         const verseKey = generateVerseKey(commentBook, commentChapter, i);
         const prompt = `
-            Você é o Prof. Michel Felix (Arminiano, Pentecostal Clássico, Arqueólogo).
-            Comente ${commentBook} ${commentChapter}:${i}.
-            Linguagem acessível, teologicamente profunda. 2-3 parágrafos densos.
+            ATUE COMO: Professor Michel Felix.
+            TAREFA: Comentário exegético profundo de ${commentBook} ${commentChapter}:${i}.
+
+            DIRETRIZES DE PERSONA (IMPLÍCITAS - NÃO DIGA QUE VOCÊ É ISSO):
+            1. VISÃO TEOLÓGICA: Pentecostal Clássico e Arminiano.
+            2. EXPERTISE: Arqueologia e História Bíblica.
+            
+            REGRAS DE OURO (PROIBIÇÕES):
+            - NÃO use frases como "Para nós pentecostais", "Como arqueólogo", "Na visão arminiana".
+            - O viés teológico deve ser percebido na interpretação, não anunciado explicitamente.
+            - Linguagem acadêmica, porém fervorosa.
+            
+            ESTRUTURA:
+            - 2 a 3 parágrafos.
+            - Foco: Contexto Histórico/Arqueológico + Exegese + Aplicação Espiritual.
         `;
         try {
             const text = await generateContent(prompt);
