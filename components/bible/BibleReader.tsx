@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, Loader2, Sparkles } from 'lucide-react';
+import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, Loader2, Sparkles, FastForward } from 'lucide-react';
 import VersePanel from './VersePanel';
 import { db } from '../../services/database';
-import { generateChapterKey } from '../../constants';
+import { generateChapterKey, BIBLE_BOOKS } from '../../constants';
 import { generateContent } from '../../services/geminiService';
 import { Type as GenType } from "@google/genai";
 import { ChapterMetadata } from '../../types';
@@ -18,9 +18,11 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
   const [loading, setLoading] = useState(false);
   const [loadingEpigraph, setLoadingEpigraph] = useState(false);
   
+  // Audio State
   const [isPlaying, setIsPlaying] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string>('');
+  const [playbackRate, setPlaybackRate] = useState(1);
   
   const [timeLeft, setTimeLeft] = useState(40);
   const [canMarkRead, setCanMarkRead] = useState(false);
@@ -28,6 +30,10 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
 
   const chapterKey = generateChapterKey(book, chapter);
   const isRead = userProgress?.chapters_read?.includes(chapterKey);
+  
+  // Get book metadata for chapter count
+  const currentBookMeta = BIBLE_BOOKS.find(b => b.name === book);
+  const totalChapters = currentBookMeta ? currentBookMeta.chapters : 50;
 
   useEffect(() => {
     fetchChapter();
@@ -48,6 +54,14 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
     loadVoices();
     window.speechSynthesis.onvoiceschanged = loadVoices;
   }, []);
+
+  // Monitora mudança de velocidade para aplicar em tempo real se estiver tocando
+  useEffect(() => {
+    if (isPlaying) {
+        window.speechSynthesis.cancel();
+        speakText();
+    }
+  }, [playbackRate]);
 
   const resetTimer = () => {
     clearInterval(timerRef.current);
@@ -93,7 +107,6 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
         if (existing && existing.length > 0) {
             setEpigraph(existing[0]);
         } else {
-            // Auto-generate for ANY user (First access creates the content)
             await generateEpigraph(key);
         }
     } catch (e) {
@@ -131,19 +144,24 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
     }
   };
 
+  const speakText = () => {
+    const text = verses.map(v => `${v.number}. ${v.text}`).join(' ');
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'pt-BR';
+    utter.rate = playbackRate;
+    const voice = voices.find(v => v.name === selectedVoice);
+    if (voice) utter.voice = voice;
+    utter.onend = () => setIsPlaying(false);
+    window.speechSynthesis.speak(utter);
+    setIsPlaying(true);
+  };
+
   const togglePlay = () => {
     if (isPlaying) {
         window.speechSynthesis.cancel();
         setIsPlaying(false);
     } else {
-        const text = verses.map(v => `${v.number}. ${v.text}`).join(' ');
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.lang = 'pt-BR';
-        const voice = voices.find(v => v.name === selectedVoice);
-        if (voice) utter.voice = voice;
-        utter.onend = () => setIsPlaying(false);
-        window.speechSynthesis.speak(utter);
-        setIsPlaying(true);
+        speakText();
     }
   };
 
@@ -169,6 +187,11 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
     onProgressUpdate(updated);
   };
 
+  const handleChapterChange = (newChapter: number) => {
+      setChapter(newChapter);
+      setShowSettings(false);
+  };
+
   return (
     <div className="min-h-screen bg-[#F5F5DC] dark:bg-dark-bg pb-24 transition-colors duration-300">
       <div className="sticky top-0 bg-[#8B0000] text-white p-4 shadow-lg z-20 flex justify-between items-center">
@@ -182,6 +205,22 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
       {showSettings && (
         <div className="bg-white dark:bg-dark-card p-4 border-b border-[#C5A059] sticky top-[60px] z-10 animate-in slide-in-from-top-2 shadow-md">
             <div className="flex flex-col gap-4">
+                
+                {/* 1. Chapter Selection */}
+                <div className="flex flex-col gap-1">
+                    <span className="font-montserrat text-sm font-bold text-[#1a0f0f] dark:text-gray-200">Ir para Capítulo:</span>
+                    <select 
+                        value={chapter} 
+                        onChange={(e) => handleChapterChange(Number(e.target.value))}
+                        className="p-2 border rounded w-full text-sm dark:bg-gray-700 dark:text-white"
+                    >
+                        {Array.from({ length: totalChapters }, (_, i) => i + 1).map(c => (
+                            <option key={c} value={c}>Capítulo {c}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* 2. Font Size */}
                 <div className="flex items-center justify-between">
                     <span className="font-montserrat text-sm font-bold text-[#1a0f0f] dark:text-gray-200">Fonte:</span>
                     <div className="flex items-center gap-4 text-black dark:text-white">
@@ -190,6 +229,8 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
                         <button onClick={() => setFontSize(Math.min(32, fontSize + 2))} className="p-2 border rounded hover:bg-gray-100 dark:hover:bg-gray-700"><Type className="w-6 h-6" /></button>
                     </div>
                 </div>
+
+                {/* 3. Audio Voice */}
                 <div className="flex flex-col gap-2">
                     <span className="font-montserrat text-sm font-bold text-[#1a0f0f] dark:text-gray-200">Voz de Leitura:</span>
                     <select 
@@ -199,6 +240,24 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
                     >
                         {voices.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
                     </select>
+                </div>
+
+                {/* 4. Audio Speed */}
+                <div className="flex flex-col gap-2">
+                    <span className="font-montserrat text-sm font-bold text-[#1a0f0f] dark:text-gray-200 flex items-center gap-2">
+                        <FastForward className="w-4 h-4" /> Velocidade:
+                    </span>
+                    <div className="flex gap-2">
+                        {[0.75, 1, 1.25, 1.5, 2].map(rate => (
+                            <button 
+                                key={rate}
+                                onClick={() => setPlaybackRate(rate)}
+                                className={`flex-1 py-1 text-xs font-bold rounded border ${playbackRate === rate ? 'bg-[#8B0000] text-white border-[#8B0000]' : 'bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600'}`}
+                            >
+                                {rate}x
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>

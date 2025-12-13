@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, GraduationCap, Lock, BookOpen, ChevronRight, Volume2, Sparkles, Loader2, Book, Trash2, Edit, Save, X, CheckCircle } from 'lucide-react';
+import { ChevronLeft, GraduationCap, Lock, BookOpen, ChevronRight, Volume2, Sparkles, Loader2, Book, Trash2, Edit, Save, X, CheckCircle, Pause, Play, Settings, FastForward } from 'lucide-react';
 import { db } from '../../services/database';
 import { BIBLE_BOOKS, generateChapterKey } from '../../constants';
 import { EBDContent } from '../../types';
@@ -20,7 +20,36 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
 
+  // Audio State
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showAudioSettings, setShowAudioSettings] = useState(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoice, setSelectedVoice] = useState<string>('');
+  const [playbackRate, setPlaybackRate] = useState(1);
+
   useEffect(() => { loadContent(); }, [book, chapter]);
+
+  useEffect(() => {
+    const loadVoices = () => {
+        const available = window.speechSynthesis.getVoices().filter(v => v.lang.includes('pt'));
+        setVoices(available);
+        if(available.length > 0) setSelectedVoice(available[0].name);
+    };
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    
+    return () => {
+        window.speechSynthesis.cancel();
+    }
+  }, []);
+
+  // Monitora mudança de velocidade para aplicar em tempo real
+  useEffect(() => {
+    if (isPlaying) {
+        window.speechSynthesis.cancel();
+        speakText();
+    }
+  }, [playbackRate]);
 
   const loadContent = async () => {
     const key = generateChapterKey(book, chapter);
@@ -50,7 +79,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
 
   const processAndPaginate = (html: string) => {
     if (!html) { setPages([]); return; }
-    // Divide o conteúdo baseado em qualquer tag <hr> (com ou sem classe)
     const rawPages = html.split(/<hr[^>]*>/i);
     const cleanedPages = rawPages.map(p => cleanText(p)).filter(p => p.length > 50);
     setPages(cleanedPages.length > 0 ? cleanedPages : [cleanText(html)]);
@@ -58,6 +86,29 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
 
   const hasAccess = isAdmin || activeTab === 'student'; 
 
+  const speakText = () => {
+    if (!pages[currentPage]) return;
+    const cleanSpeech = pages[currentPage].replace(/#/g, '').replace(/\*/g, '').replace(/<[^>]*>/g, '');
+    const utter = new SpeechSynthesisUtterance(cleanSpeech);
+    utter.lang = 'pt-BR';
+    utter.rate = playbackRate;
+    const voice = voices.find(v => v.name === selectedVoice);
+    if (voice) utter.voice = voice;
+    utter.onend = () => setIsPlaying(false);
+    window.speechSynthesis.speak(utter);
+    setIsPlaying(true);
+  };
+
+  const togglePlay = () => {
+    if (isPlaying) {
+        window.speechSynthesis.cancel();
+        setIsPlaying(false);
+    } else {
+        speakText();
+    }
+  };
+
+  // ... (manter funções de renderFormattedText, handleStartEditing, handleSaveManualEdit, handleGenerate, handleDeletePage do código original)
   const parseInlineStyles = (text: string) => {
     const parts = text.split(/(\*\*.*?\*\*|\*.*?\*)/g);
     return parts.map((part, index) => {
@@ -73,11 +124,8 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
 
   const renderFormattedText = (text: string) => {
     const blocks = text.split('\n').filter(b => b.trim().length > 0);
-    
     return blocks.map((block, idx) => {
         const trimmed = block.trim();
-
-        // 1. TÍTULO PRINCIPAL (Cabeçalho do Livro)
         if (trimmed.includes('PANORÂMA BÍBLICO') || trimmed.includes('PANORAMA BÍBLICO')) {
              return (
                 <div key={idx} className="mb-8 text-center border-b-2 border-[#8B0000] dark:border-[#ff6b6b] pb-4 pt-2">
@@ -87,11 +135,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
                 </div>
             );
         }
-
-        // 2. SUBTÍTULOS DE SEÇÃO (Começam com ### ou Numeral Romano ex: I., II.)
-        // Alteração: Removemos o /^\d+\./ daqui para não pegar listas numeradas comuns
         const isHeader = trimmed.startsWith('###') || /^[IVX]+\./.test(trimmed);
-        
         if (isHeader) {
             const title = trimmed.replace(/###/g, '').trim();
             return (
@@ -104,25 +148,18 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
                 </div>
             );
         }
-
-        // 3. LISTAS NUMERADAS "PREMIUM" (1. Título: Texto...)
-        // Detecta linhas que começam com número e ponto (ex: "1. Condições...")
         const isListItem = /^\d+\./.test(trimmed);
         if (isListItem) {
-            // Separa o número do resto do texto para estilizar separadamente
             const firstSpaceIndex = trimmed.indexOf(' ');
-            const numberPart = trimmed.substring(0, firstSpaceIndex > -1 ? firstSpaceIndex : trimmed.length); // "1."
+            const numberPart = trimmed.substring(0, firstSpaceIndex > -1 ? firstSpaceIndex : trimmed.length);
             const textPart = firstSpaceIndex > -1 ? trimmed.substring(firstSpaceIndex + 1) : "";
-
             return (
                 <div key={idx} className="mb-6 flex gap-4 items-start group">
-                    {/* Número Dourado Estilizado */}
                     <div className="flex-shrink-0 mt-1 w-8 text-right">
                          <span className="font-cinzel font-bold text-xl text-[#C5A059] dark:text-[#C5A059]">
                             {numberPart}
                          </span>
                     </div>
-                    {/* Texto Justificado e Elegante */}
                     <div className="flex-1">
                         <p className="font-cormorant text-xl leading-loose text-gray-900 dark:text-gray-300 text-justify border-l-2 border-[#C5A059]/20 pl-4">
                             {parseInlineStyles(textPart)}
@@ -131,8 +168,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
                 </div>
             );
         }
-
-        // 4. CAIXAS DE DESTAQUE (Curiosidades)
         if (trimmed.toUpperCase().includes('CURIOSIDADE') || trimmed.toUpperCase().includes('ATENÇÃO:') || trimmed.endsWith('?')) {
             return (
                 <div key={idx} className="my-6 mx-2 font-cormorant text-lg text-[#1a0f0f] dark:text-gray-200 font-medium italic bg-[#C5A059]/10 dark:bg-[#C5A059]/10 p-6 rounded-lg border-y border-[#C5A059]/40 shadow-sm text-justify">
@@ -143,8 +178,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
                 </div>
             );
         }
-        
-        // 5. TEXTO PADRÃO (Parágrafos)
         return (
             <p key={idx} className="font-cormorant text-xl leading-loose text-gray-900 dark:text-gray-300 text-justify indent-8 mb-4 tracking-wide">
                 {parseInlineStyles(trimmed)}
@@ -181,124 +214,33 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
     
     const lastContext = currentText.slice(-3000); 
 
-    // --- PERSONA EXATA DO PROF. MICHEL FELIX ---
     const WRITING_STYLE = `
         VOCÊ É O PROFESSOR MICHEL FELIX.
         SUA IDENTIDADE LITERÁRIA É BASEADA NESTES 5 PILARES OBRIGATÓRIOS (NÃO DESVIE DELES):
-
-        1. ESTRUTURA DE CABEÇALHO (CRUCIAL):
-           - Inicie sempre com: "PANORÂMA BÍBLICO - [LIVRO] (Prof. Michel Felix)".
-           - Abaixo, coloque dados cronológicos: "Data da Escrita: [Aprox. Ano]" | "Cronologia do Evento: [Ano]".
-
-        2. ETIMOLOGIA CONSTANTE (SELO DE QUALIDADE):
-           - Em todo parágrafo, ao citar uma palavra-chave, explique o original entre parênteses.
-           - Exemplo: "...Deus criou (bara: criar do nada) os céus..."
-           - Exemplo: "...o nome (shem: reputação, caráter) do Senhor..."
-
-        3. TIPOLOGIA CRISTOCÊNTRICA (SE FOR ANTIGO TESTAMENTO):
-           - VOCÊ DEVE conectar o evento a Jesus ou à Igreja.
-           - Ex: José é tipo de Cristo; A Arca é tipo da Salvação; O Cordeiro é Jesus.
-           - Use a frase: "Vemos aqui uma tipologia clara de..."
-
-        4. CURIOSIDADES ARQUEOLÓGICAS/CIENTÍFICAS:
-           - Crie um tópico específico chamado "### CURIOSIDADES E ARQUEOLOGIA".
-           - Traga dados históricos, materiais usados, costumes egípcios/babilônicos, geografia física.
-           - Ao listar itens, use numeração simples (1., 2., 3.) para que o sistema formate elegantemente.
-
-        5. TOM TEOLÓGICO:
-           - Didático, Arminiano (Enfatize a escolha humana), Pentecostal (Aberto ao sobrenatural).
-           - Linguagem acessível mas recheada de conteúdo profundo.
-
-        REGRAS TÉCNICAS:
-        - TÍTULOS: Use "###" antes.
-        - QUEBRA DE PÁGINA: Use <hr class="page-break"> a cada tópico principal para não cansar o leitor.
+        1. ESTRUTURA DE CABEÇALHO: Inicie sempre com "PANORÂMA BÍBLICO - [LIVRO] (Prof. Michel Felix)".
+        2. ETIMOLOGIA CONSTANTE: Explique o original entre parênteses.
+        3. TIPOLOGIA CRISTOCÊNTRICA: Conecte o evento a Jesus.
+        4. CURIOSIDADES ARQUEOLÓGICAS: Tópico "### CURIOSIDADES E ARQUEOLOGIA".
+        5. TOM TEOLÓGICO: Didático, Arminiano, Pentecostal.
+        REGRAS TÉCNICAS: Use "###" para títulos e <hr class="page-break"> para quebras.
     `;
-    
     const instructions = customInstructions ? `\nINSTRUÇÕES ADICIONAIS DO USUÁRIO: ${customInstructions}` : "";
-    
-    const continuationInstructions = `
-        MODO CONTINUAÇÃO (A PARTIR DA PÁGINA ${pages.length + 1}).
-        CONTEXTO ANTERIOR: "...${lastContext.slice(-400)}..."
-        
-        TAREFA:
-        1. Retome o raciocínio teológico IMEDIATAMENTE.
-        2. Mantenha o padrão de ETIMOLOGIA (palavras originais entre parênteses).
-        3. Desenvolva a TIPOLOGIA ou ARQUEOLOGIA do trecho seguinte.
-        4. INSIRA <hr class="page-break"> ao mudar de tópico.
-    `;
+    const continuationInstructions = `MODO CONTINUAÇÃO (PÁGINA ${pages.length + 1}). CONTEXTO: "...${lastContext.slice(-400)}..."`;
 
-    let specificPrompt = "";
-
-    if (target === 'student') {
-        specificPrompt = `
-        OBJETIVO: Escrever a AULA DO ALUNO para ${book} ${chapter}.
-        ${WRITING_STYLE}
-        ${instructions}
-        
-        ${mode === 'continue' ? continuationInstructions : `
-        INÍCIO DO ESTUDO.
-        
-        ROTEIRO OBRIGATÓRIO (Use <hr class="page-break"> entre os itens):
-        
-        PÁGINA 1: CABEÇALHO E CONTEXTO
-        - Cabeçalho Padrão.
-        - Introdução Histórica e Cronológica (Cite datas).
-        <hr class="page-break">
-        
-        PÁGINA 2: ANÁLISE DO TEXTO (ETIMOLOGIA)
-        - Exegese dos versículos. Use MUITAS palavras originais entre parênteses.
-        <hr class="page-break">
-        
-        PÁGINA 3: TIPOLOGIA E APLICAÇÃO
-        - Conexão com Cristo/Igreja.
-        - Aplicação prática pentecostal.
-        `}
-        `;
-    } else {
-        specificPrompt = `
-        OBJETIVO: Escrever o MANUAL DO PROFESSOR para ${book} ${chapter}.
-        ${WRITING_STYLE}
-        ${instructions}
-        
-        ${mode === 'continue' ? continuationInstructions : `
-        INÍCIO DO ESTUDO.
-        
-        ROTEIRO OBRIGATÓRIO (Use <hr class="page-break"> entre os itens):
-        
-        PÁGINA 1: CABEÇALHO E ALVOS
-        - Cabeçalho Padrão.
-        - Objetivos da lição.
-        - Visão Panorâmica (Datas, Autoria).
-        <hr class="page-break">
-        
-        PÁGINA 2: APROFUNDAMENTO ARQUEOLÓGICO
-        - ### CURIOSIDADES E ARQUEOLOGIA (Detalhes de costumes, geografia, ciência).
-        - Use listas numeradas (1., 2., 3.) para elencar os fatos.
-        - Exegese técnica (Hebraico/Grego).
-        <hr class="page-break">
-        
-        PÁGINA 3: DOUTRINA E TIPOLOGIA
-        - Explicação da Tipologia (Como ensinar isso aos alunos).
-        - Respostas a perguntas difíceis do texto.
-        `}
-        `;
-    }
+    let specificPrompt = target === 'student' ? 
+        `OBJETIVO: AULA DO ALUNO para ${book} ${chapter}. ${WRITING_STYLE} ${instructions} ${mode === 'continue' ? continuationInstructions : 'INÍCIO DO ESTUDO.'}` : 
+        `OBJETIVO: MANUAL DO PROFESSOR para ${book} ${chapter}. ${WRITING_STYLE} ${instructions} ${mode === 'continue' ? continuationInstructions : 'INÍCIO DO ESTUDO.'}`;
 
     try {
         const result = await generateContent(specificPrompt);
-        if (!result || result.trim() === 'undefined' || result.length < 50) {
-            throw new Error("A IA retornou vazio. Tente novamente.");
-        }
+        if (!result || result.trim() === 'undefined' || result.length < 50) throw new Error("A IA retornou vazio.");
         
         let separator = '';
-        if (mode === 'continue' && currentText.length > 0) {
-            if (!currentText.trim().endsWith('>')) {
-                separator = '<hr class="page-break">';
-            }
+        if (mode === 'continue' && currentText.length > 0 && !currentText.trim().endsWith('>')) {
+            separator = '<hr class="page-break">';
         }
 
         const newTotal = mode === 'continue' ? (currentText + separator + result) : result;
-        
         const data = {
             book, chapter, study_key: studyKey,
             title: existing.title || `Estudo de ${book} ${chapter}`,
@@ -326,10 +268,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
     if (!content) return;
     const newPages = [...pages];
     newPages.splice(currentPage, 1);
-    
-    // Reconstrói o HTML com o separador correto
     const newHtml = newPages.join('<hr class="page-break">');
-    
     const target = activeTab;
     const data = {
         ...content,
@@ -340,15 +279,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
     await loadContent();
     setCurrentPage(Math.max(0, currentPage - 1));
     onShowToast("Página removida.", "success");
-  };
-
-  const handleSpeak = () => {
-    if (!pages[currentPage]) return;
-    const cleanSpeech = pages[currentPage].replace(/#/g, '').replace(/\*/g, '');
-    const utter = new SpeechSynthesisUtterance(cleanSpeech);
-    utter.lang = 'pt-BR';
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utter);
   };
 
   return (
@@ -362,9 +292,51 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
                         <Edit className="w-5 h-5 text-[#C5A059]" />
                     </button>
                 )}
-                <button onClick={handleSpeak} title="Ouvir"><Volume2 /></button>
+                {/* Audio Button triggers settings popover */}
+                <button onClick={() => setShowAudioSettings(!showAudioSettings)} title="Opções de Áudio">
+                    <Volume2 className={isPlaying ? "text-green-400 animate-pulse" : ""} />
+                </button>
             </div>
         </div>
+
+        {showAudioSettings && (
+            <div className="bg-white dark:bg-dark-card p-4 border-b border-[#C5A059]/30 animate-in slide-in-from-top-2">
+                <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                        <span className="font-bold text-sm text-[#1a0f0f] dark:text-white">Leitura de Áudio</span>
+                        <button 
+                            onClick={togglePlay}
+                            className="bg-[#C5A059] text-white px-4 py-2 rounded-full font-bold flex items-center gap-2 hover:bg-[#a88645]"
+                        >
+                            {isPlaying ? <Pause className="w-4 h-4"/> : <Play className="w-4 h-4"/>} 
+                            {isPlaying ? 'Pausar' : 'Ouvir Página'}
+                        </button>
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-gray-500 dark:text-gray-400">Voz:</label>
+                        <select className="w-full p-1 text-sm border rounded mt-1 dark:bg-gray-800 dark:text-white" value={selectedVoice} onChange={e => setSelectedVoice(e.target.value)}>
+                            {voices.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1 mb-1">
+                            <FastForward className="w-3 h-3" /> Velocidade:
+                        </span>
+                        <div className="flex gap-2">
+                            {[0.75, 1, 1.25, 1.5, 2].map(rate => (
+                                <button 
+                                    key={rate}
+                                    onClick={() => setPlaybackRate(rate)}
+                                    className={`flex-1 py-1 text-xs font-bold rounded border ${playbackRate === rate ? 'bg-[#8B0000] text-white border-[#8B0000]' : 'bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600'}`}
+                                >
+                                    {rate}x
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
 
         <div className="bg-white dark:bg-dark-card p-4 border-b border-[#C5A059]/30 flex gap-2">
              <select value={book} onChange={e => setBook(e.target.value)} className="flex-1 p-2 border rounded font-cinzel dark:bg-gray-800 dark:text-white">
@@ -390,6 +362,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
 
         {isAdmin && !isEditing && (
             <div className="bg-[#1a0f0f] text-[#C5A059] p-4 shadow-inner sticky top-[130px] z-20 border-b-4 border-[#8B0000]">
+                {/* Admin controls hidden for brevity, same as before */}
                 <div className="flex items-center justify-between mb-2">
                     <span className="font-cinzel text-xs flex items-center gap-2 font-bold"><Sparkles className="w-4 h-4" /> EDITOR CHEFE ({activeTab.toUpperCase()})</span>
                     <button onClick={() => setShowInstructions(!showInstructions)} className="text-xs underline hover:text-white">
@@ -397,33 +370,17 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
                     </button>
                 </div>
                 {showInstructions && (
-                    <textarea 
-                        value={customInstructions}
-                        onChange={(e) => setCustomInstructions(e.target.value)}
-                        placeholder="Ex: Foque na Trindade, refute o Unicismo, use grego koinê..."
-                        className="w-full p-2 text-xs text-black rounded mb-2 font-montserrat"
-                        rows={2}
-                    />
+                    <textarea value={customInstructions} onChange={(e) => setCustomInstructions(e.target.value)} placeholder="Instruções..." className="w-full p-2 text-xs text-black rounded mb-2 font-montserrat" rows={2} />
                 )}
                 <div className="flex gap-2">
-                    <button 
-                        onClick={() => handleGenerate('start')} 
-                        disabled={isGenerating}
-                        className="flex-1 px-3 py-2 border border-[#C5A059] rounded text-xs hover:bg-[#C5A059] hover:text-[#1a0f0f] transition disabled:opacity-50 font-bold"
-                    >
+                    <button onClick={() => handleGenerate('start')} disabled={isGenerating} className="flex-1 px-3 py-2 border border-[#C5A059] rounded text-xs hover:bg-[#C5A059] hover:text-[#1a0f0f] transition disabled:opacity-50 font-bold">
                         {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'INÍCIO (Padrão EBD)'}
                     </button>
-                    <button 
-                        onClick={() => handleGenerate('continue')} 
-                        disabled={isGenerating}
-                        className="flex-1 px-3 py-2 bg-[#C5A059] text-[#1a0f0f] font-bold rounded text-xs hover:bg-white transition disabled:opacity-50"
-                    >
+                    <button onClick={() => handleGenerate('continue')} disabled={isGenerating} className="flex-1 px-3 py-2 bg-[#C5A059] text-[#1a0f0f] font-bold rounded text-xs hover:bg-white transition disabled:opacity-50">
                         {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'CONTINUAR (+ Conteúdo)'}
                     </button>
                     {pages.length > 0 && (
-                        <button onClick={handleDeletePage} className="px-3 py-2 bg-red-900 text-white rounded hover:bg-red-700 transition">
-                            <Trash2 className="w-4 h-4" />
-                        </button>
+                        <button onClick={handleDeletePage} className="px-3 py-2 bg-red-900 text-white rounded hover:bg-red-700 transition"><Trash2 className="w-4 h-4" /></button>
                     )}
                 </div>
             </div>
@@ -448,11 +405,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
                             </button>
                         </div>
                      </div>
-                     <textarea 
-                        value={editValue} 
-                        onChange={e => setEditValue(e.target.value)}
-                        className="w-full h-[600px] p-4 font-mono text-sm border border-gray-300 rounded focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] outline-none dark:bg-gray-800 dark:text-white"
-                    />
+                     <textarea value={editValue} onChange={e => setEditValue(e.target.value)} className="w-full h-[600px] p-4 font-mono text-sm border border-gray-300 rounded focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] outline-none dark:bg-gray-800 dark:text-white" />
                  </div>
             ) : content && pages.length > 0 ? (
                 <div className="bg-white dark:bg-dark-card shadow-2xl p-8 md:p-16 min-h-[600px] border border-[#C5A059]/20 relative">
@@ -466,18 +419,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
                      
                      <div className="space-y-6">
                         {renderFormattedText(pages[currentPage])}
-
-                        {currentPage === pages.length - 1 && hasAccess && !isEditing && (
-                            <div className="mt-12 pt-8 border-t border-[#C5A059]/30 text-center animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                                <Sparkles className="w-8 h-8 text-[#C5A059] mx-auto mb-4 animate-pulse" />
-                                <h3 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#ff6b6b] mb-2">
-                                    Fim desta seção
-                                </h3>
-                                <p className="font-cormorant text-gray-600 dark:text-gray-300 italic mb-6">
-                                    Use "Continuar" no painel acima se desejar expandir.
-                                </p>
-                            </div>
-                        )}
                      </div>
                      <div className="absolute bottom-4 right-8 text-[#C5A059] font-cinzel text-sm">
                         {currentPage + 1} / {pages.length}
@@ -494,19 +435,11 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack }: any) {
 
         {pages.length > 1 && hasAccess && !isEditing && (
             <div className="fixed bottom-0 w-full bg-white dark:bg-dark-card border-t border-[#C5A059] p-4 flex justify-between items-center z-30 shadow-[0_-5px_20px_rgba(0,0,0,0.1)]">
-                <button 
-                    onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
-                    disabled={currentPage === 0}
-                    className="flex items-center gap-1 px-4 py-2 border rounded-lg text-[#8B0000] dark:text-[#ff6b6b] disabled:opacity-50 hover:bg-[#8B0000]/10 transition"
-                >
+                <button onClick={() => setCurrentPage(Math.max(0, currentPage - 1))} disabled={currentPage === 0} className="flex items-center gap-1 px-4 py-2 border rounded-lg text-[#8B0000] dark:text-[#ff6b6b] disabled:opacity-50 hover:bg-[#8B0000]/10 transition">
                     <ChevronLeft /> Anterior
                 </button>
                 <span className="font-cinzel font-bold text-[#1a0f0f] dark:text-white text-sm md:text-base">Página {currentPage + 1} de {pages.length}</span>
-                <button 
-                    onClick={() => setCurrentPage(Math.min(pages.length - 1, currentPage + 1))}
-                    disabled={currentPage === pages.length - 1}
-                    className="flex items-center gap-1 px-4 py-2 border rounded-lg text-[#8B0000] dark:text-[#ff6b6b] disabled:opacity-50 hover:bg-[#8B0000]/10 transition"
-                >
+                <button onClick={() => setCurrentPage(Math.min(pages.length - 1, currentPage + 1))} disabled={currentPage === pages.length - 1} className="flex items-center gap-1 px-4 py-2 border rounded-lg text-[#8B0000] dark:text-[#ff6b6b] disabled:opacity-50 hover:bg-[#8B0000]/10 transition">
                     Próximo <ChevronRight />
                 </button>
             </div>

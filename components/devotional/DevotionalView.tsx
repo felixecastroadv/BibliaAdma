@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Calendar, Loader2, Volume2, VolumeX, Edit3, Settings, RefreshCw, Command, ChevronRight, Lock, AlertCircle } from 'lucide-react';
+import { ChevronLeft, Calendar, Loader2, Volume2, VolumeX, Edit3, Settings, RefreshCw, Command, ChevronRight, Lock, AlertCircle, FastForward } from 'lucide-react';
 import { generateContent } from '../../services/geminiService';
 import { db } from '../../services/database';
 import { Devotional } from '../../types';
@@ -13,6 +13,7 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string>('');
+  const [playbackRate, setPlaybackRate] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
   const [customCommand, setCustomCommand] = useState('');
   const [showAdminControls, setShowAdminControls] = useState(false);
@@ -36,6 +37,14 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
     window.speechSynthesis.onvoiceschanged = loadVoices;
     return () => window.speechSynthesis.cancel();
   }, [displayDateStr]);
+
+  // Atualiza áudio em tempo real se mudar a velocidade
+  useEffect(() => {
+    if (isPlaying) {
+        window.speechSynthesis.cancel();
+        speakText();
+    }
+  }, [playbackRate]);
 
   const loadDevotional = async () => {
     setDevotional(null);
@@ -114,29 +123,33 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
     }
   };
 
+  const speakText = () => {
+    if(!devotional) return;
+    const cleanBody = devotional.body.replace(/\*\*/g, '').replace(/\*/g, '').replace(/\n/g, ' ');
+    const text = `${devotional.title}. ${devotional.reference}. ${devotional.verse_text}. ${cleanBody}. Oração: ${devotional.prayer}`;
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'pt-BR';
+    utter.rate = playbackRate;
+    const voice = voices.find(v => v.name === selectedVoice);
+    if (voice) utter.voice = voice;
+    utter.onend = () => setIsPlaying(false);
+    window.speechSynthesis.speak(utter);
+    setIsPlaying(true);
+  };
+
   const togglePlay = () => {
     if(!devotional) return;
     if (isPlaying) {
         window.speechSynthesis.cancel();
         setIsPlaying(false);
     } else {
-        // Limpa asteriscos para a leitura não falar "asterisco asterisco" e quebras excessivas
-        const cleanBody = devotional.body.replace(/\*\*/g, '').replace(/\*/g, '').replace(/\n/g, ' ');
-        const text = `${devotional.title}. ${devotional.reference}. ${devotional.verse_text}. ${cleanBody}. Oração: ${devotional.prayer}`;
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.lang = 'pt-BR';
-        const voice = voices.find(v => v.name === selectedVoice);
-        if (voice) utter.voice = voice;
-        utter.onend = () => setIsPlaying(false);
-        window.speechSynthesis.speak(utter);
-        setIsPlaying(true);
+        speakText();
     }
   };
 
   const handlePrevDay = () => setCurrentDate(addDays(currentDate, -1));
   const handleNextDay = () => setCurrentDate(addDays(currentDate, 1));
 
-  // Função auxiliar para limpar visualmente caso a IA ainda mande markdown
   const cleanTextDisplay = (text: string) => {
     return text.replace(/\*\*/g, '').replace(/##/g, '').trim();
   };
@@ -164,11 +177,31 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
       </div>
 
       {showSettings && (
-         <div className="bg-white dark:bg-dark-card p-4 border-b border-[#C5A059]">
-            <label className="text-sm font-bold text-gray-700 dark:text-gray-200">Voz de Leitura:</label>
-            <select className="w-full p-2 border rounded mt-1 dark:bg-gray-800 dark:text-white" value={selectedVoice} onChange={e => setSelectedVoice(e.target.value)}>
-                {voices.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
-            </select>
+         <div className="bg-white dark:bg-dark-card p-4 border-b border-[#C5A059] animate-in slide-in-from-top-2">
+            <div className="flex flex-col gap-4">
+                <div>
+                    <label className="text-sm font-bold text-gray-700 dark:text-gray-200">Voz de Leitura:</label>
+                    <select className="w-full p-2 border rounded mt-1 dark:bg-gray-800 dark:text-white" value={selectedVoice} onChange={e => setSelectedVoice(e.target.value)}>
+                        {voices.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <span className="font-montserrat text-sm font-bold text-[#1a0f0f] dark:text-gray-200 flex items-center gap-2 mb-1">
+                        <FastForward className="w-4 h-4" /> Velocidade:
+                    </span>
+                    <div className="flex gap-2">
+                        {[0.75, 1, 1.25, 1.5, 2].map(rate => (
+                            <button 
+                                key={rate}
+                                onClick={() => setPlaybackRate(rate)}
+                                className={`flex-1 py-1 text-xs font-bold rounded border ${playbackRate === rate ? 'bg-[#8B0000] text-white border-[#8B0000]' : 'bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600'}`}
+                            >
+                                {rate}x
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
          </div>
       )}
 

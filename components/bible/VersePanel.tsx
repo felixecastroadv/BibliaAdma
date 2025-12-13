@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, BookOpen, Languages, Loader2, RefreshCw, AlertTriangle, Send, Lock, Save, Sparkles } from 'lucide-react';
+import { X, BookOpen, Languages, Loader2, RefreshCw, AlertTriangle, Send, Lock, Save, Sparkles, Volume2, Pause, Play, FastForward } from 'lucide-react';
 import { db } from '../../services/database';
 import { generateContent } from '../../services/geminiService';
 import { generateVerseKey } from '../../constants';
@@ -29,6 +29,13 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
   const [showReport, setShowReport] = useState(false);
   const [reportText, setReportText] = useState('');
 
+  // Audio State
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoice, setSelectedVoice] = useState<string>('');
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [showAudioSettings, setShowAudioSettings] = useState(false);
+
   const verseKey = generateVerseKey(book, chapter, verseNumber);
   const isOT = OLD_TESTAMENT_BOOKS.includes(book);
   const lang = isOT ? 'hebraico' : 'grego';
@@ -37,7 +44,29 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
     if (isOpen && verse) {
         loadContent();
     }
+    // Stop audio when closing
+    if (!isOpen) {
+        window.speechSynthesis.cancel();
+        setIsPlaying(false);
+    }
   }, [isOpen, verse, activeTab]);
+
+  useEffect(() => {
+    const loadVoices = () => {
+        const available = window.speechSynthesis.getVoices().filter(v => v.lang.includes('pt'));
+        setVoices(available);
+        if(available.length > 0) setSelectedVoice(available[0].name);
+    };
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+  }, []);
+
+  useEffect(() => {
+    if (isPlaying) {
+        window.speechSynthesis.cancel();
+        speakText();
+    }
+  }, [playbackRate]);
 
   const loadContent = async () => {
     setLoading(true);
@@ -165,6 +194,29 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
     }
   };
 
+  const speakText = () => {
+    // Only speak commentary for now
+    if (!commentary || activeTab !== 'professor') return;
+    
+    const utter = new SpeechSynthesisUtterance(commentary.commentary_text);
+    utter.lang = 'pt-BR';
+    utter.rate = playbackRate;
+    const voice = voices.find(v => v.name === selectedVoice);
+    if (voice) utter.voice = voice;
+    utter.onend = () => setIsPlaying(false);
+    window.speechSynthesis.speak(utter);
+    setIsPlaying(true);
+  };
+
+  const togglePlay = () => {
+    if (isPlaying) {
+        window.speechSynthesis.cancel();
+        setIsPlaying(false);
+    } else {
+        speakText();
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -176,8 +228,50 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                     <h3 className="font-cinzel text-xl font-bold">{book} {chapter}:{verseNumber}</h3>
                     <p className="font-cormorant text-sm opacity-90 mt-1 line-clamp-2">{verse}</p>
                 </div>
-                <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full"><X className="w-6 h-6" /></button>
+                <div className="flex gap-2">
+                    {/* Audio Controls for Commentary */}
+                    {activeTab === 'professor' && commentary && (
+                        <button onClick={() => setShowAudioSettings(!showAudioSettings)} className="p-1 hover:bg-white/20 rounded-full">
+                            <Volume2 className={isPlaying ? "w-6 h-6 animate-pulse" : "w-6 h-6"} />
+                        </button>
+                    )}
+                    <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full"><X className="w-6 h-6" /></button>
+                </div>
             </div>
+
+            {/* Audio Settings Panel */}
+            {showAudioSettings && activeTab === 'professor' && (
+                <div className="bg-white dark:bg-gray-900 p-3 border-b border-[#C5A059] flex flex-col gap-2 animate-in slide-in-from-top-2">
+                    <div className="flex items-center justify-between">
+                        <button 
+                            onClick={togglePlay}
+                            className="bg-[#C5A059] text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 hover:bg-[#a88645]"
+                        >
+                            {isPlaying ? <Pause className="w-3 h-3"/> : <Play className="w-3 h-3"/>} 
+                            {isPlaying ? 'Pausar' : 'Ouvir Comentário'}
+                        </button>
+                        <select className="p-1 text-xs border rounded w-1/2 dark:bg-gray-800 dark:text-white" value={selectedVoice} onChange={e => setSelectedVoice(e.target.value)}>
+                            {voices.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
+                        </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                            <FastForward className="w-3 h-3" /> Vel:
+                        </span>
+                        <div className="flex gap-1 flex-1">
+                            {[0.75, 1, 1.25, 1.5, 2].map(rate => (
+                                <button 
+                                    key={rate}
+                                    onClick={() => setPlaybackRate(rate)}
+                                    className={`flex-1 py-1 text-[10px] font-bold rounded border ${playbackRate === rate ? 'bg-[#8B0000] text-white border-[#8B0000]' : 'bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600'}`}
+                                >
+                                    {rate}x
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="flex bg-[#F5F5DC] dark:bg-black border-b border-[#C5A059]">
                 <button 
