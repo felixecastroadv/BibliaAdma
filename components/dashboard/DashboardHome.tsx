@@ -11,28 +11,57 @@ interface DashboardProps {
     userProgress: any;
     darkMode: boolean;
     toggleDarkMode: () => void;
+    onShowToast: (msg: string, type: 'info' | 'success' | 'error') => void;
 }
 
-export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user, userProgress, darkMode, toggleDarkMode }: DashboardProps) {
+export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user, userProgress, darkMode, toggleDarkMode, onShowToast }: DashboardProps) {
   const [clicks, setClicks] = useState(0);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isStandalone, setIsStandalone] = useState(true); // Assume true initially to avoid flicker
 
   useEffect(() => {
-    // Captura o evento de instalação do Chrome
+    // 1. Detectar se já está instalado/standalone
+    const checkStandalone = () => {
+        const isStand = window.matchMedia('(display-mode: standalone)').matches || 
+                        (window.navigator as any).standalone === true;
+        setIsStandalone(isStand);
+    };
+    
+    checkStandalone();
+    window.addEventListener('resize', checkStandalone);
+
+    // 2. Captura o evento de instalação do Chrome
     const handler = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
+      setIsStandalone(false); // Se o evento disparou, com certeza não está instalado
     };
     window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+
+    return () => {
+        window.removeEventListener('beforeinstallprompt', handler);
+        window.removeEventListener('resize', checkStandalone);
+    };
   }, []);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setDeferredPrompt(null);
+    if (deferredPrompt) {
+        // Cenário ideal: O navegador permitiu a instalação programática
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            setDeferredPrompt(null);
+        }
+    } else {
+        // Cenário Fallback: O navegador não disparou o evento (comum no Desktop Chrome se já foi fechado)
+        // Instruir o usuário manualmente
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        
+        if (isIOS) {
+            onShowToast("No iPhone: Toque em 'Compartilhar' e depois em 'Adicionar à Tela de Início'.", "info");
+        } else {
+            onShowToast("Para instalar: Clique no ícone de instalação na barra de endereços (PC) ou no menu 'Três Pontos' > 'Instalar App' (Android).", "info");
+        }
     }
   };
 
@@ -63,13 +92,13 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
         <div className="bg-gradient-to-b from-[#8B0000] to-[#600018] text-white p-8 rounded-b-[40px] shadow-xl relative overflow-hidden pb-16">
             <div className="absolute top-4 right-4 z-20 flex gap-2">
                 <AnimatePresence>
-                    {deferredPrompt && (
+                    {!isStandalone && (
                         <motion.button 
                             initial={{ opacity: 0, scale: 0.8 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.8 }}
                             onClick={handleInstallClick} 
-                            className="p-2 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/30 flex items-center gap-2 px-3 transition-all"
+                            className="p-2 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/30 flex items-center gap-2 px-3 transition-all border border-white/30"
                             title="Instalar App"
                         >
                             <Download className="w-5 h-5" />
@@ -77,7 +106,7 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                         </motion.button>
                     )}
                 </AnimatePresence>
-                <button onClick={toggleDarkMode} className="p-2 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all">
+                <button onClick={toggleDarkMode} className="p-2 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all border border-white/30">
                     {darkMode ? <Sun className="w-5 h-5 text-yellow-300" /> : <Moon className="w-5 h-5 text-white" />}
                 </button>
             </div>

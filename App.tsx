@@ -68,7 +68,7 @@ export default function App() {
 
   const showToast = (msg: string, type: 'success'|'error'|'info') => {
     setToast({ msg, type });
-    setTimeout(() => setToast({ msg: '', type: 'info' }), 4000);
+    setTimeout(() => setToast({ msg: '', type: 'info' }), 5000);
   };
 
   const handleAdminSuccess = () => {
@@ -97,6 +97,7 @@ export default function App() {
                 userProgress={userProgress}
                 darkMode={darkMode}
                 toggleDarkMode={toggleDarkMode}
+                onShowToast={showToast}
             />;
         case 'reader':
             return <BibleReader 
