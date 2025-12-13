@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, GraduationCap, ShieldCheck, Trophy, Calendar, ListChecks, Mail, CheckCircle2, Moon, Sun, Download, Instagram } from 'lucide-react';
+import { BookOpen, GraduationCap, ShieldCheck, Trophy, Calendar, ListChecks, Mail, CheckCircle2, Moon, Sun, Download, Instagram, X, Share, MoreVertical, Monitor } from 'lucide-react';
 import { CHURCH_NAME, TOTAL_CHAPTERS, APP_VERSION } from '../../constants';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -17,7 +17,11 @@ interface DashboardProps {
 export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user, userProgress, darkMode, toggleDarkMode, onShowToast }: DashboardProps) {
   const [clicks, setClicks] = useState(0);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [isStandalone, setIsStandalone] = useState(true); // Assume true initially to avoid flicker
+  const [isStandalone, setIsStandalone] = useState(true);
+  
+  // Modais de Instrução
+  const [showIOSInstructions, setShowIOSInstructions] = useState(false);
+  const [showDesktopInstructions, setShowDesktopInstructions] = useState(false);
 
   useEffect(() => {
     // 1. Detectar se já está instalado/standalone
@@ -30,38 +34,54 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
     checkStandalone();
     window.addEventListener('resize', checkStandalone);
 
-    // 2. Captura o evento de instalação do Chrome
-    const handler = (e: any) => {
-      e.preventDefault();
+    // 2. Captura o evento de instalação do Chrome (Android/Desktop)
+    const handleBeforeInstall = (e: any) => {
+      e.preventDefault(); // Impede o banner nativo automático (queremos controlar no botão)
       setDeferredPrompt(e);
-      setIsStandalone(false); // Se o evento disparou, com certeza não está instalado
+      setIsStandalone(false); // Se o evento disparou, o app NÃO está instalado
     };
-    window.addEventListener('beforeinstallprompt', handler);
+
+    // 3. Detecta quando o app foi instalado com sucesso para esconder o botão
+    const handleAppInstalled = () => {
+        setIsStandalone(true);
+        setDeferredPrompt(null);
+        setShowDesktopInstructions(false);
+        setShowIOSInstructions(false);
+        onShowToast("Aplicativo instalado com sucesso!", "success");
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
-        window.removeEventListener('beforeinstallprompt', handler);
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
         window.removeEventListener('resize', checkStandalone);
+        window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
   const handleInstallClick = async () => {
+    // TENTATIVA 1: Instalação Automática Nativa (Android / PC Chrome Novo)
     if (deferredPrompt) {
-        // Cenário ideal: O navegador permitiu a instalação programática
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
         if (outcome === 'accepted') {
             setDeferredPrompt(null);
         }
+        return;
+    }
+
+    // TENTATIVA 2: Fallback Manual (iOS ou PC Bloqueado)
+    // Se chegou aqui, o navegador NÃO permite instalação via botão direto.
+    // Precisamos guiar o usuário.
+    const ua = navigator.userAgent.toLowerCase();
+    const isIOS = /iphone|ipad|ipod/.test(ua);
+    
+    if (isIOS) {
+        setShowIOSInstructions(true);
     } else {
-        // Cenário Fallback: O navegador não disparou o evento (comum no Desktop Chrome se já foi fechado)
-        // Instruir o usuário manualmente
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        
-        if (isIOS) {
-            onShowToast("No iPhone: Toque em 'Compartilhar' e depois em 'Adicionar à Tela de Início'.", "info");
-        } else {
-            onShowToast("Para instalar: Clique no ícone de instalação na barra de endereços (PC) ou no menu 'Três Pontos' > 'Instalar App' (Android).", "info");
-        }
+        // Assume Desktop ou Android sem suporte a prompt direto
+        setShowDesktopInstructions(true);
     }
   };
 
@@ -88,6 +108,83 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
 
   return (
     <div className="min-h-screen bg-[#F5F5DC] dark:bg-dark-bg transition-colors duration-300">
+        {/* MODAL DE INSTRUÇÕES IOS */}
+        <AnimatePresence>
+            {showIOSInstructions && (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
+                    <motion.div 
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-black/60 pointer-events-auto"
+                        onClick={() => setShowIOSInstructions(false)}
+                    />
+                    <motion.div 
+                        initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }}
+                        className="bg-white dark:bg-[#1E1E1E] w-full max-w-sm rounded-t-2xl sm:rounded-2xl p-6 relative z-10 pointer-events-auto pb-10 sm:pb-6"
+                    >
+                        <button onClick={() => setShowIOSInstructions(false)} className="absolute top-4 right-4"><X className="w-6 h-6 text-gray-500"/></button>
+                        <div className="text-center">
+                            <Share className="w-12 h-12 mx-auto text-blue-500 mb-4" />
+                            <h3 className="font-cinzel font-bold text-xl mb-2 dark:text-white">Instalar no iPhone</h3>
+                            <p className="font-montserrat text-sm text-gray-600 dark:text-gray-300 mb-4">A Apple exige instalação manual:</p>
+                            <ol className="text-left text-sm space-y-3 bg-gray-50 dark:bg-black/20 p-4 rounded-xl">
+                                <li className="flex items-center gap-2 dark:text-gray-200">
+                                    <span className="bg-gray-200 dark:bg-gray-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                                    Toque em <strong>Compartilhar</strong> <Share className="w-4 h-4 inline" />
+                                </li>
+                                <li className="flex items-center gap-2 dark:text-gray-200">
+                                    <span className="bg-gray-200 dark:bg-gray-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                                    Selecione <strong>"Adicionar à Tela de Início"</strong>.
+                                </li>
+                            </ol>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+        </AnimatePresence>
+
+        {/* MODAL DE INSTRUÇÕES DESKTOP/PC */}
+        <AnimatePresence>
+            {showDesktopInstructions && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+                    <motion.div 
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-black/60 pointer-events-auto"
+                        onClick={() => setShowDesktopInstructions(false)}
+                    />
+                    <motion.div 
+                        initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
+                        className="bg-white dark:bg-[#1E1E1E] w-full max-w-md rounded-2xl p-6 relative z-10 pointer-events-auto"
+                    >
+                        <button onClick={() => setShowDesktopInstructions(false)} className="absolute top-4 right-4"><X className="w-6 h-6 text-gray-500"/></button>
+                        <div className="text-center">
+                            <Monitor className="w-12 h-12 mx-auto text-[#8B0000] dark:text-[#ff6b6b] mb-4" />
+                            <h3 className="font-cinzel font-bold text-xl mb-2 dark:text-white">Instalar no Computador</h3>
+                            <p className="font-montserrat text-sm text-gray-600 dark:text-gray-300 mb-4">Seu navegador bloqueou a instalação automática.</p>
+                            
+                            <div className="bg-gray-100 dark:bg-black/30 p-4 rounded-xl text-left border-l-4 border-[#C5A059]">
+                                <p className="text-sm font-bold mb-2 dark:text-white">Como forçar a instalação:</p>
+                                <div className="flex flex-col gap-2 text-sm text-gray-800 dark:text-gray-200">
+                                    <div className="flex items-center gap-2">
+                                        <Download className="w-4 h-4 text-[#8B0000] dark:text-[#ff6b6b]" />
+                                        <span>Procure o ícone de <strong>Download/Instalar</strong> na barra de endereço (onde digita o site).</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 ml-1 opacity-80 text-xs mt-2">
+                                        <span>Ou: Menu (três pontos) &gt; Salvar e Compartilhar &gt; Instalar página como App.</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => setShowDesktopInstructions(false)}
+                                className="mt-6 w-full py-3 bg-[#8B0000] text-white rounded-lg font-bold font-cinzel hover:bg-[#600018]"
+                            >
+                                Entendi
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+        </AnimatePresence>
+
         {/* Hero */}
         <div className="bg-gradient-to-b from-[#8B0000] to-[#600018] text-white p-8 rounded-b-[40px] shadow-xl relative overflow-hidden pb-16">
             <div className="absolute top-4 right-4 z-20 flex gap-2">
@@ -98,11 +195,11 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.8 }}
                             onClick={handleInstallClick} 
-                            className="p-2 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/30 flex items-center gap-2 px-3 transition-all border border-white/30"
+                            className="p-2 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/30 flex items-center gap-2 px-3 transition-all border border-white/30 group"
                             title="Instalar App"
                         >
-                            <Download className="w-5 h-5" />
-                            <span className="text-xs font-bold hidden md:inline">Instalar</span>
+                            <Download className="w-5 h-5 group-hover:animate-bounce" />
+                            <span className="text-xs font-bold hidden md:inline">Instalar App</span>
                         </motion.button>
                     )}
                 </AnimatePresence>
