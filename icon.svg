@@ -1,5 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="120" fill="#8B0000"/>
-  <path d="M384 96H128c-17.67 0-32 14.33-32 32v288c0 17.67 14.33 32 32 32h256c17.67 0 32-14.33 32-32V128c0-17.67-14.33-32-32-32zm-12.45 28.35l-74.88 74.88c-4.69 4.69-12.28 4.69-16.97 0l-74.88-74.88c-4.69-4.69-4.69-12.28 0-16.97s12.28-4.69 16.97 0L256 141.66l34.22-34.22c4.69-4.69 12.28-4.69 16.97 0s4.68 12.28 0 16.97z" fill="none"/>
-  <path d="M140 130v250c0 10 15 15 25 15h80V130h-105zm125 265h80c10 0 25-5 25-15V130H265v265z" fill="#FFFFFF"/>
+  <!-- Fundo: Quadrado Arredondado Vermelho Escuro (Cor da Marca) -->
+  <rect width="512" height="512" rx="120" ry="120" fill="#8B0000"/>
+  
+  <!-- Ícone do Livro: Traço Branco, Centralizado e Espesso -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="36" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Página Esquerda -->
+    <path d="M256 140c-50 0-110 20-130 40v200c20-20 80-40 130-40"/>
+    <!-- Página Direita -->
+    <path d="M256 140c50 0 110 20 130 40v200c-20-20-80-40-130-40"/>
+    <!-- Lombada Central -->
+    <path d="M256 140v200"/>
+  </g>
 </svg>

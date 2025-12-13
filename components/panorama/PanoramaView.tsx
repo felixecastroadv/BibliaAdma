@@ -17,6 +17,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   const [customInstructions, setCustomInstructions] = useState('');
   const [showInstructions, setShowInstructions] = useState(false);
 
+  // --- NOVOS ESTADOS PARA EDIÇÃO MANUAL ---
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
 
@@ -69,6 +70,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         const text = activeTab === 'student' ? content.student_content : content.teacher_content;
         processAndPaginate(text);
         setCurrentPage(0);
+        // Sempre sai do modo de edição ao trocar de aba ou capítulo para evitar sobrescrita acidental
         setIsEditing(false);
     } else {
         setPages([]);
@@ -203,7 +205,9 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     });
   };
 
+  // --- FUNÇÕES DE EDIÇÃO MANUAL ---
   const handleStartEditing = () => {
+    // Carrega o conteúdo da aba ativa para o editor
     const text = activeTab === 'student' ? content?.student_content : content?.teacher_content;
     setEditValue(text || '');
     setIsEditing(true);
@@ -211,15 +215,23 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
   const handleSaveManualEdit = async () => {
     if (!content) return;
+    
+    // Atualiza apenas o conteúdo da aba que estava sendo editada
     const data = {
         ...content,
         student_content: activeTab === 'student' ? editValue : content.student_content,
         teacher_content: activeTab === 'teacher' ? editValue : content.teacher_content,
     };
-    if (content.id) await db.entities.PanoramaBiblico.update(content.id, data);
-    await loadContent();
-    setIsEditing(false);
-    onShowToast('Texto atualizado manualmente!', 'success');
+
+    try {
+        if (content.id) await db.entities.PanoramaBiblico.update(content.id, data);
+        await loadContent(); // Recarrega do banco para confirmar
+        setIsEditing(false);
+        onShowToast('Texto atualizado manualmente com sucesso!', 'success');
+    } catch (e) {
+        console.error(e);
+        onShowToast('Erro ao salvar edição.', 'error');
+    }
   };
 
   const handleGenerate = async (mode: 'start' | 'continue') => {
@@ -310,8 +322,9 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             <button onClick={onBack}><ChevronLeft /></button>
             <h2 className="font-cinzel font-bold">Panorama EBD</h2>
             <div className="flex gap-2">
-                {isAdmin && (
-                    <button onClick={handleStartEditing} title="Editar Manualmente">
+                {/* BOTÃO DE EDIÇÃO MANUAL (Apenas Admin) */}
+                {isAdmin && !isEditing && content && (
+                    <button onClick={handleStartEditing} title="Editar Texto Manualmente" className="p-2 hover:bg-white/10 rounded-full">
                         <Edit className="w-5 h-5 text-[#C5A059]" />
                     </button>
                 )}
@@ -416,19 +429,28 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                     <p className="font-cinzel text-xl">Conteúdo Restrito ao Admin/Professor</p>
                 </div>
             ) : isEditing ? (
-                 <div className="bg-white dark:bg-dark-card shadow-2xl p-4 rounded-lg border border-[#C5A059] relative">
-                     <div className="flex justify-between items-center mb-4 border-b pb-2">
-                        <h3 className="font-cinzel font-bold text-[#8B0000] dark:text-[#ff6b6b]">Modo de Edição Manual</h3>
+                 <div className="bg-white dark:bg-dark-card shadow-2xl p-4 rounded-lg border border-[#C5A059] relative animate-in slide-in-from-bottom-5">
+                     <div className="flex justify-between items-center mb-4 border-b border-[#C5A059]/30 pb-2">
+                        <h3 className="font-cinzel font-bold text-[#8B0000] dark:text-[#ff6b6b] flex items-center gap-2">
+                            <Edit className="w-5 h-5" /> Modo de Edição Manual
+                        </h3>
                         <div className="flex gap-2">
-                            <button onClick={() => setIsEditing(false)} className="px-3 py-1 text-sm border border-red-500 text-red-500 rounded flex items-center gap-1">
+                            <button onClick={() => setIsEditing(false)} className="px-3 py-1 text-sm border border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded flex items-center gap-1 transition-colors">
                                 <X className="w-4 h-4"/> Cancelar
                             </button>
-                            <button onClick={handleSaveManualEdit} className="px-3 py-1 text-sm bg-green-600 text-white rounded flex items-center gap-1">
-                                <Save className="w-4 h-4"/> Salvar
+                            <button onClick={handleSaveManualEdit} className="px-3 py-1 text-sm bg-green-600 text-white hover:bg-green-700 rounded flex items-center gap-1 transition-colors shadow-sm">
+                                <Save className="w-4 h-4"/> Salvar Alterações
                             </button>
                         </div>
                      </div>
-                     <textarea value={editValue} onChange={e => setEditValue(e.target.value)} className="w-full h-[600px] p-4 font-mono text-sm border border-gray-300 rounded focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] outline-none dark:bg-gray-800 dark:text-white" />
+                     <p className="text-xs text-gray-500 mb-2 font-montserrat">
+                        Edite o conteúdo bruto abaixo. Use <code>&lt;hr class="page-break"&gt;</code> para criar novas páginas.
+                     </p>
+                     <textarea 
+                        value={editValue} 
+                        onChange={e => setEditValue(e.target.value)} 
+                        className="w-full h-[600px] p-4 font-mono text-sm border border-gray-300 rounded focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] outline-none dark:bg-gray-800 dark:text-white dark:border-gray-700" 
+                     />
                  </div>
             ) : content && pages.length > 0 ? (
                 <div className="bg-white dark:bg-dark-card shadow-2xl p-8 md:p-16 min-h-[600px] border border-[#C5A059]/20 relative">
