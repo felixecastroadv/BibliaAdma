@@ -2,7 +2,8 @@
 import { BibleBook, ReadingPlan } from './types';
 
 export const CHURCH_NAME = "ASSEMBLEIA DE DEUS MINISTÉRIO ÁGAPE";
-export const APP_VERSION = "v11.2 - Correção Leitura";
+export const PASTOR_PRESIDENT = "Pr. Daniel Barbosa";
+export const APP_VERSION = "v11.3 - Edição Oficial";
 
 export const BIBLE_BOOKS: BibleBook[] = [
   { name: "Gênesis", abbrev: "gn", chapters: 50, testament: "old" },
@@ -179,4 +180,3 @@ export const generateChapterKey = (book: string, chapter: number) => {
 export const generateVerseKey = (book: string, chapter: number, verse: number) => {
   return `${book.toLowerCase().replace(/\s/g, '_')}_${chapter}_${verse}`;
 };
-    

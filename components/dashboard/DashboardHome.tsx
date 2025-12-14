@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { BookOpen, GraduationCap, ShieldCheck, Trophy, Calendar, ListChecks, Mail, CheckCircle2, Moon, Sun, Download, Instagram, X, Share, MoreVertical, Monitor, LogOut } from 'lucide-react';
-import { CHURCH_NAME, TOTAL_CHAPTERS, APP_VERSION } from '../../constants';
+import { CHURCH_NAME, TOTAL_CHAPTERS, APP_VERSION, PASTOR_PRESIDENT } from '../../constants';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface DashboardProps {
@@ -212,11 +213,18 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                 </button>
             </div>
             <div className="relative z-10 text-center">
-                <h2 className="font-montserrat text-xs tracking-[0.3em] uppercase opacity-80 mb-2">{CHURCH_NAME}</h2>
+                <h2 className="font-montserrat text-xs tracking-[0.3em] uppercase opacity-80 mb-1">{CHURCH_NAME}</h2>
+                <div className="inline-block bg-[#C5A059]/20 px-3 py-1 rounded-full mb-4 border border-[#C5A059]/30">
+                    <p className="font-cinzel text-[10px] font-bold uppercase text-[#C5A059] tracking-widest">
+                        Presidente: {PASTOR_PRESIDENT}
+                    </p>
+                </div>
+                
                 <h1 onClick={handleLogoClick} className="font-cinzel text-4xl font-bold mb-1 cursor-pointer select-none active:scale-95 transition-transform">
                     Bíblia ADMA
                 </h1>
                 <p className="font-cormorant italic text-lg opacity-90">Prof. Michel Felix</p>
+                
                 <div className="mt-4 flex items-center justify-center gap-2">
                     <div className="bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm">
                         <span className="font-montserrat text-xs">Olá, {user?.user_name?.split(' ')[0] || 'Visitante'}</span>

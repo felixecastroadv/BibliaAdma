@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { BookOpen, User, ArrowRight, Loader2, Moon, Sun } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { CHURCH_NAME } from '../../constants';
+import { CHURCH_NAME, PASTOR_PRESIDENT } from '../../constants';
 
 interface LoginScreenProps {
   onLogin: (firstName: string, lastName: string) => void;
@@ -36,7 +37,11 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
             </div>
             <h1 className="font-cinzel text-3xl font-bold text-[#1a0f0f] dark:text-white mb-1">Bíblia ADMA</h1>
             <p className="font-cormorant text-[#1a0f0f]/60 dark:text-white/60 text-lg italic">Prof. Michel Felix</p>
-            <p className="font-montserrat text-xs mt-4 text-[#8B0000] dark:text-[#C5A059] uppercase tracking-widest">{CHURCH_NAME}</p>
+            
+            <div className="mt-4 border-t border-[#C5A059]/20 pt-4">
+                <p className="font-montserrat text-xs text-[#8B0000] dark:text-[#C5A059] uppercase tracking-widest font-bold">{CHURCH_NAME}</p>
+                <p className="font-cinzel text-[10px] text-gray-500 dark:text-gray-400 mt-1 uppercase">Presidente: {PASTOR_PRESIDENT}</p>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
