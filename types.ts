@@ -1,3 +1,4 @@
+
 export interface BibleBook {
   name: string;
   abbrev: string;
@@ -90,4 +91,23 @@ export interface Devotional {
   body: string;
   prayer: string;
   is_published: boolean;
+}
+
+export interface PrayerRequest {
+  id?: string;
+  user_name: string;
+  user_email: string;
+  request_text: string;
+  date: string; // ISO
+  prayer_count: number;
+  category: 'saude' | 'familia' | 'espiritual' | 'financeiro' | 'outros';
+}
+
+export interface Announcement {
+  id?: string;
+  title: string;
+  message: string;
+  date: string;
+  author: string;
+  priority: 'alta' | 'normal';
 }

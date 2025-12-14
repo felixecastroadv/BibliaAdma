@@ -146,6 +146,48 @@ export const db = {
       delete: async (id: string) => {
          await apiCall('delete', 'devotional', { id });
       }
+    },
+
+    PrayerRequests: {
+        list: async () => {
+            const data = await apiCall('list', 'prayer_requests');
+            // Ordenar por data (mais recente primeiro)
+            return data.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        },
+        create: async (data: any) => {
+            const newItem = { ...data, id: data.id || Date.now().toString() };
+            await apiCall('save', 'prayer_requests', { item: newItem });
+            return newItem;
+        },
+        update: async (id: string, updates: any) => {
+            // Em um backend real seria PATCH. Aqui fazemos busca e update.
+            const all = await apiCall('list', 'prayer_requests');
+            const existing = all.find((i: any) => i.id === id);
+            if(existing) {
+                const updated = { ...existing, ...updates };
+                await apiCall('save', 'prayer_requests', { item: updated });
+                return updated;
+            }
+            return null;
+        },
+        delete: async (id: string) => {
+             await apiCall('delete', 'prayer_requests', { id });
+        }
+    },
+
+    Announcements: {
+        list: async () => {
+            const data = await apiCall('list', 'announcements');
+            return data.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        },
+        create: async (data: any) => {
+            const newItem = { ...data, id: data.id || Date.now().toString() };
+            await apiCall('save', 'announcements', { item: newItem });
+            return newItem;
+        },
+        delete: async (id: string) => {
+             await apiCall('delete', 'announcements', { id });
+        }
     }
   }
 };

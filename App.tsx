@@ -151,7 +151,7 @@ export default function App() {
         case 'ranking':
             return <RankingView onBack={() => setView('dashboard')} />;
         case 'messages':
-            return <MessagesView onBack={() => setView('dashboard')} />;
+            return <MessagesView onBack={() => setView('dashboard')} isAdmin={isAdmin} user={user} />;
         default:
             return <div className="dark:text-white">Page not found</div>;
     }

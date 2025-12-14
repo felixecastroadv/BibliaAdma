@@ -1,11 +1,14 @@
+
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Trophy, Medal, Crown, User, Loader2, BookOpen, GraduationCap } from 'lucide-react';
+import { ChevronLeft, Trophy, Medal, Crown, User, Loader2, BookOpen, GraduationCap, X, Flame, Star, Shield } from 'lucide-react';
 import { db } from '../../services/database';
+import { AnimatePresence, motion } from 'framer-motion';
 
 export default function RankingView({ onBack }: any) {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'chapters' | 'ebd'>('chapters');
+  const [selectedUser, setSelectedUser] = useState<any>(null);
 
   useEffect(() => {
     loadData();
@@ -13,35 +16,26 @@ export default function RankingView({ onBack }: any) {
 
   const loadData = async () => {
     setLoading(true);
-    // Busca os Top 100 usuários ordenados pelo tipo selecionado
     const data = await db.entities.ReadingProgress.list(activeTab, 100);
     setUsers(data);
     setLoading(false);
   };
 
-  // Função utilitária para limpar nomes que foram salvos como e-mail
   const formatUserName = (rawName: string) => {
     if (!rawName) return "Anônimo";
-    
-    // Se parecer um e-mail do sistema (tem @)
     if (rawName.includes('@')) {
-        // Pega a parte antes do @ (ex: michel.felix)
         const prefix = rawName.split('@')[0];
-        // Substitui pontos por espaços e capitaliza cada palavra
-        return prefix.split('.').map(part => {
-            return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
-        }).join(' ');
+        return prefix.split('.').map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()).join(' ');
     }
-    
     return rawName;
   };
 
   const getPositionStyle = (index: number) => {
     switch (index) {
-        case 0: return 'bg-gradient-to-r from-yellow-300 to-yellow-500 text-yellow-900 border-yellow-400 transform scale-105'; // Ouro
-        case 1: return 'bg-gradient-to-r from-gray-300 to-gray-400 text-gray-900 border-gray-400'; // Prata
-        case 2: return 'bg-gradient-to-r from-orange-300 to-orange-400 text-orange-900 border-orange-400'; // Bronze
-        default: return 'bg-white dark:bg-dark-card border-gray-200 dark:border-gray-700';
+        case 0: return 'bg-gradient-to-r from-yellow-300 to-yellow-500 text-yellow-900 border-yellow-400 transform scale-105';
+        case 1: return 'bg-gradient-to-r from-gray-300 to-gray-400 text-gray-900 border-gray-400';
+        case 2: return 'bg-gradient-to-r from-orange-300 to-orange-400 text-orange-900 border-orange-400';
+        default: return 'bg-white dark:bg-dark-card border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer';
     }
   };
 
@@ -54,14 +48,93 @@ export default function RankingView({ onBack }: any) {
     }
   };
 
+  // Funções de Medalha
+  const getBadges = (u: any) => {
+      const badges = [];
+      const caps = u.total_chapters || 0;
+      const ebds = u.total_ebd_read || 0;
+
+      if (caps >= 50) badges.push({ icon: BookOpen, label: "Leitor de Gênesis", color: "text-blue-500" });
+      if (caps >= 300) badges.push({ icon: Star, label: "Devoto da Palavra", color: "text-yellow-500" });
+      if (caps >= 1189) badges.push({ icon: Crown, label: "Bíblia Completa", color: "text-purple-500" });
+      
+      if (ebds >= 1) badges.push({ icon: GraduationCap, label: "Estudante EBD", color: "text-green-500" });
+      if (ebds >= 10) badges.push({ icon: Shield, label: "Teólogo Jr", color: "text-red-500" });
+
+      if (u.active_plans?.some((p: any) => p.isCompleted)) {
+          badges.push({ icon: Trophy, label: "Finalizador de Planos", color: "text-orange-500" });
+      }
+
+      return badges;
+  };
+
   return (
     <div className="min-h-screen bg-[#F5F5DC] dark:bg-dark-bg transition-colors duration-300 pb-10">
+        {/* User Profile Modal */}
+        <AnimatePresence>
+            {selectedUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <motion.div 
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-black/60"
+                        onClick={() => setSelectedUser(null)}
+                    />
+                    <motion.div 
+                        initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+                        className="bg-white dark:bg-[#1E1E1E] w-full max-w-sm rounded-2xl p-6 relative z-10 shadow-2xl border-2 border-[#C5A059]"
+                    >
+                        <button onClick={() => setSelectedUser(null)} className="absolute top-4 right-4 text-gray-500"><X /></button>
+                        
+                        <div className="flex flex-col items-center mb-6">
+                            <div className="w-20 h-20 bg-gradient-to-br from-[#8B0000] to-[#600018] rounded-full flex items-center justify-center mb-3 shadow-lg">
+                                <span className="font-cinzel font-bold text-3xl text-white">
+                                    {formatUserName(selectedUser.user_name).charAt(0)}
+                                </span>
+                            </div>
+                            <h2 className="font-cinzel font-bold text-xl text-[#1a0f0f] dark:text-white text-center">
+                                {formatUserName(selectedUser.user_name)}
+                            </h2>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Membro ADMA</p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 mb-6">
+                            <div className="bg-gray-100 dark:bg-black/30 p-3 rounded-lg text-center">
+                                <BookOpen className="w-5 h-5 mx-auto text-[#8B0000] mb-1" />
+                                <span className="block font-bold text-lg dark:text-white">{selectedUser.total_chapters || 0}</span>
+                                <span className="text-xs text-gray-500">Capítulos</span>
+                            </div>
+                            <div className="bg-gray-100 dark:bg-black/30 p-3 rounded-lg text-center">
+                                <GraduationCap className="w-5 h-5 mx-auto text-[#C5A059] mb-1" />
+                                <span className="block font-bold text-lg dark:text-white">{selectedUser.total_ebd_read || 0}</span>
+                                <span className="text-xs text-gray-500">Estudos</span>
+                            </div>
+                        </div>
+
+                        <h3 className="font-bold text-sm text-gray-500 uppercase mb-3 flex items-center gap-1">
+                            <Medal className="w-4 h-4" /> Medalhas & Conquistas
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                            {getBadges(selectedUser).length > 0 ? (
+                                getBadges(selectedUser).map((badge, i) => (
+                                    <div key={i} className="flex items-center gap-1 bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded-full border border-gray-200 dark:border-gray-700">
+                                        <badge.icon className={`w-3 h-3 ${badge.color}`} />
+                                        <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{badge.label}</span>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-xs text-gray-400 italic">Nenhuma medalha ainda.</p>
+                            )}
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+        </AnimatePresence>
+
         <div className="bg-[#8B0000] text-white p-4 flex items-center gap-4 sticky top-0 shadow-lg z-10">
             <button onClick={onBack}><ChevronLeft /></button>
             <h1 className="font-cinzel font-bold">Ranking Global</h1>
         </div>
 
-        {/* Tabs */}
         <div className="flex bg-white dark:bg-dark-card border-b border-[#C5A059]">
             <button 
                 onClick={() => setActiveTab('chapters')}
@@ -85,7 +158,7 @@ export default function RankingView({ onBack }: any) {
                         : '"Crescei na graça e no conhecimento..." (2 Pe 3:18)'}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {activeTab === 'chapters' ? 'Ranking por Capítulos Lidos' : 'Ranking por Estudos EBD Concluídos'}
+                    Toque em um usuário para ver suas medalhas.
                 </p>
             </div>
 
@@ -99,6 +172,7 @@ export default function RankingView({ onBack }: any) {
                     {users.map((u, idx) => (
                         <div 
                             key={idx} 
+                            onClick={() => setSelectedUser(u)}
                             className={`p-4 rounded-xl shadow-md flex items-center gap-4 border transition-all ${getPositionStyle(idx)}`}
                         >
                             <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
