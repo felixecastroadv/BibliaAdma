@@ -10,7 +10,8 @@ import RankingView from './components/ranking/RankingView';
 import MessagesView from './components/messages/MessagesView';
 import AdminPasswordModal from './components/modals/AdminPasswordModal';
 import Toast from './components/ui/Toast';
-import BottomNav from './components/ui/BottomNav'; // Nova Importação
+import BottomNav from './components/ui/BottomNav';
+import NetworkStatus from './components/ui/NetworkStatus'; // Novo Componente
 import { db } from './services/database';
 
 export default function App() {
@@ -49,9 +50,12 @@ export default function App() {
   }, [darkMode]);
 
   const loadProgress = async (email: string, nameFallback?: string) => {
+    // Agora usando a versão com cache, o load é quase instantâneo mesmo offline
     const p = await db.entities.ReadingProgress.filter({ user_email: email });
     if (p.length) setUserProgress(p[0]);
     else {
+        // Se não existir, cria (mas se estiver offline, pode falhar o create real, 
+        // mas o app vai tentar seguir com objeto em memória)
         const displayName = nameFallback || user?.user_name || email;
         const newP = await db.entities.ReadingProgress.create({ 
             user_email: email, 
@@ -170,6 +174,9 @@ export default function App() {
         )}
 
         <AdminPasswordModal isOpen={showAdminModal} onClose={() => setShowAdminModal(false)} onSuccess={handleAdminSuccess} />
+        
+        {/* Componentes Globais de UI */}
+        <NetworkStatus />
         {toast.msg && <Toast message={toast.msg} type={toast.type} onClose={() => setToast({ ...toast, msg: '' })} />}
     </div>
   );

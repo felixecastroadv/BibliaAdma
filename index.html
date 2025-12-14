@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR" class="light">
   <head>
@@ -7,17 +8,22 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Bíblia ADMA">
-    <meta name="description" content="Bíblia de Estudo ADMA - Prof. Michel Felix">
+    <meta name="description" content="Bíblia de Estudo ADMA - Prof. Michel Felix. App cristão com recursos offline.">
     
     <title>Bíblia ADMA - Prof. Michel Felix</title>
     
-    <!-- PWA Icons Config (Caminhos Absolutos) -->
+    <!-- Performance Optimization: Preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://esm.sh">
+    <link rel="preconnect" href="https://bible-api.com">
+
+    <!-- PWA Icons Config -->
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="alternate icon" href="/icon.svg" />
     <link rel="apple-touch-icon" href="/icon.svg" />
     
-    <!-- Manifest Atualizado v6 -->
-    <link rel="manifest" href="/manifest.json?v=6" />
+    <link rel="manifest" href="/manifest.json?v=7" />
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -47,8 +53,6 @@
       }
     </script>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
@@ -73,10 +77,8 @@
       }
     </style>
     
-    <!-- FIX IOS ICON: Script para gerar PNG dinamicamente a partir do SVG -->
     <script>
       (function() {
-        // iOS requer PNG real, não SVG. Geramos on-the-fly.
         var link = document.createElement('link');
         link.rel = 'apple-touch-icon';
         document.head.appendChild(link);
@@ -124,7 +126,6 @@
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')
             .then(reg => {
-                reg.update(); // Força verificação de update
                 console.log('SW registered!', reg);
             })
             .catch(err => console.log('SW registration failed', err));

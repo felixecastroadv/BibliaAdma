@@ -1,7 +1,8 @@
-// Service Worker Vercel Friendly - v6
-const CACHE_NAME = 'adma-bible-v6';
 
-// Caminhos absolutos para garantir que funcione na raiz
+// Service Worker Vercel Friendly - v7 (Offline Enhanced)
+const CACHE_NAME = 'adma-bible-v7';
+
+// Assets críticos que devem estar sempre disponíveis offline
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -13,7 +14,8 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_ASSETS);
+      // Tenta cachear, mas não falha se algum recurso externo falhar
+      return cache.addAll(PRECACHE_ASSETS).catch(err => console.warn('Precache warning', err));
     })
   );
 });
@@ -31,27 +33,48 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Ignora requisições que não sejam GET ou para outros domínios (ex: APIs)
-  if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin)) {
-    return;
+  // Ignora requisições que não sejam GET
+  if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
+
+  // 1. APIs do próprio app (Next/Vercel) e Google Gemini NÃO devem ser cacheadas pelo SW
+  // Elas são dinâmicas ou gerenciadas pela lógica da aplicação (Database Cache)
+  if (url.pathname.startsWith('/api/') || url.hostname.includes('googleapis')) {
+      return; 
   }
 
-  // Estratégia Stale-While-Revalidate para assets estáticos
-  // Estratégia Network First para navegação (HTML)
-  
-  if (event.request.mode === 'navigate') {
+  // 2. Fontes e Scripts Externos (Google Fonts, Tailwind, Lucide via ESM)
+  // Estratégia: Stale-While-Revalidate (Usa cache se tiver, mas atualiza em background)
+  if (url.hostname.includes('fonts') || url.hostname.includes('cdn.tailwindcss') || url.hostname.includes('esm.sh')) {
+     event.respondWith(
+        caches.open(CACHE_NAME).then(async (cache) => {
+           const cachedResponse = await cache.match(event.request);
+           const fetchPromise = fetch(event.request).then((networkResponse) => {
+              cache.put(event.request, networkResponse.clone());
+              return networkResponse;
+           }).catch(() => cachedResponse); // Se falhar rede, retorna o que tem (mesmo se stale)
+
+           return cachedResponse || fetchPromise;
+        })
+     );
+     return;
+  }
+
+  // 3. Navegação (HTML) e Assets Locais
+  // Estratégia: Network First, falling back to Cache
+  if (event.request.mode === 'navigate' || url.origin === self.location.origin) {
     event.respondWith(
       fetch(event.request)
         .catch(() => {
-          return caches.match('/index.html');
+          return caches.match(event.request).then(response => {
+              // Se achou, retorna. Se for navegação e não achou, retorna index.html (SPA)
+              if (response) return response;
+              if (event.request.mode === 'navigate') return caches.match('/index.html');
+              return null;
+          });
         })
     );
     return;
   }
-
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      return cachedResponse || fetch(event.request);
-    })
-  );
 });
