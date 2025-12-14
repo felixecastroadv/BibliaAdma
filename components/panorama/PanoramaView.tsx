@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, GraduationCap, Lock, BookOpen, ChevronRight, Volume2, Sparkles, Loader2, Book, Trash2, Edit, Save, X, CheckCircle, Pause, Play, Settings, FastForward } from 'lucide-react';
 import { db } from '../../services/database';
@@ -28,6 +29,11 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   const [selectedVoice, setSelectedVoice] = useState<string>('');
   const [playbackRate, setPlaybackRate] = useState(1);
 
+  // Swipe State
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const minSwipeDistance = 50;
+
   // Status de Leitura
   const studyKey = generateChapterKey(book, chapter);
   const isRead = userProgress?.ebd_read?.includes(studyKey);
@@ -54,6 +60,26 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         speakText();
     }
   }, [playbackRate]);
+
+  // SWIPE HANDLERS
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+  const onTouchMove = (e: React.TouchEvent) => setTouchEnd(e.targetTouches[0].clientX);
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe && currentPage < pages.length - 1) {
+        setCurrentPage(p => p + 1);
+    }
+    if (isRightSwipe && currentPage > 0) {
+        setCurrentPage(p => p - 1);
+    }
+  };
 
   const loadContent = async () => {
     const key = generateChapterKey(book, chapter);
@@ -317,7 +343,12 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] dark:bg-dark-bg transition-colors duration-300">
+    <div 
+        className="min-h-screen bg-[#FDFBF7] dark:bg-dark-bg transition-colors duration-300"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+    >
         <div className="sticky top-0 z-30 bg-gradient-to-r from-[#600018] to-[#400010] text-white p-4 shadow-lg flex justify-between items-center">
             <button onClick={onBack}><ChevronLeft /></button>
             <h2 className="font-cinzel font-bold">Panorama EBD</h2>
@@ -422,7 +453,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             </div>
         )}
 
-        <div className="p-4 md:p-8 max-w-4xl mx-auto pb-32">
+        <div className="p-4 md:p-8 max-w-4xl mx-auto pb-48">
             {!hasAccess ? (
                 <div className="text-center py-20 opacity-50 dark:text-white">
                     <Lock className="w-16 h-16 mx-auto mb-4" />
@@ -500,12 +531,22 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         </div>
 
         {pages.length > 1 && hasAccess && !isEditing && (
-            <div className="fixed bottom-0 w-full bg-white dark:bg-dark-card border-t border-[#C5A059] p-4 flex justify-between items-center z-30 shadow-[0_-5px_20px_rgba(0,0,0,0.1)]">
-                <button onClick={() => setCurrentPage(Math.max(0, currentPage - 1))} disabled={currentPage === 0} className="flex items-center gap-1 px-4 py-2 border rounded-lg text-[#8B0000] dark:text-[#ff6b6b] disabled:opacity-50 hover:bg-[#8B0000]/10 transition">
+            <div className="fixed bottom-16 left-0 w-full bg-white dark:bg-dark-card border-t border-[#C5A059] p-4 flex justify-between items-center z-30 shadow-[0_-5px_20px_rgba(0,0,0,0.1)] safe-bottom">
+                <button 
+                    onClick={() => setCurrentPage(Math.max(0, currentPage - 1))} 
+                    disabled={currentPage === 0} 
+                    className="flex items-center gap-1 px-4 py-3 bg-[#8B0000] text-white rounded-lg font-bold shadow-md hover:bg-[#600018] disabled:opacity-50 disabled:bg-gray-400 transition-all active:scale-95"
+                >
                     <ChevronLeft /> Anterior
                 </button>
-                <span className="font-cinzel font-bold text-[#1a0f0f] dark:text-white text-sm md:text-base">Página {currentPage + 1} de {pages.length}</span>
-                <button onClick={() => setCurrentPage(Math.min(pages.length - 1, currentPage + 1))} disabled={currentPage === pages.length - 1} className="flex items-center gap-1 px-4 py-2 border rounded-lg text-[#8B0000] dark:text-[#ff6b6b] disabled:opacity-50 hover:bg-[#8B0000]/10 transition">
+                <span className="font-cinzel font-bold text-[#1a0f0f] dark:text-white text-sm md:text-base">
+                    {currentPage + 1} / {pages.length}
+                </span>
+                <button 
+                    onClick={() => setCurrentPage(Math.min(pages.length - 1, currentPage + 1))} 
+                    disabled={currentPage === pages.length - 1} 
+                    className="flex items-center gap-1 px-4 py-3 bg-[#8B0000] text-white rounded-lg font-bold shadow-md hover:bg-[#600018] disabled:opacity-50 disabled:bg-gray-400 transition-all active:scale-95"
+                >
                     Próximo <ChevronRight />
                 </button>
             </div>
