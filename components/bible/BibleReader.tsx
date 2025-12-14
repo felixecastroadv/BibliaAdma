@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, FastForward, ChevronRight, List, Book, ChevronDown, RefreshCw } from 'lucide-react';
+import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, FastForward, ChevronRight, List, Book, ChevronDown, RefreshCw, WifiOff } from 'lucide-react';
 import VersePanel from './VersePanel';
 import { db } from '../../services/database';
-import { generateChapterKey, BIBLE_BOOKS, ONE_CHAPTER_BOOKS } from '../../constants';
+import { generateChapterKey, BIBLE_BOOKS } from '../../constants';
 import { generateContent } from '../../services/geminiService';
 import { Type as GenType } from "@google/genai";
 import { ChapterMetadata } from '../../types';
@@ -24,7 +24,7 @@ const TextSkeleton = () => (
   </div>
 );
 
-// Mapeamento PT -> EN para API Internacional
+// Mapeamento PT -> EN para API Internacional (Fallback)
 const BOOK_NAME_MAPPING: Record<string, string> = {
     "Gênesis": "Genesis", "Êxodo": "Exodus", "Levítico": "Leviticus", "Números": "Numbers", "Deuteronômio": "Deuteronomy",
     "Josué": "Joshua", "Juízes": "Judges", "Rute": "Ruth", "1 Samuel": "1 Samuel", "2 Samuel": "2 Samuel",
@@ -57,6 +57,7 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
   const [selectorTab, setSelectorTab] = useState<'books' | 'chapters'>('chapters');
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
+  const [sourceUsed, setSourceUsed] = useState<'ARC' | 'Almeida'>('ARC');
 
   // Epígrafe (IA)
   const [epigraph, setEpigraph] = useState<ChapterMetadata | null>(null);
@@ -126,58 +127,73 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
     }
   };
 
-  // --- FETCHING ROBUSTO DA BÍBLIA ---
+  // --- FETCHING BLINDADO DA BÍBLIA (ARC) ---
   const fetchChapter = async () => {
     setLoading(true);
     setErrorMsg('');
     setVerses([]);
     
     try {
-        const engBook = BOOK_NAME_MAPPING[book] || book;
-        const isSingleChapter = ONE_CHAPTER_BOOKS.includes(book);
+        // Encontra o ID numérico do livro (Gênesis = 1, ..., Apocalipse = 66)
+        // A lista BIBLE_BOOKS já está na ordem canônica correta
+        const bookIndex = BIBLE_BOOKS.findIndex(b => b.name === book);
+        if (bookIndex === -1) throw new Error("Livro não encontrado no índice.");
         
-        // Estratégia Híbrida:
-        // 1. Livros normais: Busca padrão (Book + Chapter)
-        // 2. Livros de 1 capítulo: Busca com Range (Book + 1:1-200) para forçar versículos
-        
-        const standardUrl = `https://bible-api.com/${engBook}+${chapter}?translation=almeida`;
-        // Nota: Para livros de 1 cap, a API espera "Book+1:1-200" para retornar corretamente
-        const rangeUrl = `https://bible-api.com/${engBook}+${isSingleChapter ? '1' : chapter}:1-200?translation=almeida`;
-
-        let urlToUse = isSingleChapter ? rangeUrl : standardUrl;
-        let fallbackUrl = isSingleChapter ? standardUrl : rangeUrl;
+        const bookId = bookIndex + 1;
+        const engBook = BOOK_NAME_MAPPING[book];
 
         let data;
+        let success = false;
 
+        // ESTRATÉGIA 1: Bolls.life (ARC - Almeida Revista e Corrigida)
+        // Fonte primária: usa IDs numéricos, impossível errar nome do livro
         try {
-            // TENTATIVA 1 (Prioritária)
-            const res = await fetch(urlToUse);
-            if (!res.ok) throw new Error("Primary fetch failed");
-            data = await res.json();
-            
-            // Validação extra
-            if (!data.verses || data.verses.length === 0) throw new Error("Empty verses");
-            
-        } catch (firstError) {
-            // TENTATIVA 2 (Fallback)
-            console.warn(`Tentativa 1 falhou para ${book}, tentando fallback...`);
-            const res2 = await fetch(fallbackUrl);
-            if (!res2.ok) throw new Error("API Indisponível");
-            data = await res2.json();
+            const res = await fetch(`https://bolls.life/get-chapter/ARC/${bookId}/${chapter}/`);
+            if (res.ok) {
+                const json = await res.json();
+                // Bolls retorna array: [{ pk: 1, verse: 1, text: "..." }]
+                if (Array.isArray(json) && json.length > 0) {
+                    setVerses(json.map((v: any) => ({
+                        number: v.verse,
+                        text: v.text.replace(/<[^>]*>/g, '') // Remove HTML tags se houver
+                    })));
+                    setSourceUsed('ARC');
+                    success = true;
+                }
+            }
+        } catch (e) {
+            console.warn("Bolls API failed, trying fallback...");
         }
 
-        if (data.verses && Array.isArray(data.verses)) {
-             setVerses(data.verses.map((v: any) => ({ 
-                 number: v.verse, 
-                 text: v.text.replace(/\n/g, ' ').trim() 
-             })));
-        } else {
-             throw new Error("Formato inválido");
+        // ESTRATÉGIA 2: Bible-API.com (Fallback)
+        // Se a primeira falhar, tenta a API antiga com encoding correto
+        if (!success) {
+            try {
+                const encodedBook = encodeURIComponent(engBook || book);
+                const res = await fetch(`https://bible-api.com/${encodedBook}+${chapter}?translation=almeida`);
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json.verses && json.verses.length > 0) {
+                        setVerses(json.verses.map((v: any) => ({
+                            number: v.verse,
+                            text: v.text.replace(/\n/g, ' ').trim()
+                        })));
+                        setSourceUsed('Almeida');
+                        success = true;
+                    }
+                }
+            } catch (e) {
+                console.warn("Bible API fallback failed too.");
+            }
+        }
+
+        if (!success) {
+            throw new Error("Não foi possível carregar o texto de nenhuma fonte.");
         }
 
     } catch (e: any) {
-        console.error("Erro crítico ao carregar bíblia:", e);
-        setErrorMsg("Não foi possível carregar o texto sagrado. Verifique sua conexão.");
+        console.error("Critical Error Fetching Bible:", e);
+        setErrorMsg("Erro ao conectar às bibliotecas digitais. Verifique sua internet.");
     } finally {
         setLoading(false);
     }
@@ -326,7 +342,9 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
                 <h1 className="font-cinzel font-bold text-lg flex items-center gap-2 justify-center uppercase">
                     {book} {chapter} <ChevronDown className={`w-4 h-4 transition-transform ${showChapterSelector ? 'rotate-180' : ''}`} />
                 </h1>
-                <span className="text-[9px] font-montserrat opacity-80 uppercase tracking-widest">Almeida Recebida</span>
+                <span className="text-[9px] font-montserrat opacity-80 uppercase tracking-widest">
+                    {sourceUsed === 'ARC' ? 'Almeida Revista e Corrigida' : 'Almeida'}
+                </span>
             </div>
 
             <div className="flex gap-1">
@@ -405,6 +423,7 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
                 <TextSkeleton />
             ) : errorMsg ? (
                 <div className="text-center py-20 px-6">
+                    <WifiOff className="w-16 h-16 mx-auto mb-4 text-[#8B0000] opacity-50"/>
                     <p className="text-red-500 mb-4">{errorMsg}</p>
                     <button onClick={fetchChapter} className="bg-[#8B0000] text-white px-4 py-2 rounded flex items-center gap-2 mx-auto"><RefreshCw className="w-4 h-4"/> Tentar Novamente</button>
                 </div>
