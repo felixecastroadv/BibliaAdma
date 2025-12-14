@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, FastForward, ChevronRight, List, Book, ChevronDown, RefreshCw, WifiOff } from 'lucide-react';
+import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, ChevronRight, List, Book, ChevronDown, RefreshCw, WifiOff, Zap } from 'lucide-react';
 import VersePanel from './VersePanel';
 import { db } from '../../services/database';
 import { generateChapterKey, BIBLE_BOOKS } from '../../constants';
@@ -24,25 +23,6 @@ const TextSkeleton = () => (
   </div>
 );
 
-// Mapeamento PT -> EN para API Internacional (Fallback)
-const BOOK_NAME_MAPPING: Record<string, string> = {
-    "Gênesis": "Genesis", "Êxodo": "Exodus", "Levítico": "Leviticus", "Números": "Numbers", "Deuteronômio": "Deuteronomy",
-    "Josué": "Joshua", "Juízes": "Judges", "Rute": "Ruth", "1 Samuel": "1 Samuel", "2 Samuel": "2 Samuel",
-    "1 Reis": "1 Kings", "2 Reis": "2 Kings", "1 Crônicas": "1 Chronicles", "2 Crônicas": "2 Chronicles",
-    "Esdras": "Ezra", "Neemias": "Nehemiah", "Ester": "Esther", "Jó": "Job", "Salmos": "Psalms",
-    "Provérbios": "Proverbs", "Eclesiastes": "Ecclesiastes", "Cantares": "Song of Solomon", "Isaías": "Isaiah",
-    "Jeremias": "Jeremiah", "Lamentações": "Lamentations", "Ezequiel": "Ezekiel", "Daniel": "Daniel",
-    "Oséias": "Hosea", "Joel": "Joel", "Amós": "Amos", "Obadias": "Obadiah", "Jonas": "Jonah",
-    "Miquéias": "Micah", "Naum": "Nahum", "Habacuque": "Habakkuk", "Sofonias": "Zephaniah", "Ageu": "Haggai",
-    "Zacarias": "Zechariah", "Malaquias": "Malachi", "Mateus": "Matthew", "Marcos": "Mark", "Lucas": "Luke",
-    "João": "John", "Atos": "Acts", "Romanos": "Romans", "1 Coríntios": "1 Corinthians", "2 Coríntios": "2 Corinthians",
-    "Gálatas": "Galatians", "Efésios": "Ephesians", "Filipenses": "Philippians", "Colossenses": "Colossians",
-    "1 Tessalonicenses": "1 Thessalonians", "2 Tessalonicenses": "2 Thessalonians", "1 Timóteo": "1 Timothy",
-    "2 Timóteo": "2 Timothy", "Tito": "Titus", "Filemom": "Philemon", "Hebreus": "Hebrews", "Tiago": "James",
-    "1 Pedro": "1 Peter", "2 Pedro": "2 Peter", "1 João": "1 John", "2 João": "2 John", "3 João": "3 John",
-    "Judas": "Jude", "Apocalipse": "Revelation"
-};
-
 export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, onShowToast, onBack, initialBook, initialChapter }: any) {
   // Estado Principal
   const [book, setBook] = useState(initialBook || 'Gênesis');
@@ -57,7 +37,7 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
   const [selectorTab, setSelectorTab] = useState<'books' | 'chapters'>('chapters');
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
-  const [sourceUsed, setSourceUsed] = useState<'ARC' | 'Almeida'>('ARC');
+  const [isCached, setIsCached] = useState(false); // Indica se veio do cache (rápido)
 
   // Epígrafe (IA)
   const [epigraph, setEpigraph] = useState<ChapterMetadata | null>(null);
@@ -127,73 +107,58 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
     }
   };
 
-  // --- FETCHING BLINDADO DA BÍBLIA (ARC) ---
+  // --- FETCHING COM CACHE PERSISTENTE (OFFLINE FIRST) ---
   const fetchChapter = async () => {
     setLoading(true);
     setErrorMsg('');
     setVerses([]);
+    setIsCached(false);
     
     try {
-        // Encontra o ID numérico do livro (Gênesis = 1, ..., Apocalipse = 66)
-        // A lista BIBLE_BOOKS já está na ordem canônica correta
-        const bookIndex = BIBLE_BOOKS.findIndex(b => b.name === book);
-        if (bookIndex === -1) throw new Error("Livro não encontrado no índice.");
+        const bookMeta = BIBLE_BOOKS.find(b => b.name === book);
+        if (!bookMeta) throw new Error("Livro não encontrado.");
         
-        const bookId = bookIndex + 1;
-        const engBook = BOOK_NAME_MAPPING[book];
-
-        let data;
-        let success = false;
-
-        // ESTRATÉGIA 1: Bolls.life (ARC - Almeida Revista e Corrigida)
-        // Fonte primária: usa IDs numéricos, impossível errar nome do livro
-        try {
-            const res = await fetch(`https://bolls.life/get-chapter/ARC/${bookId}/${chapter}/`);
-            if (res.ok) {
-                const json = await res.json();
-                // Bolls retorna array: [{ pk: 1, verse: 1, text: "..." }]
-                if (Array.isArray(json) && json.length > 0) {
-                    setVerses(json.map((v: any) => ({
-                        number: v.verse,
-                        text: v.text.replace(/<[^>]*>/g, '') // Remove HTML tags se houver
-                    })));
-                    setSourceUsed('ARC');
-                    success = true;
-                }
-            }
-        } catch (e) {
-            console.warn("Bolls API failed, trying fallback...");
-        }
-
-        // ESTRATÉGIA 2: Bible-API.com (Fallback)
-        // Se a primeira falhar, tenta a API antiga com encoding correto
-        if (!success) {
+        // Chave única para o Cache LocalStorage
+        const storageKey = `bible_acf_${bookMeta.abbrev}_${chapter}`;
+        
+        // 1. TENTA CARREGAR DO CACHE LOCAL (Modo "Incorporado")
+        const cachedData = localStorage.getItem(storageKey);
+        if (cachedData) {
             try {
-                const encodedBook = encodeURIComponent(engBook || book);
-                const res = await fetch(`https://bible-api.com/${encodedBook}+${chapter}?translation=almeida`);
-                if (res.ok) {
-                    const json = await res.json();
-                    if (json.verses && json.verses.length > 0) {
-                        setVerses(json.verses.map((v: any) => ({
-                            number: v.verse,
-                            text: v.text.replace(/\n/g, ' ').trim()
-                        })));
-                        setSourceUsed('Almeida');
-                        success = true;
-                    }
+                const parsed = JSON.parse(cachedData);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    setVerses(parsed);
+                    setIsCached(true); // Mostra ícone de raio indicando velocidade máxima
+                    setLoading(false);
+                    return; // Sucesso, não precisa de rede
                 }
-            } catch (e) {
-                console.warn("Bible API fallback failed too.");
-            }
+            } catch (e) { localStorage.removeItem(storageKey); }
         }
 
-        if (!success) {
-            throw new Error("Não foi possível carregar o texto de nenhuma fonte.");
+        // 2. SE NÃO TIVER CACHE, BUSCA NA API BRASILEIRA (abibliadigital)
+        // Usa ACF (Almeida Corrigida Fiel) que é muito estável e similar à ARC
+        const res = await fetch(`https://www.abibliadigital.com.br/api/verses/acf/${bookMeta.abbrev}/${chapter}`);
+        
+        if (!res.ok) throw new Error(`Erro na API: ${res.status}`);
+        
+        const json = await res.json();
+        
+        if (json.verses && Array.isArray(json.verses)) {
+            const cleanVerses = json.verses.map((v: any) => ({
+                number: v.number,
+                text: v.text.trim()
+            }));
+
+            // Salva no cache para a próxima vez ser instantâneo
+            localStorage.setItem(storageKey, JSON.stringify(cleanVerses));
+            setVerses(cleanVerses);
+        } else {
+            throw new Error("Formato inválido recebido.");
         }
 
     } catch (e: any) {
-        console.error("Critical Error Fetching Bible:", e);
-        setErrorMsg("Erro ao conectar às bibliotecas digitais. Verifique sua internet.");
+        console.error("Erro ao carregar bíblia:", e);
+        setErrorMsg("Não foi possível baixar o texto. Verifique sua conexão para o primeiro acesso.");
     } finally {
         setLoading(false);
     }
@@ -342,9 +307,14 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
                 <h1 className="font-cinzel font-bold text-lg flex items-center gap-2 justify-center uppercase">
                     {book} {chapter} <ChevronDown className={`w-4 h-4 transition-transform ${showChapterSelector ? 'rotate-180' : ''}`} />
                 </h1>
-                <span className="text-[9px] font-montserrat opacity-80 uppercase tracking-widest">
-                    {sourceUsed === 'ARC' ? 'Almeida Revista e Corrigida' : 'Almeida'}
-                </span>
+                <div className="flex items-center gap-1">
+                    <span className="text-[9px] font-montserrat opacity-80 uppercase tracking-widest">Almeida (ACF)</span>
+                    {isCached && (
+                        <span title="Modo Offline Ativo">
+                            <Zap className="w-3 h-3 text-yellow-300 animate-pulse" />
+                        </span>
+                    )}
+                </div>
             </div>
 
             <div className="flex gap-1">
