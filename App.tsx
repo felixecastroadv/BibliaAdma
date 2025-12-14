@@ -30,7 +30,7 @@ export default function App() {
         const u = JSON.parse(saved);
         setUser(u);
         setIsAuthenticated(true);
-        loadProgress(u.user_email);
+        loadProgress(u.user_email, u.user_name);
     }
     
     // Check system preference
@@ -47,29 +47,46 @@ export default function App() {
       }
   }, [darkMode]);
 
-  const loadProgress = async (email: string) => {
+  const loadProgress = async (email: string, nameFallback?: string) => {
     const p = await db.entities.ReadingProgress.filter({ user_email: email });
     if (p.length) setUserProgress(p[0]);
     else {
+        // Correção: Garante que usamos o nome passado, se disponível
+        const displayName = nameFallback || user?.user_name || email;
         const newP = await db.entities.ReadingProgress.create({ 
             user_email: email, 
-            user_name: user?.user_name || email, 
+            user_name: displayName, 
             chapters_read: [], 
             total_chapters: 0,
             active_plans: [],
-            ebd_read: [], // Novo
-            total_ebd_read: 0 // Novo
+            ebd_read: [],
+            total_ebd_read: 0
         });
         setUserProgress(newP);
     }
   };
 
   const handleLogin = (first: string, last: string) => {
-    const u = { user_name: `${first} ${last}`, user_email: `${first.toLowerCase()}.${last.toLowerCase()}@adma.local` };
+    const fullName = `${first} ${last}`;
+    const email = `${first.toLowerCase()}.${last.toLowerCase()}@adma.local`;
+    const u = { user_name: fullName, user_email: email };
+    
     localStorage.setItem('adma_user', JSON.stringify(u));
     setUser(u);
     setIsAuthenticated(true);
-    loadProgress(u.user_email);
+    // Passa o nome explicitamente para evitar delay de estado
+    loadProgress(email, fullName);
+  };
+
+  const handleLogout = () => {
+      if(window.confirm("Deseja realmente sair e trocar de usuário?")) {
+          localStorage.removeItem('adma_user');
+          setUser(null);
+          setUserProgress(null);
+          setIsAuthenticated(false);
+          setIsAdmin(false);
+          setView('dashboard');
+      }
   };
 
   const showToast = (msg: string, type: 'success'|'error'|'info') => {
@@ -104,6 +121,7 @@ export default function App() {
                 darkMode={darkMode}
                 toggleDarkMode={toggleDarkMode}
                 onShowToast={showToast}
+                onLogout={handleLogout}
             />;
         case 'reader':
             return <BibleReader 
@@ -122,8 +140,8 @@ export default function App() {
                 onBack={() => setView('dashboard')} 
                 isAdmin={isAdmin} 
                 onShowToast={showToast}
-                userProgress={userProgress} // Passando progresso
-                onProgressUpdate={setUserProgress} // Passando função de update
+                userProgress={userProgress} 
+                onProgressUpdate={setUserProgress} 
             />;
         case 'devotional':
             return <DevotionalView onBack={() => setView('dashboard')} onShowToast={showToast} isAdmin={isAdmin} />;

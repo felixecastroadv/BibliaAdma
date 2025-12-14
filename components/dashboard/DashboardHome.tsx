@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, GraduationCap, ShieldCheck, Trophy, Calendar, ListChecks, Mail, CheckCircle2, Moon, Sun, Download, Instagram, X, Share, MoreVertical, Monitor } from 'lucide-react';
+import { BookOpen, GraduationCap, ShieldCheck, Trophy, Calendar, ListChecks, Mail, CheckCircle2, Moon, Sun, Download, Instagram, X, Share, MoreVertical, Monitor, LogOut } from 'lucide-react';
 import { CHURCH_NAME, TOTAL_CHAPTERS, APP_VERSION } from '../../constants';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -12,9 +12,10 @@ interface DashboardProps {
     darkMode: boolean;
     toggleDarkMode: () => void;
     onShowToast: (msg: string, type: 'info' | 'success' | 'error') => void;
+    onLogout: () => void;
 }
 
-export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user, userProgress, darkMode, toggleDarkMode, onShowToast }: DashboardProps) {
+export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user, userProgress, darkMode, toggleDarkMode, onShowToast, onLogout }: DashboardProps) {
   const [clicks, setClicks] = useState(0);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isStandalone, setIsStandalone] = useState(true);
@@ -205,6 +206,9 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                 </AnimatePresence>
                 <button onClick={toggleDarkMode} className="p-2 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all border border-white/30">
                     {darkMode ? <Sun className="w-5 h-5 text-yellow-300" /> : <Moon className="w-5 h-5 text-white" />}
+                </button>
+                <button onClick={onLogout} className="p-2 rounded-full bg-white/10 backdrop-blur-md hover:bg-red-500/50 transition-all border border-white/30" title="Sair / Trocar Conta">
+                    <LogOut className="w-5 h-5 text-white" />
                 </button>
             </div>
             <div className="relative z-10 text-center">

@@ -19,6 +19,23 @@ export default function RankingView({ onBack }: any) {
     setLoading(false);
   };
 
+  // Função utilitária para limpar nomes que foram salvos como e-mail
+  const formatUserName = (rawName: string) => {
+    if (!rawName) return "Anônimo";
+    
+    // Se parecer um e-mail do sistema (tem @)
+    if (rawName.includes('@')) {
+        // Pega a parte antes do @ (ex: michel.felix)
+        const prefix = rawName.split('@')[0];
+        // Substitui pontos por espaços e capitaliza cada palavra
+        return prefix.split('.').map(part => {
+            return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+        }).join(' ');
+    }
+    
+    return rawName;
+  };
+
   const getPositionStyle = (index: number) => {
     switch (index) {
         case 0: return 'bg-gradient-to-r from-yellow-300 to-yellow-500 text-yellow-900 border-yellow-400 transform scale-105'; // Ouro
@@ -90,7 +107,7 @@ export default function RankingView({ onBack }: any) {
                             
                             <div className="flex-1">
                                 <p className="font-cinzel font-bold truncate text-lg dark:text-black">
-                                    {u.user_name}
+                                    {formatUserName(u.user_name)}
                                 </p>
                                 <div className="flex items-center gap-2 text-xs opacity-80 font-bold uppercase tracking-wider dark:text-gray-800">
                                     {activeTab === 'chapters' ? <BookOpen className="w-3 h-3" /> : <GraduationCap className="w-3 h-3" />}
