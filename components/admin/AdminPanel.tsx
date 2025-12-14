@@ -51,7 +51,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
     }
   };
 
-  // Verifica quantos capítulos estão realmente salvos no LocalStorage
+  // Verifica e conta capítulos válidos no LocalStorage
   const checkOfflineIntegrity = () => {
       let count = 0;
       BIBLE_BOOKS.forEach(b => {
@@ -101,7 +101,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
     onShowToast('Chave removida.', 'info');
   };
 
-  // --- LÓGICA DE DOWNLOAD API (ROBUSTA & OTIMIZADA) ---
+  // --- LÓGICA DE DOWNLOAD API (COMPACTADA E SEGURA) ---
   const fetchWithRetry = async (url: string, retries = 3, backoff = 1000): Promise<any> => {
       try {
           const res = await fetch(url);
@@ -121,15 +121,15 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   };
 
   const handleDownloadBible = async () => {
-      if (!window.confirm("ATENÇÃO: O download será reiniciado. Isso otimizará o banco de dados para economizar espaço. Continuar?")) return;
+      if (!window.confirm("ATENÇÃO: O download será reiniciado no modo OTIMIZADO (Compacto) para não encher a memória do navegador. Continuar?")) return;
       
       setIsProcessing(true);
       setProcessStatus("Preparando...");
       setProgress(0);
       let count = 0;
       
-      // Limpa dados antigos para evitar conflitos de formato e liberar espaço
-      onShowToast("Limpando cache antigo...", "info");
+      // Limpa dados antigos para liberar espaço e evitar conflitos
+      onShowToast("Otimizando banco de dados...", "info");
       BIBLE_BOOKS.forEach(b => {
           for(let c=1; c<=b.chapters; c++) localStorage.removeItem(`bible_acf_${b.abbrev}_${c}`);
       });
@@ -146,20 +146,20 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                 try {
                     setProcessStatus(`Baixando ${book.name} ${c}...`);
                     
-                    // Delay para evitar bloqueio (300ms)
+                    // Delay vital para não ser bloqueado pela API (300ms)
                     await new Promise(r => setTimeout(r, 300));
                     
                     const data = await fetchWithRetry(`https://www.abibliadigital.com.br/api/verses/acf/${book.abbrev}/${c}`);
                     
                     if (data && data.verses) {
-                        // OTIMIZAÇÃO: Salva apenas array de strings ["Texto v1", "Texto v2"]
-                        // Isso economiza MUITO espaço no LocalStorage (evita repetição de chaves 'text', 'number')
+                        // OTIMIZAÇÃO CRÍTICA: Salva apenas array de strings ["No princípio...", "E a terra..."]
+                        // Isso remove chaves redundantes e reduz o tamanho em 50%
                         const optimizedVerses = data.verses.map((v: any) => v.text.trim());
                         localStorage.setItem(key, JSON.stringify(optimizedVerses));
                     }
                 } catch(e: any) {
                     console.error(`Falha em ${book.name} ${c}:`, e);
-                    // Se falhar, não salva nada, permitindo que o usuário tente novamente depois
+                    // Se falhar, não salva nada, permitindo re-tentativa futura pelo Leitor
                 }
                 
                 count++;
@@ -168,15 +168,15 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
         }
       } catch (err: any) {
           if (err.name === 'QuotaExceededError') {
-              alert("ERRO: Memória do navegador cheia! O modo otimizado deve resolver, mas tente limpar o cache do navegador se persistir.");
+              alert("ERRO: Memória do NAVEGADOR cheia! Tente limpar o cache do seu navegador nas configurações.");
           }
       }
       
       setIsProcessing(false);
       setStopBatch(false);
       setCurrentBookProcessing('');
-      checkOfflineIntegrity(); // Atualiza contador
-      onShowToast("Processo finalizado. Verifique a integridade.", "success");
+      checkOfflineIntegrity(); // Atualiza contador visual
+      onShowToast("Processo finalizado. Verifique a integridade abaixo.", "success");
   };
 
   // --- LÓGICA DE IMPORTAÇÃO DE JSON (NORMALIZADOR AVANÇADO) ---
@@ -223,7 +223,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   };
 
   const processBibleJSON = async (data: any) => {
-      setProcessStatus("Otimizando e salvando...");
+      setProcessStatus("Compactando e salvando...");
       let booksArray: any[] = [];
       
       if (Array.isArray(data)) booksArray = data;
@@ -287,7 +287,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // --- LÓGICA DE GERAÇÃO EM LOTE (MANTIDA IGUAL) ---
+  // --- LÓGICA DE GERAÇÃO EM LOTE ---
   const handleBatchGenerate = async (type: 'commentary' | 'dictionary') => {
       setStopBatch(false);
       setIsGeneratingBatch(true);
@@ -305,7 +305,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           let verses: {number: number, text: string}[] = [];
           if (cachedVerses) {
               const parsed = JSON.parse(cachedVerses);
-              // Suporte a formato otimizado (array de strings) ou antigo (objetos)
+              // Adaptação para ler formato otimizado (strings) ou antigo (objetos)
               if (parsed.length > 0 && typeof parsed[0] === 'string') {
                   verses = parsed.map((t: string, i: number) => ({ number: i + 1, text: t }));
               } else {
@@ -374,9 +374,42 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <div className="absolute inset-0 bg-black/60" onClick={() => setShowReportsModal(false)} />
               <div className="bg-white dark:bg-[#1E1E1E] w-full max-w-2xl max-h-[80vh] rounded-2xl p-6 relative z-10 overflow-hidden flex flex-col shadow-2xl">
-                  {/* ... conteúdo do modal ... */}
-                  <button onClick={() => setShowReportsModal(false)}><XCircle className="w-6 h-6 text-gray-500" /></button>
-                  {/* ... (mantido igual) ... */}
+                  <div className="flex justify-between items-center mb-4 pb-4 border-b border-[#C5A059]">
+                      <h3 className="font-cinzel font-bold text-xl dark:text-white flex items-center gap-2">
+                          <Flag className="w-5 h-5 text-red-500" /> Relatórios de Erros
+                      </h3>
+                      <button onClick={() => setShowReportsModal(false)}><XCircle className="w-6 h-6 text-gray-500" /></button>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto space-y-4">
+                      {reports.length === 0 ? (
+                          <div className="text-center py-10 text-gray-500">
+                              <CheckCircle className="w-12 h-12 mx-auto mb-2 text-green-500" />
+                              <p>Tudo limpo! Nenhum erro pendente.</p>
+                          </div>
+                      ) : (
+                          reports.map(rep => (
+                              <div key={rep.id} className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900 p-4 rounded-lg">
+                                  <div className="flex justify-between items-start mb-2">
+                                      <div>
+                                          <span className="font-bold text-red-700 dark:text-red-300 block">{rep.reference_text}</span>
+                                          <span className="text-xs text-gray-500 uppercase font-bold">{rep.type}</span>
+                                      </div>
+                                      <button onClick={() => handleDeleteReport(rep.id!)} className="text-gray-400 hover:text-green-600" title="Marcar como Resolvido">
+                                          <CheckCircle className="w-5 h-5" />
+                                      </button>
+                                  </div>
+                                  <p className="text-gray-800 dark:text-gray-200 text-sm mb-2 font-mono bg-white dark:bg-black/20 p-2 rounded">
+                                      "{rep.report_text}"
+                                  </p>
+                                  <div className="text-xs text-gray-400 flex justify-between">
+                                      <span>Reportado por: {rep.user_name}</span>
+                                      <span>{new Date(rep.date).toLocaleDateString()}</span>
+                                  </div>
+                              </div>
+                          ))
+                      )}
+                  </div>
               </div>
           </div>
       )}
@@ -390,16 +423,19 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
 
       <div className="p-6 max-w-4xl mx-auto space-y-8 pb-24">
         
-        {/* === SEÇÃO 1: STATUS DO SISTEMA === */}
+        {/* === SEÇÃO 1: INFRAESTRUTURA === */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow border border-[#C5A059]/20">
-                <h3 className="font-bold text-gray-500 mb-4 flex items-center gap-2"><Server className="w-4 h-4"/> Banco de Dados</h3>
+                <h3 className="font-bold text-gray-500 mb-4 flex items-center gap-2"><Server className="w-4 h-4"/> Status Banco de Dados</h3>
                 <div className="flex items-center gap-3">
-                    {dbStatus === 'connected' ? <CheckCircle className="w-6 h-6 text-green-500" /> : <Loader2 className="w-6 h-6 animate-spin text-blue-500" />}
+                    {dbStatus === 'checking' && <Loader2 className="w-6 h-6 animate-spin text-blue-500" />}
+                    {dbStatus === 'connected' && <CheckCircle className="w-6 h-6 text-green-500" />}
+                    {dbStatus === 'error' && <XCircle className="w-6 h-6 text-red-500" />}
                     <span className="font-bold dark:text-white">
-                        {dbStatus === 'connected' ? 'Supabase Conectado' : 'Verificando...'}
+                        {dbStatus === 'connected' ? 'Conectado (Supabase)' : 'Verificando...'}
                     </span>
                 </div>
+                <button onClick={checkDbConnection} className="mt-4 text-xs text-[#8B0000] underline flex items-center gap-1"><RefreshCw className="w-3 h-3"/> Testar</button>
             </div>
 
             <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow border border-[#C5A059]/20">
@@ -414,6 +450,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                  <div className="w-full bg-gray-200 h-2 rounded-full mt-2">
                      <div className="bg-green-500 h-2 rounded-full transition-all duration-1000" style={{ width: `${((offlineCount || 0) / TOTAL_CHAPTERS) * 100}%` }}></div>
                  </div>
+                 <p className="text-[10px] text-gray-400 mt-2">Dados salvos no seu dispositivo (LocalStorage).</p>
             </div>
         </div>
 
@@ -445,7 +482,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                 <p className="text-xs text-gray-500 mb-4">Baixa e compacta a Bíblia para caber no seu dispositivo.</p>
                 {isProcessing && !isGeneratingBatch ? (
                     <button onClick={() => setStopBatch(true)} className="w-full py-2 bg-red-100 text-red-600 rounded font-bold text-sm">
-                        Cancelar ({currentBookProcessing})
+                        Cancelar Download ({currentBookProcessing})
                     </button>
                 ) : (
                     <button onClick={handleDownloadBible} className="w-full py-2 border border-gray-400 text-gray-600 rounded font-bold text-sm hover:bg-gray-100 dark:hover:bg-gray-800">
@@ -455,8 +492,106 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
             </div>
         </div>
 
-        {/* ... Resto do código (Fábrica de Conteúdo, Relatórios) mantido igual ... */}
-        {/* Apenas fechando as tags corretamente para o XML */}
+        {/* === SEÇÃO 3: FÁBRICA DE CONTEÚDO (IA) === */}
+        <h2 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#ff6b6b] border-b border-[#C5A059] pb-2 mt-8">2. Fábrica de Conteúdo (IA)</h2>
+        
+        <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow border-l-4 border-[#8B0000]">
+            <div className="flex flex-col md:flex-row gap-4 items-end mb-6">
+                <div className="flex-1 w-full">
+                    <label className="text-xs font-bold text-gray-500 uppercase">Livro Alvo</label>
+                    <select value={batchBook} onChange={e => setBatchBook(e.target.value)} className="w-full p-2 border rounded font-cinzel font-bold dark:bg-gray-800 dark:text-white">
+                        {BIBLE_BOOKS.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
+                    </select>
+                </div>
+                <div className="w-24">
+                    <label className="text-xs font-bold text-gray-500 uppercase">Capítulo</label>
+                    <input type="number" value={batchChapter} onChange={e => setBatchChapter(Number(e.target.value))} className="w-full p-2 border rounded font-bold dark:bg-gray-800 dark:text-white" min={1} />
+                </div>
+            </div>
+
+            {isGeneratingBatch ? (
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="font-bold text-[#8B0000] flex items-center gap-2">
+                            <Loader2 className="animate-spin w-4 h-4"/> {processStatus}
+                        </span>
+                        <button onClick={() => setStopBatch(true)} className="text-xs text-red-500 underline">Parar</button>
+                    </div>
+                    <div className="w-full bg-gray-300 rounded-full h-4">
+                        <div className="bg-[#8B0000] h-4 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+                    </div>
+                    <p className="text-center text-xs mt-1">{progress}% Concluído</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <button 
+                        onClick={() => handleBatchGenerate('commentary')}
+                        className="p-4 border border-[#C5A059] rounded-lg flex flex-col items-center gap-2 hover:bg-[#C5A059]/10 transition group"
+                    >
+                        <MessageSquare className="w-6 h-6 text-[#C5A059] group-hover:scale-110 transition" />
+                        <div className="text-center">
+                            <span className="font-bold text-sm block dark:text-white">Gerar Comentários</span>
+                            <span className="text-[10px] text-gray-500">Para todos os versículos do capítulo</span>
+                        </div>
+                    </button>
+
+                    <button 
+                        onClick={() => handleBatchGenerate('dictionary')}
+                        className="p-4 border border-[#C5A059] rounded-lg flex flex-col items-center gap-2 hover:bg-[#C5A059]/10 transition group"
+                    >
+                        <Languages className="w-6 h-6 text-[#C5A059] group-hover:scale-110 transition" />
+                        <div className="text-center">
+                            <span className="font-bold text-sm block dark:text-white">Gerar Dicionários</span>
+                            <span className="text-[10px] text-gray-500">Análise léxica completa do capítulo</span>
+                        </div>
+                    </button>
+
+                    <button 
+                         className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg flex flex-col items-center gap-2 opacity-50 cursor-not-allowed"
+                    >
+                        <GraduationCap className="w-6 h-6 text-gray-400" />
+                        <div className="text-center">
+                            <span className="font-bold text-sm block dark:text-white">Gerar Panorama EBD</span>
+                            <span className="text-[10px] text-gray-500">Disponível na aba "EBD" do App</span>
+                        </div>
+                    </button>
+                </div>
+            )}
+        </div>
+        
+        {/* === SEÇÃO 4: FEEDBACK DA COMUNIDADE === */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+            <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow flex items-center justify-between border border-red-100 dark:border-red-900/30">
+                <div className="flex items-center gap-3">
+                    <div className="bg-red-100 p-2 rounded-full relative">
+                        <Flag className="w-5 h-5 text-red-600" />
+                        {reports.length > 0 && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full animate-ping"></span>}
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-sm dark:text-white">Relatórios de Erros</h4>
+                        <p className="text-xs text-gray-500">{reports.length} pendentes</p>
+                    </div>
+                </div>
+                <button 
+                    className="px-3 py-1 bg-red-600 text-white rounded text-xs font-bold hover:bg-red-700 transition"
+                    onClick={() => setShowReportsModal(true)}
+                >
+                    Ver Lista
+                </button>
+            </div>
+
+            <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="bg-purple-100 p-2 rounded-full"><Calendar className="w-5 h-5 text-purple-600" /></div>
+                    <div>
+                        <h4 className="font-bold text-sm dark:text-white">Devocional Diário</h4>
+                        <p className="text-xs text-gray-500">Forçar geração do dia</p>
+                    </div>
+                </div>
+                <button className="px-3 py-1 bg-purple-600 text-white rounded text-xs font-bold" onClick={() => onShowToast("Use o botão de edição na tela de Devocional", "info")}>Ir p/ Tela</button>
+            </div>
+        </div>
+
       </div>
     </div>
   );

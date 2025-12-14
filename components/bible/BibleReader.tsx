@@ -8,8 +8,6 @@ import { generateContent } from '../../services/geminiService';
 import { Type as GenType } from "@google/genai";
 import { ChapterMetadata } from '../../types';
 
-// ... (BookSelector mantido igual, omitido para brevidade) ...
-// --- COMPONENTE DO SELETOR DE LIVROS (PREMIUM) ---
 const BookSelector = ({ isOpen, onClose, currentBook, onSelect }: any) => {
     const [tab, setTab] = useState<'AT' | 'NT'>('AT');
     const [selectedBook, setSelectedBook] = useState<string | null>(null);
@@ -55,7 +53,6 @@ const BookSelector = ({ isOpen, onClose, currentBook, onSelect }: any) => {
     );
 };
 
-// --- COMPONENTE PRINCIPAL ---
 export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook, initialChapter, userProgress, onProgressUpdate }: any) {
     const [book, setBook] = useState(initialBook || 'Gênesis');
     const [chapter, setChapter] = useState(initialChapter || 1);
@@ -98,7 +95,6 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
         loadMetadata();
     }, [book, chapter]);
 
-    // LÓGICA DE CARREGAMENTO OTIMIZADA
     const fetchChapter = async () => {
         setLoading(true);
         setErrorMsg('');
@@ -109,41 +105,31 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
             const bookMeta = BIBLE_BOOKS.find(b => b.name === book);
             if (!bookMeta) throw new Error("Livro não encontrado.");
 
-            // 1. Tenta Cache Local (Formato Otimizado)
             const cacheKey = `bible_acf_${bookMeta.abbrev}_${chapter}`;
             const cached = localStorage.getItem(cacheKey);
             
             if (cached) {
                 try {
                     const parsed = JSON.parse(cached);
-                    
-                    // Suporte ao NOVO formato (Array de Strings)
+                    // SUPORTE HÍBRIDO: Lê tanto o formato antigo (objetos) quanto o novo (strings)
                     if (Array.isArray(parsed) && parsed.length > 0) {
                         if (typeof parsed[0] === 'string') {
-                            // Converte ["No principio", "E a terra"] para [{number:1, text:...}, ...]
-                            const formatted = parsed.map((t: string, i: number) => ({
-                                number: i + 1,
-                                text: t
-                            }));
+                            const formatted = parsed.map((t: string, i: number) => ({ number: i + 1, text: t }));
                             setVerses(formatted);
                             setLoading(false);
                             return; 
-                        } 
-                        // Suporte ao formato antigo (Objetos)
-                        else if (typeof parsed[0] === 'object' && parsed[0].text) {
+                        } else if (typeof parsed[0] === 'object' && parsed[0].text) {
                             setVerses(parsed);
                             setLoading(false);
                             return;
                         }
                     } 
-                    // Se estiver vazio ou inválido
-                    console.warn("Cache inválido encontrado. Ignorando.");
+                    console.warn("Cache inválido. Tentando online...");
                 } catch(e) {
-                    console.error("Erro ao ler cache", e);
+                    console.error("Erro cache", e);
                 }
             }
 
-            // 2. Fetch API (Se não achou no cache)
             setSourceMode('online');
             const res = await fetch(`https://www.abibliadigital.com.br/api/verses/acf/${bookMeta.abbrev}/${chapter}`);
             if (!res.ok) throw new Error("Falha ao baixar da internet.");
@@ -155,15 +141,16 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                     number: v.number,
                     text: v.text.trim()
                 }));
-                // Salva no formato otimizado para o futuro
+                
+                // Salva no formato OTIMIZADO para o futuro
                 const simpleVerses = cleanVerses.map((v:any) => v.text);
                 try {
                     localStorage.setItem(cacheKey, JSON.stringify(simpleVerses));
-                } catch(e) { console.warn("Quota full, not saving."); }
+                } catch(e) { console.warn("Quota full, read-only mode."); }
                 
                 setVerses(cleanVerses);
             } else {
-                throw new Error("Capítulo vazio ou indisponível.");
+                throw new Error("Capítulo vazio.");
             }
 
         } catch (e: any) {
@@ -181,10 +168,6 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
             fetchChapter();
         }
     };
-
-    // ... (Mantém Metadata, Audio, Mark Read, Navigation iguais) ...
-    // Omitidos para brevidade pois não mudaram a lógica, apenas o fetchChapter acima é crítico.
-    // Vou reincluir as funções essenciais para o componente funcionar.
 
     const loadMetadata = async () => {
         setMetadata(null);
@@ -280,7 +263,6 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                                 <button onClick={() => setFontSize(Math.min(32, fontSize + 2))} className="w-8 h-8 rounded border flex items-center justify-center dark:text-white dark:border-gray-600">+</button>
                             </div>
                         </div>
-                        {/* Audio settings omitted for brevity */}
                     </div>
                 </div>
             )}
