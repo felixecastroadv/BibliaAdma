@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, Sparkles, FastForward } from 'lucide-react';
+import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, Sparkles, FastForward, ChevronRight, List } from 'lucide-react';
 import VersePanel from './VersePanel';
 import { db } from '../../services/database';
 import { generateChapterKey, BIBLE_BOOKS } from '../../constants';
@@ -10,7 +11,7 @@ import { ChapterMetadata } from '../../types';
 // Skeleton Component para carregamento elegante
 const TextSkeleton = () => (
   <div className="space-y-4 animate-pulse mt-4">
-    {[1, 2, 3, 4, 5, 6].map((i) => (
+    {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
       <div key={i} className="flex gap-2">
         <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded mt-1 shrink-0"></div>
         <div className="flex-1 space-y-2">
@@ -29,6 +30,7 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
   const [fontSize, setFontSize] = useState(18);
   const [selectedVerse, setSelectedVerse] = useState<{text: string, number: number} | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showChapterSelector, setShowChapterSelector] = useState(false);
   const [epigraph, setEpigraph] = useState<ChapterMetadata | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingEpigraph, setLoadingEpigraph] = useState(false);
@@ -95,11 +97,21 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
     const isLeftSwipe = distance > minSwipeDistance;
     const isRightSwipe = distance < -minSwipeDistance;
 
-    if (isLeftSwipe && chapter < totalChapters) {
-        setChapter(prev => prev + 1); // Next Chapter
+    if (isLeftSwipe) handleNextChapter();
+    if (isRightSwipe) handlePrevChapter();
+  };
+
+  const handleNextChapter = () => {
+    if (chapter < totalChapters) {
+        setChapter(prev => prev + 1);
+    } else {
+        onShowToast(`Fim de ${book}. Volte ao menu para escolher outro livro.`, 'info');
     }
-    if (isRightSwipe && chapter > 1) {
-        setChapter(prev => prev - 1); // Prev Chapter
+  };
+
+  const handlePrevChapter = () => {
+    if (chapter > 1) {
+        setChapter(prev => prev - 1);
     }
   };
 
@@ -127,11 +139,20 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
   const fetchChapter = async () => {
     setLoading(true);
     try {
-        const res = await fetch(`https://bible-api.com/${book}+${chapter}?translation=almeida`);
+        // Correção para livros com nomes compostos ou caracteres especiais na API
+        const safeBook = book.replace(/\s/g, '+');
+        const res = await fetch(`https://bible-api.com/${safeBook}+${chapter}?translation=almeida`);
+        if (!res.ok) throw new Error("API Error");
         const data = await res.json();
-        setVerses(data.verses.map((v: any) => ({ number: v.verse, text: v.text })));
+        
+        // Garante que verses é um array e ordena por número do verso
+        if (data.verses && Array.isArray(data.verses)) {
+             setVerses(data.verses.sort((a: any, b: any) => a.verse - b.verse).map((v: any) => ({ number: v.verse, text: v.text })));
+        } else {
+             throw new Error("Formato inválido");
+        }
     } catch (e) {
-        setVerses([{ number: 1, text: "Erro ao carregar texto. Verifique sua conexão." }]);
+        setVerses([{ number: 1, text: "Não foi possível carregar o texto. Verifique sua conexão ou tente novamente." }]);
     } finally {
         setLoading(false);
     }
@@ -229,41 +250,56 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
 
   const handleChapterChange = (newChapter: number) => {
       setChapter(newChapter);
+      setShowChapterSelector(false);
       setShowSettings(false);
   };
 
   return (
     <div 
-      className="min-h-screen bg-[#F5F5DC] dark:bg-dark-bg pb-24 transition-colors duration-300"
+      className="min-h-screen bg-[#F5F5DC] dark:bg-dark-bg transition-colors duration-300 flex flex-col"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
-      <div className="sticky top-0 bg-[#8B0000] text-white p-4 shadow-lg z-20 flex justify-between items-center safe-top">
-        <button onClick={onBack} className="p-1"><ChevronLeft /></button>
-        <div className="text-center">
-            <h1 className="font-cinzel font-bold text-lg">{book} {chapter}</h1>
-            <p className="text-[10px] font-montserrat opacity-70">Deslize para navegar</p>
+      {/* HEADER FIXO */}
+      <div className="sticky top-0 bg-[#8B0000] text-white p-3 shadow-lg z-30 flex justify-between items-center safe-top">
+        <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full"><ChevronLeft /></button>
+        
+        <div 
+            className="text-center cursor-pointer hover:bg-white/10 px-4 py-1 rounded-lg transition-colors"
+            onClick={() => setShowChapterSelector(!showChapterSelector)}
+            title="Mudar Capítulo"
+        >
+            <h1 className="font-cinzel font-bold text-lg flex items-center gap-2 justify-center">
+                {book} {chapter} <ChevronRight className={`w-4 h-4 transition-transform ${showChapterSelector ? 'rotate-90' : ''}`} />
+            </h1>
         </div>
-        <button onClick={() => setShowSettings(!showSettings)} className="p-1"><Settings className="w-5 h-5" /></button>
+
+        <button onClick={() => setShowSettings(!showSettings)} className="p-2 hover:bg-white/10 rounded-full"><Settings className="w-5 h-5" /></button>
       </div>
 
-      {showSettings && (
-        <div className="bg-white dark:bg-dark-card p-4 border-b border-[#C5A059] sticky top-[60px] z-10 animate-in slide-in-from-top-2 shadow-md">
-            <div className="flex flex-col gap-4">
-                <div className="flex flex-col gap-1">
-                    <span className="font-montserrat text-sm font-bold text-[#1a0f0f] dark:text-gray-200">Ir para Capítulo:</span>
-                    <select 
-                        value={chapter} 
-                        onChange={(e) => handleChapterChange(Number(e.target.value))}
-                        className="p-2 border rounded w-full text-sm dark:bg-gray-700 dark:text-white"
-                    >
-                        {Array.from({ length: totalChapters }, (_, i) => i + 1).map(c => (
-                            <option key={c} value={c}>Capítulo {c}</option>
-                        ))}
-                    </select>
-                </div>
+      {/* SELETOR DE CAPÍTULO (DROPDOWN) */}
+      {showChapterSelector && (
+          <div className="bg-white dark:bg-dark-card border-b border-[#C5A059] p-4 sticky top-[60px] z-20 shadow-xl animate-in slide-in-from-top-2">
+              <h3 className="font-bold text-[#8B0000] dark:text-[#ff6b6b] mb-2 font-cinzel text-center">Selecionar Capítulo</h3>
+              <div className="grid grid-cols-5 gap-2 max-h-60 overflow-y-auto p-2">
+                  {Array.from({ length: totalChapters }, (_, i) => i + 1).map(c => (
+                      <button 
+                        key={c} 
+                        onClick={() => handleChapterChange(c)}
+                        className={`p-2 rounded font-bold text-sm ${chapter === c ? 'bg-[#8B0000] text-white' : 'bg-gray-100 dark:bg-gray-700 dark:text-gray-200 hover:bg-[#C5A059] hover:text-white'}`}
+                      >
+                          {c}
+                      </button>
+                  ))}
+              </div>
+          </div>
+      )}
 
+      {/* CONFIGURAÇÕES */}
+      {showSettings && (
+        <div className="bg-white dark:bg-dark-card p-4 border-b border-[#C5A059] sticky top-[60px] z-20 animate-in slide-in-from-top-2 shadow-xl">
+            <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                     <span className="font-montserrat text-sm font-bold text-[#1a0f0f] dark:text-gray-200">Fonte:</span>
                     <div className="flex items-center gap-4 text-black dark:text-white">
@@ -304,73 +340,100 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
         </div>
       )}
 
-      {loadingEpigraph ? (
-          <div className="max-w-3xl mx-auto mt-6 px-6 text-center">
-              <div className="h-6 w-3/4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mx-auto mb-2"></div>
-              <div className="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mx-auto"></div>
-          </div>
-      ) : epigraph ? (
-        <div className="max-w-3xl mx-auto mt-6 px-6 text-center animate-in fade-in zoom-in duration-500">
-            <h2 className="font-cinzel text-[#8B0000] dark:text-[#ff6b6b] font-bold text-xl uppercase tracking-widest mb-1">{epigraph.title}</h2>
-            <div className="w-16 h-1 bg-[#C5A059] mx-auto mb-2"></div>
-            <p className="font-cormorant text-gray-600 dark:text-gray-300 italic text-lg">{epigraph.subtitle}</p>
-        </div>
-      ) : null}
+      {/* ÁREA DE CONTEÚDO SCROLLÁVEL */}
+      <div className="flex-1 overflow-y-auto pb-40"> {/* pb-40 garante espaço para os botões fixos */}
+          {loadingEpigraph ? (
+              <div className="max-w-3xl mx-auto mt-6 px-6 text-center">
+                  <div className="h-6 w-3/4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mx-auto mb-2"></div>
+                  <div className="h-4 w-1/2 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mx-auto"></div>
+              </div>
+          ) : epigraph ? (
+            <div className="max-w-3xl mx-auto mt-6 px-6 text-center animate-in fade-in zoom-in duration-500">
+                <h2 className="font-cinzel text-[#8B0000] dark:text-[#ff6b6b] font-bold text-xl uppercase tracking-widest mb-1">{epigraph.title}</h2>
+                <div className="w-16 h-1 bg-[#C5A059] mx-auto mb-2"></div>
+                <p className="font-cormorant text-gray-600 dark:text-gray-300 italic text-lg">{epigraph.subtitle}</p>
+            </div>
+          ) : null}
 
-      <div className="p-6 max-w-3xl mx-auto space-y-6">
-        {loading ? (
-             <TextSkeleton />
-        ) : (
-            verses.map(v => (
-                <div
-                    key={v.number} 
-                    className="relative group"
-                    onClick={() => setSelectedVerse(v)}
-                >
-                    <span className="absolute -left-3 top-1 font-cinzel font-bold text-[#8B0000] dark:text-[#ff6b6b] text-xs opacity-60 select-none">
-                        {v.number}
-                    </span>
-                    <p 
-                        className="font-cormorant leading-loose tracking-wide text-[#1a0f0f] dark:text-gray-200 cursor-pointer hover:bg-[#C5A059]/10 rounded px-1 transition-colors text-justify"
-                        style={{ fontSize: `${fontSize}px` }}
+          <div className="p-6 max-w-3xl mx-auto space-y-6">
+            {loading ? (
+                <TextSkeleton />
+            ) : (
+                verses.map(v => (
+                    <div
+                        key={v.number} 
+                        className="relative group hover:bg-[#C5A059]/10 rounded p-1 transition-colors -mx-1"
+                        onClick={() => setSelectedVerse(v)}
                     >
-                        {v.text}
-                    </p>
-                </div>
-            ))
-        )}
+                        <span className="absolute -left-2 top-0 font-cinzel font-bold text-[#8B0000] dark:text-[#ff6b6b] text-xs opacity-60 select-none">
+                            {v.number}
+                        </span>
+                        <p 
+                            className="font-cormorant leading-loose tracking-wide text-[#1a0f0f] dark:text-gray-200 cursor-pointer text-justify pl-2"
+                            style={{ fontSize: `${fontSize}px` }}
+                        >
+                            {v.text}
+                        </p>
+                    </div>
+                ))
+            )}
+            
+            {/* Espaço extra no final para não cortar o último versículo */}
+            <div className="h-10"></div>
+          </div>
       </div>
 
-      {/* Floating Audio Button */}
+      {/* BOTÃO FLUTUANTE DE ÁUDIO (Acima da barra de navegação) */}
       <button 
         onClick={togglePlay}
-        className="fixed bottom-24 right-4 w-12 h-12 bg-[#C5A059] text-[#1a0f0f] rounded-full shadow-2xl flex items-center justify-center z-30 hover:bg-[#d4b97a] transition-all"
+        className="fixed bottom-24 right-4 w-12 h-12 bg-[#C5A059] text-[#1a0f0f] rounded-full shadow-2xl flex items-center justify-center z-40 hover:bg-[#d4b97a] transition-all border-2 border-white dark:border-gray-800"
         title={isPlaying ? "Pausar Leitura" : "Ouvir Capítulo"}
       >
         {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-1" />}
       </button>
       
-      {/* Botões de Ação Inferior (Fixos acima da BottomNav) */}
-      <div className="fixed bottom-16 left-0 w-full bg-gradient-to-t from-white via-white to-transparent dark:from-[#121212] dark:via-[#121212] p-4 flex justify-center items-end z-20 pb-4 h-24 pointer-events-none">
-        <button 
+      {/* BARRA DE NAVEGAÇÃO E AÇÃO (RODAPÉ FIXO) */}
+      <div className="fixed bottom-0 left-0 w-full bg-white dark:bg-[#121212] border-t border-[#C5A059] shadow-[0_-5px_20px_rgba(0,0,0,0.2)] p-4 z-40 flex justify-between items-center safe-bottom mb-[56px] md:mb-0">
+         {/* Botão Anterior */}
+         <button 
+            onClick={handlePrevChapter}
+            disabled={chapter <= 1}
+            className="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-300 hover:text-[#8B0000] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+         >
+            <ChevronLeft className="w-6 h-6" />
+            <span className="text-[10px] font-bold uppercase">Anterior</span>
+         </button>
+
+         {/* Botão Central de Ação (Marcar Lido) */}
+         <button 
             onClick={handleMarkRead}
             disabled={!canMarkRead && !isRead}
-            className={`pointer-events-auto flex items-center gap-2 px-6 py-3 rounded-full font-bold shadow-lg transition-all transform active:scale-95 ${
+            className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold shadow-lg transition-all transform active:scale-95 min-w-[160px] justify-center ${
                 isRead 
-                ? 'bg-green-600 text-white' 
+                ? 'bg-green-600 text-white hover:bg-green-700' 
                 : canMarkRead 
-                    ? 'bg-[#8B0000] text-white animate-pulse' 
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
+                    ? 'bg-[#8B0000] text-white animate-pulse hover:bg-[#600018]' 
+                    : 'bg-gray-200 dark:bg-gray-800 text-gray-400 cursor-not-allowed'
             }`}
-        >
+         >
             {isRead ? (
                 <>Lido <CheckCircle className="w-5 h-5" /></>
             ) : canMarkRead ? (
-                <>Concluir Leitura</>
+                <>Concluir <CheckCircle className="w-5 h-5" /></>
             ) : (
-                <span className="font-mono">{timeLeft}s</span>
+                <span className="font-mono flex items-center gap-2"><div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div> {timeLeft}s</span>
             )}
-        </button>
+         </button>
+
+         {/* Botão Próximo */}
+         <button 
+            onClick={handleNextChapter}
+            disabled={chapter >= totalChapters}
+            className="flex flex-col items-center justify-center p-2 text-gray-600 dark:text-gray-300 hover:text-[#8B0000] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+         >
+            <ChevronRight className="w-6 h-6" />
+            <span className="text-[10px] font-bold uppercase">Próximo</span>
+         </button>
       </div>
 
       <VersePanel 
@@ -382,7 +445,7 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
         chapter={chapter}
         isAdmin={isAdmin}
         onShowToast={onShowToast}
-        userProgress={userProgress} // Prop passada aqui
+        userProgress={userProgress} 
       />
     </div>
   );
