@@ -1,15 +1,27 @@
 // Service Worker Mínimo para PWA
+const CACHE_NAME = 'adma-bible-v1';
+const ASSETS = [
+  './',
+  './index.html',
+  './icon.svg',
+  './manifest.json'
+];
+
 self.addEventListener('install', (event) => {
-  // Força o SW a se tornar ativo imediatamente
   self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+  );
 });
 
 self.addEventListener('activate', (event) => {
-  // Garante que o SW controle todas as abas abertas imediatamente
   event.waitUntil(self.clients.claim());
 });
 
 self.addEventListener('fetch', (event) => {
-  // Pass-through básico (necessário para o Chrome detectar como PWA)
-  event.respondWith(fetch(event.request));
+  event.respondWith(
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request);
+    })
+  );
 });
