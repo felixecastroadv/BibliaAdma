@@ -171,12 +171,21 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
             // 1. Tenta Cache Local (Offline First)
             const cacheKey = `bible_acf_${bookMeta.abbrev}_${chapter}`;
             const cached = localStorage.getItem(cacheKey);
+            
             if (cached) {
-                const parsed = JSON.parse(cached);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    setVerses(parsed);
-                    setLoading(false);
-                    return;
+                try {
+                    const parsed = JSON.parse(cached);
+                    // Verificação de Integridade: Se estiver vazio, deleta e força fetch
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        setVerses(parsed);
+                        setLoading(false);
+                        return;
+                    } else {
+                        console.warn("Cache corrompido ou vazio. Limpando:", cacheKey);
+                        localStorage.removeItem(cacheKey);
+                    }
+                } catch(e) {
+                    localStorage.removeItem(cacheKey);
                 }
             }
 
@@ -201,7 +210,7 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
 
         } catch (e: any) {
             console.error(e);
-            setErrorMsg("Não foi possível carregar o texto. Verifique sua internet.");
+            setErrorMsg("Não foi possível carregar o texto. Verifique sua internet ou tente baixar na aba Admin.");
         } finally {
             setLoading(false);
         }

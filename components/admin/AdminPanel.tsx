@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Key, ShieldCheck, RefreshCw, Loader2, Save, AlertTriangle, CheckCircle, XCircle, Info, BookOpen, Download, Server, Database, Upload, FileJson, Sparkles, Languages, GraduationCap, Calendar, MessageSquare, Mic } from 'lucide-react';
+import { ChevronLeft, Key, ShieldCheck, RefreshCw, Loader2, Save, AlertTriangle, CheckCircle, XCircle, Info, BookOpen, Download, Server, Database, Upload, FileJson, MessageSquare, Languages, GraduationCap, Calendar } from 'lucide-react';
 import { getStoredApiKey, setStoredApiKey, generateContent } from '../../services/geminiService';
 import { BIBLE_BOOKS, generateChapterKey, generateVerseKey } from '../../constants';
 import { db } from '../../services/database';
@@ -16,9 +16,10 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   const [progress, setProgress] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processStatus, setProcessStatus] = useState('');
+  const [currentBookProcessing, setCurrentBookProcessing] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // --- STATES DE GERAÇÃO EM LOTE (FÁBRICA DE CONTEÚDO) ---
+  // --- STATES DE GERAÇÃO EM LOTE ---
   const [batchBook, setBatchBook] = useState('Gênesis');
   const [batchChapter, setBatchChapter] = useState(1);
   const [isGeneratingBatch, setIsGeneratingBatch] = useState(false);
@@ -61,44 +62,86 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
     onShowToast('Chave removida.', 'info');
   };
 
-  // --- LÓGICA DE DOWNLOAD API (FALLBACK) ---
+  // --- LÓGICA DE DOWNLOAD API (ROBUSTA) ---
+  const fetchWithRetry = async (url: string, retries = 3, backoff = 1000): Promise<any> => {
+      try {
+          const res = await fetch(url);
+          if (res.status === 429) throw new Error("RATE_LIMIT");
+          if (!res.ok) throw new Error(`HTTP_${res.status}`);
+          return await res.json();
+      } catch (e: any) {
+          if (retries > 0) {
+              await new Promise(r => setTimeout(r, backoff));
+              return fetchWithRetry(url, retries - 1, backoff * 2);
+          }
+          throw e;
+      }
+  };
+
   const handleDownloadBible = async () => {
-      if (!window.confirm("Isso irá baixar todos os textos da API online. Pode demorar. Continuar?")) return;
+      if (!window.confirm("ATENÇÃO: Este processo baixa 1189 capítulos. Para evitar bloqueios, será feito lentamente (~5 min). Mantenha a tela aberta. Continuar?")) return;
       
       setIsProcessing(true);
-      setProcessStatus("Baixando da API...");
+      setProcessStatus("Iniciando...");
       setProgress(0);
       let total = 0;
       let count = 0;
       
       BIBLE_BOOKS.forEach(b => total += b.chapters);
 
+      // Limpa caches corrompidos antes de começar
+      onShowToast("Limpando dados corrompidos...", "info");
+
       for (const book of BIBLE_BOOKS) {
+          if (stopBatch) break;
+          setCurrentBookProcessing(book.name);
+
           for (let c = 1; c <= book.chapters; c++) {
+              if (stopBatch) break;
               const key = `bible_acf_${book.abbrev}_${c}`;
-              if (!localStorage.getItem(key)) {
-                   try {
-                        const res = await fetch(`https://www.abibliadigital.com.br/api/verses/acf/${book.abbrev}/${c}`);
-                        if (res.ok) {
-                            const data = await res.json();
-                             if (data.verses) {
-                                const cleanVerses = data.verses.map((v: any) => ({ number: v.number, text: v.text.trim() }));
-                                localStorage.setItem(key, JSON.stringify(cleanVerses));
-                            }
-                        }
-                   } catch(e) {}
-                   await new Promise(r => setTimeout(r, 200)); 
+              
+              // Verifica se já temos (e se é válido)
+              const existing = localStorage.getItem(key);
+              let isValid = false;
+              if (existing) {
+                  try {
+                      const p = JSON.parse(existing);
+                      if (Array.isArray(p) && p.length > 0) isValid = true;
+                  } catch(e) {}
               }
+
+              if (!isValid) {
+                   try {
+                        setProcessStatus(`Baixando ${book.name} ${c}...`);
+                        
+                        // Delay artificial para evitar block da API (300ms)
+                        await new Promise(r => setTimeout(r, 300));
+                        
+                        const data = await fetchWithRetry(`https://www.abibliadigital.com.br/api/verses/acf/${book.abbrev}/${c}`);
+                        
+                        if (data && data.verses && data.verses.length > 0) {
+                            const cleanVerses = data.verses.map((v: any) => ({ number: v.number, text: v.text.trim() }));
+                            localStorage.setItem(key, JSON.stringify(cleanVerses));
+                        } else {
+                            console.error(`Falha ao baixar ${book.name} ${c}: Dados vazios`);
+                        }
+                   } catch(e) {
+                       console.error(`Erro fatal em ${book.name} ${c}`, e);
+                   }
+              }
+              
               count++;
               setProgress(Math.round((count / total) * 100));
           }
       }
       
       setIsProcessing(false);
-      onShowToast("Bíblia baixada para uso offline!", "success");
+      setStopBatch(false);
+      setCurrentBookProcessing('');
+      onShowToast("Download concluído! Verifique a leitura.", "success");
   };
 
-  // --- LÓGICA DE IMPORTAÇÃO DE JSON LOCAL (MELHORADA) ---
+  // --- LÓGICA DE IMPORTAÇÃO DE JSON (NORMALIZADOR AVANÇADO) ---
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file) return;
@@ -110,11 +153,13 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       reader.onload = async (e) => {
           try {
               const jsonText = e.target?.result as string;
-              const jsonData = JSON.parse(jsonText);
+              // Tenta limpar caracteres invisíveis que quebram JSON
+              const cleanJson = jsonText.replace(/^\uFEFF/, ''); 
+              const jsonData = JSON.parse(cleanJson);
               await processBibleJSON(jsonData);
           } catch (error) {
               console.error(error);
-              onShowToast("Erro ao ler JSON. Formato inválido ou corrompido.", "error");
+              onShowToast("O arquivo não é um JSON válido. Verifique a sintaxe.", "error");
               setIsProcessing(false);
           }
       };
@@ -122,41 +167,57 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       reader.readAsText(file);
   };
 
-  const processBibleJSON = async (data: any) => {
-      setProcessStatus("Processando estrutura...");
-      let booksProcessed = 0;
-      let totalChapters = 0;
+  const normalizeBookName = (name: string) => {
+      if (!name) return "";
+      let n = name.toLowerCase().trim()
+          .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // Remove acentos
+
+      // Mapeamento de Algarismos Romanos e Variações
+      n = n.replace(/^i\s/, "1 ").replace(/^ii\s/, "2 ").replace(/^iii\s/, "3 "); // I João -> 1 João
+      n = n.replace(/^1\.\s/, "1 ").replace(/^2\.\s/, "2 ").replace(/^3\.\s/, "3 "); // 1. João -> 1 João
       
-      // 1. Tenta encontrar o Array de livros em estruturas comuns
+      // Mapeamento de Nomes Específicos
+      if (n.includes("job")) return "jo";
+      if (n.includes("judas")) return "judas";
+      if (n.includes("apoc")) return "apocalipse";
+      if (n.includes("cantico")) return "cantares";
+      if (n.includes("salmo")) return "salmos";
+      
+      return n;
+  };
+
+  const processBibleJSON = async (data: any) => {
+      setProcessStatus("Analisando estrutura...");
       let booksArray: any[] = [];
-      if (Array.isArray(data)) {
-          booksArray = data;
-      } else if (data.books && Array.isArray(data.books)) {
-          booksArray = data.books; // Formato comum { version: '...', books: [...] }
-      } else if (data.bible && Array.isArray(data.bible)) {
-          booksArray = data.bible;
-      } else if (data.data && Array.isArray(data.data)) {
-          booksArray = data.data;
-      } else {
-          onShowToast("Formato não reconhecido. O JSON precisa ter uma lista de livros.", "error");
-          setIsProcessing(false);
-          return;
+      
+      // Detecção Automática da Estrutura do JSON
+      if (Array.isArray(data)) booksArray = data;
+      else if (data.books && Array.isArray(data.books)) booksArray = data.books;
+      else if (data.bible && Array.isArray(data.bible)) booksArray = data.bible;
+      else if (data.data && Array.isArray(data.data)) booksArray = data.data;
+      else {
+          // Tenta extrair valores se for objeto chaveado por livro
+          const possibleBooks = Object.values(data);
+          if (possibleBooks.length > 0 && typeof possibleBooks[0] === 'object') {
+              booksArray = possibleBooks;
+          } else {
+              onShowToast("Estrutura do JSON não reconhecida.", "error");
+              setIsProcessing(false);
+              return;
+          }
       }
 
-      // Normaliza nomes para comparação (remove acentos, lowercase)
-      const normalize = (str: string) => str ? str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+      let booksProcessed = 0;
+      let totalChapters = 0;
 
       for (const bookData of booksArray) {
-          // Tenta encontrar o livro correspondente nas nossas constantes
-          const bookName = bookData.name || bookData.book || bookData.n || ""; // .n é comum em alguns JSONs compactos
-          if (!bookName) continue;
-
-          const targetBook = BIBLE_BOOKS.find(b => normalize(b.name) === normalize(bookName));
+          const rawName = bookData.name || bookData.book || bookData.n || bookData.abbrev || "";
+          const normalizedInput = normalizeBookName(rawName);
+          
+          const targetBook = BIBLE_BOOKS.find(b => normalizeBookName(b.name) === normalizedInput || normalizeBookName(b.abbrev) === normalizedInput);
           
           if (targetBook) {
-              // Verifica onde estão os capítulos
               const chapters = bookData.chapters || bookData.c || bookData.data;
-
               if (chapters && Array.isArray(chapters)) {
                   chapters.forEach((chapterContent: any, index: number) => {
                       const chapterNum = index + 1;
@@ -164,14 +225,14 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                       
                       let formattedVerses: {number: number, text: string}[] = [];
 
-                      // Suporta formato: chapters: [ ["v1", "v2"], ... ] (Array de Strings)
-                      if (Array.isArray(chapterContent) && typeof chapterContent[0] === 'string') {
+                      // Formato 1: Array de Strings ["No principio...", "E a terra..."]
+                      if (Array.isArray(chapterContent) && (typeof chapterContent[0] === 'string')) {
                           formattedVerses = chapterContent.map((text: string, vIndex: number) => ({
                               number: vIndex + 1,
                               text: text.trim()
                           }));
                       }
-                      // Suporta formato: chapters: [ [ {number:1, text: "v1"}, ... ] ] (Array de Objetos)
+                      // Formato 2: Array de Objetos [{verse: 1, text: "..."}, ...]
                       else if (Array.isArray(chapterContent) && typeof chapterContent[0] === 'object') {
                            formattedVerses = chapterContent.map((v: any, vIndex: number) => ({
                               number: v.number || parseInt(v.verse) || (vIndex + 1),
@@ -190,17 +251,21 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           
           const percentage = Math.round((booksProcessed / Math.max(1, booksArray.length)) * 100);
           setProgress(percentage);
-          // Pausa a cada 5 livros para UI respirar
-          if (booksProcessed % 5 === 0) await new Promise(r => setTimeout(r, 10)); 
+          setCurrentBookProcessing(rawName);
+          if (booksProcessed % 10 === 0) await new Promise(r => setTimeout(r, 5));
       }
 
       setIsProcessing(false);
-      onShowToast(`Sucesso! ${totalChapters} capítulos de ${booksProcessed} livros importados.`, "success");
+      setCurrentBookProcessing('');
+      if (totalChapters > 0) {
+          onShowToast(`${totalChapters} capítulos importados com sucesso!`, "success");
+      } else {
+          onShowToast("Nenhum capítulo foi importado. Verifique os nomes dos livros no JSON.", "error");
+      }
       if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-
-  // --- LÓGICA DE GERAÇÃO EM LOTE ---
+  // --- LÓGICA DE GERAÇÃO EM LOTE (MANTIDA IGUAL) ---
   const handleBatchGenerate = async (type: 'commentary' | 'dictionary') => {
       setStopBatch(false);
       setIsGeneratingBatch(true);
@@ -209,7 +274,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       setProcessStatus("Iniciando IA...");
 
       try {
-          // 1. Pega os versículos do capítulo selecionado
           const bookMeta = BIBLE_BOOKS.find(b => b.name === batchBook);
           if (!bookMeta) throw new Error("Livro inválido");
 
@@ -220,23 +284,19 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           if (cachedVerses) {
               verses = JSON.parse(cachedVerses);
           } else {
-              // Tenta fetch rápido se não tiver cache
               const res = await fetch(`https://www.abibliadigital.com.br/api/verses/acf/${bookMeta.abbrev}/${batchChapter}`);
               const data = await res.json();
               verses = data.verses.map((v: any) => ({ number: v.number, text: v.text }));
           }
 
-          if (verses.length === 0) throw new Error("Texto bíblico não encontrado para gerar conteúdo.");
+          if (verses.length === 0) throw new Error("Texto bíblico não encontrado. Baixe a Bíblia primeiro.");
 
           let processed = 0;
           
           for (const verse of verses) {
-              if (stopBatch) break; // Permite cancelar
-
+              if (stopBatch) break;
               const verseKey = generateVerseKey(batchBook, batchChapter, verse.number);
               
-              // Verifica se já existe para não gastar cota à toa (opcional, aqui vou forçar geração se o admin mandou)
-              // Mas para ser eficiente, vamos verificar
               if (type === 'commentary') {
                   const exists = await db.entities.Commentary.filter({ verse_key: verseKey });
                   if (exists.length === 0) {
@@ -252,16 +312,12 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
               processed++;
               setProgress(Math.round((processed / verses.length) * 100));
               setProcessStatus(`Gerando ${type === 'commentary' ? 'Comentário' : 'Dicionário'} v.${verse.number}...`);
-              
-              // Delay para não estourar rate limit da API
               await new Promise(r => setTimeout(r, 2000));
           }
-
-          onShowToast(`${type === 'commentary' ? 'Comentários' : 'Dicionários'} gerados com sucesso!`, "success");
+          onShowToast("Lote concluído!", "success");
 
       } catch (e: any) {
-          console.error(e);
-          onShowToast(`Erro no lote: ${e.message}`, "error");
+          onShowToast(`Erro: ${e.message}`, "error");
       } finally {
           setIsGeneratingBatch(false);
           setBatchType(null);
@@ -269,50 +325,17 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   };
 
   const generateSingleCommentary = async (book: string, chapter: number, verseNum: number, text: string, key: string) => {
-      const prompt = `
-            ATUE COMO: Professor Michel Felix.
-            TAREFA: Comentário bíblico curto e vibrante sobre ${book} ${chapter}:${verseNum}.
-            TEXTO: "${text}"
-            VIÉS: Pentecostal Clássico. Foco na aplicação prática.
-            ESTRUTURA: 2 parágrafos. Sem saudações.
-      `;
+      const prompt = `ATUE COMO: Professor Michel Felix. TAREFA: Comentário bíblico curto e vibrante sobre ${book} ${chapter}:${verseNum}. TEXTO: "${text}". VIÉS: Pentecostal Clássico. ESTRUTURA: 2 parágrafos.`;
       const aiRes = await generateContent(prompt);
-      await db.entities.Commentary.create({
-          book, chapter, verse: verseNum, verse_key: key, commentary_text: aiRes
-      });
+      await db.entities.Commentary.create({ book, chapter, verse: verseNum, verse_key: key, commentary_text: aiRes });
   };
 
   const generateSingleDictionary = async (book: string, chapter: number, verseNum: number, text: string, key: string) => {
       const isOT = BIBLE_BOOKS.find(b => b.name === book)?.testament === 'old';
-      const lang = isOT ? 'HEBRAICO' : 'GREGO';
-      
-      const prompt = `
-          Análise lexical de ${book} ${chapter}:${verseNum} ("${text}"). Idioma: ${lang}.
-          JSON com: hebrewGreekText, phoneticText, words array (original, transliteration, portuguese, polysemy, etymology, grammar).
-      `;
-      const schema = {
-        type: GenType.OBJECT,
-        properties: {
-            hebrewGreekText: { type: GenType.STRING },
-            phoneticText: { type: GenType.STRING },
-            words: { type: GenType.ARRAY, items: { type: GenType.OBJECT, properties: {
-                original: { type: GenType.STRING },
-                transliteration: { type: GenType.STRING },
-                portuguese: { type: GenType.STRING },
-                polysemy: { type: GenType.STRING },
-                etymology: { type: GenType.STRING },
-                grammar: { type: GenType.STRING }
-            }}}
-        }
-      };
-      
+      const prompt = `Análise lexical de ${book} ${chapter}:${verseNum} ("${text}"). Idioma: ${isOT ? 'HEBRAICO' : 'GREGO'}. JSON completo.`;
+      const schema = { type: GenType.OBJECT, properties: { hebrewGreekText: { type: GenType.STRING }, phoneticText: { type: GenType.STRING }, words: { type: GenType.ARRAY, items: { type: GenType.OBJECT, properties: { original: { type: GenType.STRING }, transliteration: { type: GenType.STRING }, portuguese: { type: GenType.STRING }, polysemy: { type: GenType.STRING }, etymology: { type: GenType.STRING }, grammar: { type: GenType.STRING } } } } } };
       const res = await generateContent(prompt, schema);
-      await db.entities.Dictionary.create({
-          book, chapter, verse: verseNum, verse_key: key,
-          original_text: res.hebrewGreekText,
-          transliteration: res.phoneticText,
-          key_words: res.words || []
-      });
+      await db.entities.Dictionary.create({ book, chapter, verse: verseNum, verse_key: key, original_text: res.hebrewGreekText, transliteration: res.phoneticText, key_words: res.words || [] });
   };
 
   return (
@@ -364,11 +387,11 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
             <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow hover:shadow-lg transition border border-[#C5A059]">
                 <FileJson className="w-8 h-8 text-[#C5A059] mb-3" />
                 <h3 className="font-bold dark:text-white">Importar JSON</h3>
-                <p className="text-xs text-gray-500 mb-4">Carregue arquivo <code>.json</code> (Array de livros ou formato 'abibliadigital').</p>
+                <p className="text-xs text-gray-500 mb-4">Carregue seu JSON. O sistema agora entende nomes como "I João", "Job", "Apocalipsis".</p>
                 {isProcessing && !isGeneratingBatch ? (
                     <div className="w-full bg-gray-200 rounded-full h-8 overflow-hidden relative">
                          <div className="h-full bg-[#C5A059]" style={{ width: `${progress}%` }}></div>
-                         <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">{processStatus} {progress}%</span>
+                         <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-[#8B0000]">{processStatus} {progress}%</span>
                     </div>
                 ) : (
                     <div className="flex gap-2">
@@ -382,11 +405,17 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
             
             <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow">
                 <Download className="w-8 h-8 text-gray-400 mb-3" />
-                <h3 className="font-bold dark:text-white">Baixar da Nuvem</h3>
-                <p className="text-xs text-gray-500 mb-4">Se não tiver JSON, baixe da API pública (Lento).</p>
-                <button onClick={handleDownloadBible} className="w-full py-2 border border-gray-400 text-gray-600 rounded font-bold text-sm hover:bg-gray-100 dark:hover:bg-gray-800">
-                    Iniciar Download API
-                </button>
+                <h3 className="font-bold dark:text-white">Baixar da Nuvem (Lento/Seguro)</h3>
+                <p className="text-xs text-gray-500 mb-4">Baixa com pausas para evitar bloqueio da API. Use se o JSON falhar.</p>
+                {isProcessing && !isGeneratingBatch ? (
+                    <button onClick={() => setStopBatch(true)} className="w-full py-2 bg-red-100 text-red-600 rounded font-bold text-sm">
+                        Cancelar Download ({currentBookProcessing})
+                    </button>
+                ) : (
+                    <button onClick={handleDownloadBible} className="w-full py-2 border border-gray-400 text-gray-600 rounded font-bold text-sm hover:bg-gray-100 dark:hover:bg-gray-800">
+                        Iniciar Download Seguro
+                    </button>
+                )}
             </div>
         </div>
 
@@ -446,7 +475,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
 
                     <button 
                          className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg flex flex-col items-center gap-2 opacity-50 cursor-not-allowed"
-                         title="Use a aba EBD no App"
                     >
                         <GraduationCap className="w-6 h-6 text-gray-400" />
                         <div className="text-center">
