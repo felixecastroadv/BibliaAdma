@@ -145,7 +145,11 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
     try {
         // Correção para livros com nomes compostos ou caracteres especiais na API
         const safeBook = book.replace(/\s/g, '+');
-        const res = await fetch(`https://bible-api.com/${safeBook}+${chapter}?translation=almeida`);
+        
+        // CRÍTICO: Adicionamos ':1-300' para forçar a API a retornar todos os versículos do capítulo.
+        // Isso resolve o bug onde livros de capítulo único (ex: Obadias 1) eram interpretados como "Obadias 1:1" (apenas versículo 1).
+        const res = await fetch(`https://bible-api.com/${safeBook}+${chapter}:1-300?translation=almeida`);
+        
         if (!res.ok) throw new Error("API Error");
         const data = await res.json();
         
@@ -303,15 +307,15 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
               <div className="flex border-b border-[#C5A059]/30">
                   <button 
                     onClick={() => setSelectorTab('books')}
-                    className={`flex-1 py-3 font-cinzel font-bold text-sm ${selectorTab === 'books' ? 'bg-[#8B0000] text-white' : 'text-gray-600 dark:text-gray-400'}`}
+                    className={`flex-1 py-4 font-cinzel font-bold text-sm flex items-center justify-center gap-2 ${selectorTab === 'books' ? 'bg-[#8B0000] text-white' : 'text-gray-600 dark:text-gray-400'}`}
                   >
-                      Livros
+                      <Book className="w-4 h-4" /> Livros
                   </button>
                   <button 
                     onClick={() => setSelectorTab('chapters')}
-                    className={`flex-1 py-3 font-cinzel font-bold text-sm ${selectorTab === 'chapters' ? 'bg-[#8B0000] text-white' : 'text-gray-600 dark:text-gray-400'}`}
+                    className={`flex-1 py-4 font-cinzel font-bold text-sm flex items-center justify-center gap-2 ${selectorTab === 'chapters' ? 'bg-[#8B0000] text-white' : 'text-gray-600 dark:text-gray-400'}`}
                   >
-                      Capítulos
+                      <List className="w-4 h-4" /> Capítulos
                   </button>
               </div>
 
@@ -413,7 +417,7 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
       )}
 
       {/* ÁREA DE CONTEÚDO SCROLLÁVEL */}
-      <div className="flex-1 overflow-y-auto pb-40"> {/* pb-40 garante espaço para os botões fixos */}
+      <div className="flex-1 overflow-y-auto pb-48"> {/* Aumentado pb-48 para garantir que o texto final não fique atrás da barra */}
           {loadingEpigraph ? (
               <div className="max-w-3xl mx-auto mt-6 px-6 text-center">
                   <div className="h-6 w-3/4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mx-auto mb-2"></div>
@@ -458,15 +462,14 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
       {/* BOTÃO FLUTUANTE DE ÁUDIO (Acima da barra de navegação) */}
       <button 
         onClick={togglePlay}
-        className="fixed bottom-24 right-4 w-12 h-12 bg-[#C5A059] text-[#1a0f0f] rounded-full shadow-2xl flex items-center justify-center z-40 hover:bg-[#d4b97a] transition-all border-2 border-white dark:border-gray-800"
+        className="fixed bottom-28 right-4 w-12 h-12 bg-[#C5A059] text-[#1a0f0f] rounded-full shadow-2xl flex items-center justify-center z-[100] hover:bg-[#d4b97a] transition-all border-2 border-white dark:border-gray-800"
         title={isPlaying ? "Pausar Leitura" : "Ouvir Capítulo"}
       >
         {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-1" />}
       </button>
       
       {/* BARRA DE NAVEGAÇÃO E AÇÃO (RODAPÉ FIXO) */}
-      {/* Alteração: Removemos a margem inferior para colar no fundo, já que a BottomNav global foi removida nesta tela */}
-      <div className="fixed bottom-0 left-0 w-full bg-white dark:bg-[#121212] border-t border-[#C5A059] shadow-[0_-5px_20px_rgba(0,0,0,0.2)] p-4 z-50 flex justify-between items-center safe-bottom">
+      <div className="fixed bottom-0 left-0 w-full bg-white dark:bg-[#121212] border-t border-[#C5A059] shadow-[0_-5px_20px_rgba(0,0,0,0.2)] pb-6 pt-4 px-4 z-[100] flex justify-between items-center safe-bottom">
          {/* Botão Anterior */}
          <button 
             onClick={handlePrevChapter}
