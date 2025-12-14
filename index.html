@@ -11,9 +11,9 @@
     
     <title>Bíblia ADMA - Prof. Michel Felix</title>
     
-    <!-- PWA Config (Caminhos Relativos ./ para evitar erro 404) -->
-    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
-    <link rel="manifest" href="./manifest.json" />
+    <!-- PWA Config (Paths limpos para compatibilidade) -->
+    <link rel="icon" type="image/svg+xml" href="icon.svg" />
+    <link rel="manifest" href="manifest.json?v=2" />
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -78,7 +78,7 @@
         iconCanvas.height = 180;
         var ctx = iconCanvas.getContext('2d');
         var img = new Image();
-        img.src = './icon.svg';
+        img.src = 'icon.svg'; // Path limpo
         img.onload = function() {
             // Desenha o fundo vermelho para garantir que não fique preto no iOS
             ctx.fillStyle = '#8B0000'; 
@@ -114,8 +114,12 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('SW registered!', reg))
+          navigator.serviceWorker.register('sw.js')
+            .then(reg => {
+                // Força update se houver nova versão
+                reg.update();
+                console.log('SW registered!', reg);
+            })
             .catch(err => console.log('SW registration failed', err));
         });
       }
