@@ -1,10 +1,10 @@
-// Service Worker Mínimo para PWA - v2
-const CACHE_NAME = 'adma-bible-v2';
+// Service Worker Mínimo para PWA - v3
+const CACHE_NAME = 'adma-bible-v3';
 const ASSETS = [
   './',
   'index.html',
   'icon.svg',
-  'manifest.json?v=2'
+  'manifest.json?v=3'
 ];
 
 self.addEventListener('install', (event) => {
@@ -15,7 +15,7 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  // Limpa caches antigos
+  // Limpa caches antigos (v1, v2)
   event.waitUntil(
     caches.keys().then((keyList) => {
       return Promise.all(keyList.map((key) => {

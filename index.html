@@ -11,9 +11,13 @@
     
     <title>Bíblia ADMA - Prof. Michel Felix</title>
     
-    <!-- PWA Config (Paths limpos para compatibilidade) -->
+    <!-- PWA Icons Config -->
     <link rel="icon" type="image/svg+xml" href="icon.svg" />
-    <link rel="manifest" href="manifest.json?v=2" />
+    <link rel="alternate icon" href="icon.svg" />
+    <link rel="apple-touch-icon" href="icon.svg" />
+    
+    <!-- Manifest Atualizado v3 -->
+    <link rel="manifest" href="manifest.json?v=3" />
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -69,6 +73,7 @@
     <!-- FIX IOS ICON: Script para gerar PNG dinamicamente a partir do SVG -->
     <script>
       (function() {
+        // iOS requer PNG real, não SVG. Geramos on-the-fly.
         var link = document.createElement('link');
         link.rel = 'apple-touch-icon';
         document.head.appendChild(link);
@@ -78,9 +83,8 @@
         iconCanvas.height = 180;
         var ctx = iconCanvas.getContext('2d');
         var img = new Image();
-        img.src = 'icon.svg'; // Path limpo
+        img.src = 'icon.svg'; 
         img.onload = function() {
-            // Desenha o fundo vermelho para garantir que não fique preto no iOS
             ctx.fillStyle = '#8B0000'; 
             ctx.fillRect(0, 0, 180, 180);
             ctx.drawImage(img, 0, 0, 180, 180);
@@ -116,8 +120,7 @@
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('sw.js')
             .then(reg => {
-                // Força update se houver nova versão
-                reg.update();
+                reg.update(); // Força verificação de update
                 console.log('SW registered!', reg);
             })
             .catch(err => console.log('SW registration failed', err));
