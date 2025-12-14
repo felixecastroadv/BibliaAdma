@@ -2,7 +2,7 @@
   "id": "/",
   "name": "Bíblia ADMA - Prof. Michel Felix",
   "short_name": "Bíblia ADMA",
-  "start_url": "index.html",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#F5F5DC",
   "theme_color": "#8B0000",
