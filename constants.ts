@@ -1,7 +1,8 @@
+
 import { BibleBook, ReadingPlan } from './types';
 
 export const CHURCH_NAME = "ASSEMBLEIA DE DEUS MINISTÉRIO ÁGAPE";
-export const APP_VERSION = "v11.1 - Planos Completos";
+export const APP_VERSION = "v11.2 - Correção Leitura";
 
 export const BIBLE_BOOKS: BibleBook[] = [
   { name: "Gênesis", abbrev: "gn", chapters: 50, testament: "old" },
@@ -74,8 +75,8 @@ export const BIBLE_BOOKS: BibleBook[] = [
 
 export const TOTAL_CHAPTERS = 1189;
 
-// Identifica livros de 1 capítulo
-const ONE_CHAPTER_BOOKS = BIBLE_BOOKS.filter(b => b.chapters === 1).map(b => b.name);
+// Identifica livros de 1 capítulo (Exportado para uso no BibleReader)
+export const ONE_CHAPTER_BOOKS = BIBLE_BOOKS.filter(b => b.chapters === 1).map(b => b.name);
 
 export const READING_PLANS: ReadingPlan[] = [
   { 
@@ -178,3 +179,4 @@ export const generateChapterKey = (book: string, chapter: number) => {
 export const generateVerseKey = (book: string, chapter: number, verse: number) => {
   return `${book.toLowerCase().replace(/\s/g, '_')}_${chapter}_${verse}`;
 };
+    
