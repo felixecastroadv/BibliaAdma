@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Home, BookOpen, Calendar, ListChecks, Trophy } from 'lucide-react';
 
@@ -15,8 +16,8 @@ export default function BottomNav({ currentView, onNavigate }: BottomNavProps) {
     { id: 'ranking', icon: Trophy, label: 'Ranking' },
   ];
 
-  // Não exibir a barra em telas que precisam de imersão total ou admin
-  if (currentView === 'admin' || currentView === 'login') return null;
+  // Não exibir a barra em telas que precisam de imersão total (Leitor), admin ou login
+  if (currentView === 'admin' || currentView === 'login' || currentView === 'reader') return null;
 
   return (
     <div className="fixed bottom-0 left-0 w-full bg-white dark:bg-[#1E1E1E] border-t border-[#C5A059]/30 shadow-[0_-5px_15px_rgba(0,0,0,0.1)] z-40 pb-safe">

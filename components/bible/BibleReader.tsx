@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, Sparkles, FastForward, ChevronRight, List } from 'lucide-react';
+import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, Sparkles, FastForward, ChevronRight, List, Book } from 'lucide-react';
 import VersePanel from './VersePanel';
 import { db } from '../../services/database';
 import { generateChapterKey, BIBLE_BOOKS } from '../../constants';
@@ -30,7 +30,11 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
   const [fontSize, setFontSize] = useState(18);
   const [selectedVerse, setSelectedVerse] = useState<{text: string, number: number} | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  
+  // Selector State
   const [showChapterSelector, setShowChapterSelector] = useState(false);
+  const [selectorTab, setSelectorTab] = useState<'books' | 'chapters'>('chapters');
+
   const [epigraph, setEpigraph] = useState<ChapterMetadata | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingEpigraph, setLoadingEpigraph] = useState(false);
@@ -248,10 +252,24 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
     onProgressUpdate(updated);
   };
 
+  // Seletor: Trocar Livro
+  const handleBookSelect = (newBook: string) => {
+      setBook(newBook);
+      setChapter(1); // Reseta para cap 1
+      setSelectorTab('chapters'); // Vai para seleção de capítulo
+  };
+
+  // Seletor: Trocar Capítulo
   const handleChapterChange = (newChapter: number) => {
       setChapter(newChapter);
       setShowChapterSelector(false);
       setShowSettings(false);
+  };
+
+  // Toggle do Dropdown
+  const toggleSelector = () => {
+      setShowChapterSelector(!showChapterSelector);
+      setSelectorTab('chapters'); // Default para capítulos ao abrir
   };
 
   return (
@@ -267,8 +285,8 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
         
         <div 
             className="text-center cursor-pointer hover:bg-white/10 px-4 py-1 rounded-lg transition-colors"
-            onClick={() => setShowChapterSelector(!showChapterSelector)}
-            title="Mudar Capítulo"
+            onClick={toggleSelector}
+            title="Mudar Livro ou Capítulo"
         >
             <h1 className="font-cinzel font-bold text-lg flex items-center gap-2 justify-center">
                 {book} {chapter} <ChevronRight className={`w-4 h-4 transition-transform ${showChapterSelector ? 'rotate-90' : ''}`} />
@@ -278,20 +296,74 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
         <button onClick={() => setShowSettings(!showSettings)} className="p-2 hover:bg-white/10 rounded-full"><Settings className="w-5 h-5" /></button>
       </div>
 
-      {/* SELETOR DE CAPÍTULO (DROPDOWN) */}
+      {/* SELETOR DE LIVRO / CAPÍTULO (DROPDOWN) */}
       {showChapterSelector && (
-          <div className="bg-white dark:bg-dark-card border-b border-[#C5A059] p-4 sticky top-[60px] z-20 shadow-xl animate-in slide-in-from-top-2">
-              <h3 className="font-bold text-[#8B0000] dark:text-[#ff6b6b] mb-2 font-cinzel text-center">Selecionar Capítulo</h3>
-              <div className="grid grid-cols-5 gap-2 max-h-60 overflow-y-auto p-2">
-                  {Array.from({ length: totalChapters }, (_, i) => i + 1).map(c => (
-                      <button 
-                        key={c} 
-                        onClick={() => handleChapterChange(c)}
-                        className={`p-2 rounded font-bold text-sm ${chapter === c ? 'bg-[#8B0000] text-white' : 'bg-gray-100 dark:bg-gray-700 dark:text-gray-200 hover:bg-[#C5A059] hover:text-white'}`}
-                      >
-                          {c}
-                      </button>
-                  ))}
+          <div className="bg-white dark:bg-dark-card border-b border-[#C5A059] sticky top-[60px] z-20 shadow-xl animate-in slide-in-from-top-2 flex flex-col max-h-[70vh]">
+              {/* Tabs do Seletor */}
+              <div className="flex border-b border-[#C5A059]/30">
+                  <button 
+                    onClick={() => setSelectorTab('books')}
+                    className={`flex-1 py-3 font-cinzel font-bold text-sm ${selectorTab === 'books' ? 'bg-[#8B0000] text-white' : 'text-gray-600 dark:text-gray-400'}`}
+                  >
+                      Livros
+                  </button>
+                  <button 
+                    onClick={() => setSelectorTab('chapters')}
+                    className={`flex-1 py-3 font-cinzel font-bold text-sm ${selectorTab === 'chapters' ? 'bg-[#8B0000] text-white' : 'text-gray-600 dark:text-gray-400'}`}
+                  >
+                      Capítulos
+                  </button>
+              </div>
+
+              {/* Conteúdo do Seletor */}
+              <div className="overflow-y-auto p-2">
+                  {selectorTab === 'books' ? (
+                      <div className="space-y-4 p-2">
+                          <div>
+                            <h4 className="font-bold text-[#C5A059] text-xs uppercase mb-2">Antigo Testamento</h4>
+                            <div className="grid grid-cols-3 gap-2">
+                                {BIBLE_BOOKS.filter(b => b.testament === 'old').map(b => (
+                                    <button 
+                                        key={b.name} 
+                                        onClick={() => handleBookSelect(b.name)}
+                                        className={`p-2 rounded text-xs font-bold truncate ${book === b.name ? 'bg-[#8B0000] text-white' : 'bg-gray-100 dark:bg-gray-700 dark:text-gray-200 hover:bg-[#C5A059] hover:text-white'}`}
+                                    >
+                                        {b.name}
+                                    </button>
+                                ))}
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-[#C5A059] text-xs uppercase mb-2">Novo Testamento</h4>
+                            <div className="grid grid-cols-3 gap-2">
+                                {BIBLE_BOOKS.filter(b => b.testament === 'new').map(b => (
+                                    <button 
+                                        key={b.name} 
+                                        onClick={() => handleBookSelect(b.name)}
+                                        className={`p-2 rounded text-xs font-bold truncate ${book === b.name ? 'bg-[#8B0000] text-white' : 'bg-gray-100 dark:bg-gray-700 dark:text-gray-200 hover:bg-[#C5A059] hover:text-white'}`}
+                                    >
+                                        {b.name}
+                                    </button>
+                                ))}
+                            </div>
+                          </div>
+                      </div>
+                  ) : (
+                      <div className="p-2">
+                          <h4 className="font-bold text-center text-[#1a0f0f] dark:text-white mb-2">Capítulos de {book}</h4>
+                          <div className="grid grid-cols-5 gap-2">
+                            {Array.from({ length: totalChapters }, (_, i) => i + 1).map(c => (
+                                <button 
+                                    key={c} 
+                                    onClick={() => handleChapterChange(c)}
+                                    className={`p-2 rounded font-bold text-sm ${chapter === c ? 'bg-[#8B0000] text-white' : 'bg-gray-100 dark:bg-gray-700 dark:text-gray-200 hover:bg-[#C5A059] hover:text-white'}`}
+                                >
+                                    {c}
+                                </button>
+                            ))}
+                          </div>
+                      </div>
+                  )}
               </div>
           </div>
       )}
@@ -379,7 +451,7 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
             )}
             
             {/* Espaço extra no final para não cortar o último versículo */}
-            <div className="h-10"></div>
+            <div className="h-20"></div>
           </div>
       </div>
 
@@ -393,7 +465,8 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
       </button>
       
       {/* BARRA DE NAVEGAÇÃO E AÇÃO (RODAPÉ FIXO) */}
-      <div className="fixed bottom-0 left-0 w-full bg-white dark:bg-[#121212] border-t border-[#C5A059] shadow-[0_-5px_20px_rgba(0,0,0,0.2)] p-4 z-40 flex justify-between items-center safe-bottom mb-[56px] md:mb-0">
+      {/* Alteração: Removemos a margem inferior para colar no fundo, já que a BottomNav global foi removida nesta tela */}
+      <div className="fixed bottom-0 left-0 w-full bg-white dark:bg-[#121212] border-t border-[#C5A059] shadow-[0_-5px_20px_rgba(0,0,0,0.2)] p-4 z-50 flex justify-between items-center safe-bottom">
          {/* Botão Anterior */}
          <button 
             onClick={handlePrevChapter}
