@@ -1,11 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, Loader2, Sparkles, FastForward } from 'lucide-react';
+import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, Sparkles, FastForward } from 'lucide-react';
 import VersePanel from './VersePanel';
 import { db } from '../../services/database';
 import { generateChapterKey, BIBLE_BOOKS } from '../../constants';
 import { generateContent } from '../../services/geminiService';
 import { Type as GenType } from "@google/genai";
 import { ChapterMetadata } from '../../types';
+
+// Skeleton Component para carregamento elegante
+const TextSkeleton = () => (
+  <div className="space-y-4 animate-pulse mt-4">
+    {[1, 2, 3, 4, 5, 6].map((i) => (
+      <div key={i} className="flex gap-2">
+        <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded mt-1 shrink-0"></div>
+        <div className="flex-1 space-y-2">
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
 export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, onShowToast, onBack, initialBook, initialChapter }: any) {
   const [book, setBook] = useState(initialBook || 'Gênesis');
@@ -28,10 +43,13 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
   const [canMarkRead, setCanMarkRead] = useState(false);
   const timerRef = useRef<any>(null);
 
+  // Swipe State
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
   const chapterKey = generateChapterKey(book, chapter);
   const isRead = userProgress?.chapters_read?.includes(chapterKey);
   
-  // Get book metadata for chapter count
   const currentBookMeta = BIBLE_BOOKS.find(b => b.name === book);
   const totalChapters = currentBookMeta ? currentBookMeta.chapters : 50;
 
@@ -39,6 +57,8 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
     fetchChapter();
     loadEpigraph();
     resetTimer();
+    // Scroll to top on chapter change
+    window.scrollTo(0, 0);
     return () => {
         clearInterval(timerRef.current);
         window.speechSynthesis.cancel();
@@ -55,13 +75,33 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
     window.speechSynthesis.onvoiceschanged = loadVoices;
   }, []);
 
-  // Monitora mudança de velocidade para aplicar em tempo real se estiver tocando
   useEffect(() => {
     if (isPlaying) {
         window.speechSynthesis.cancel();
         speakText();
     }
   }, [playbackRate]);
+
+  // SWIPE LOGIC
+  const minSwipeDistance = 50;
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+  const onTouchMove = (e: React.TouchEvent) => setTouchEnd(e.targetTouches[0].clientX);
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe && chapter < totalChapters) {
+        setChapter(prev => prev + 1); // Next Chapter
+    }
+    if (isRightSwipe && chapter > 1) {
+        setChapter(prev => prev - 1); // Prev Chapter
+    }
+  };
 
   const resetTimer = () => {
     clearInterval(timerRef.current);
@@ -193,20 +233,24 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5DC] dark:bg-dark-bg pb-24 transition-colors duration-300">
-      <div className="sticky top-0 bg-[#8B0000] text-white p-4 shadow-lg z-20 flex justify-between items-center">
-        <button onClick={onBack}><ChevronLeft /></button>
+    <div 
+      className="min-h-screen bg-[#F5F5DC] dark:bg-dark-bg pb-24 transition-colors duration-300"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
+      <div className="sticky top-0 bg-[#8B0000] text-white p-4 shadow-lg z-20 flex justify-between items-center safe-top">
+        <button onClick={onBack} className="p-1"><ChevronLeft /></button>
         <div className="text-center">
             <h1 className="font-cinzel font-bold text-lg">{book} {chapter}</h1>
+            <p className="text-[10px] font-montserrat opacity-70">Deslize para navegar</p>
         </div>
-        <button onClick={() => setShowSettings(!showSettings)}><Settings className="w-5 h-5" /></button>
+        <button onClick={() => setShowSettings(!showSettings)} className="p-1"><Settings className="w-5 h-5" /></button>
       </div>
 
       {showSettings && (
         <div className="bg-white dark:bg-dark-card p-4 border-b border-[#C5A059] sticky top-[60px] z-10 animate-in slide-in-from-top-2 shadow-md">
             <div className="flex flex-col gap-4">
-                
-                {/* 1. Chapter Selection */}
                 <div className="flex flex-col gap-1">
                     <span className="font-montserrat text-sm font-bold text-[#1a0f0f] dark:text-gray-200">Ir para Capítulo:</span>
                     <select 
@@ -220,7 +264,6 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
                     </select>
                 </div>
 
-                {/* 2. Font Size */}
                 <div className="flex items-center justify-between">
                     <span className="font-montserrat text-sm font-bold text-[#1a0f0f] dark:text-gray-200">Fonte:</span>
                     <div className="flex items-center gap-4 text-black dark:text-white">
@@ -230,7 +273,6 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
                     </div>
                 </div>
 
-                {/* 3. Audio Voice */}
                 <div className="flex flex-col gap-2">
                     <span className="font-montserrat text-sm font-bold text-[#1a0f0f] dark:text-gray-200">Voz de Leitura:</span>
                     <select 
@@ -242,7 +284,6 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
                     </select>
                 </div>
 
-                {/* 4. Audio Speed */}
                 <div className="flex flex-col gap-2">
                     <span className="font-montserrat text-sm font-bold text-[#1a0f0f] dark:text-gray-200 flex items-center gap-2">
                         <FastForward className="w-4 h-4" /> Velocidade:
@@ -276,49 +317,49 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
         </div>
       ) : null}
 
-      <button 
-        onClick={togglePlay}
-        className="fixed bottom-24 right-6 w-14 h-14 bg-[#C5A059] text-[#1a0f0f] rounded-full shadow-2xl flex items-center justify-center z-30 hover:bg-[#d4b97a] transition-all"
-      >
-        {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current ml-1" />}
-      </button>
-
       <div className="p-6 max-w-3xl mx-auto space-y-6">
         {loading ? (
-             <div className="flex justify-center py-20"><Loader2 className="animate-spin text-[#8B0000] dark:text-white" /></div>
+             <TextSkeleton />
         ) : (
             verses.map(v => (
-                <p 
+                <div
                     key={v.number} 
-                    className="font-cormorant leading-loose text-[#1a0f0f] dark:text-gray-200 cursor-pointer hover:bg-[#C5A059]/10 rounded px-2 transition-colors relative group"
-                    style={{ fontSize: `${fontSize}px` }}
+                    className="relative group"
                     onClick={() => setSelectedVerse(v)}
                 >
-                    <span className="font-cinzel font-bold text-[#8B0000] dark:text-[#ff6b6b] text-xs absolute -left-2 top-1 opacity-50 group-hover:opacity-100">{v.number}</span>
-                    {v.text}
-                </p>
+                    <span className="absolute -left-3 top-1 font-cinzel font-bold text-[#8B0000] dark:text-[#ff6b6b] text-xs opacity-60 select-none">
+                        {v.number}
+                    </span>
+                    <p 
+                        className="font-cormorant leading-loose tracking-wide text-[#1a0f0f] dark:text-gray-200 cursor-pointer hover:bg-[#C5A059]/10 rounded px-1 transition-colors text-justify"
+                        style={{ fontSize: `${fontSize}px` }}
+                    >
+                        {v.text}
+                    </p>
+                </div>
             ))
         )}
       </div>
-      
-      <div className="fixed bottom-0 w-full bg-white dark:bg-dark-card border-t border-[#C5A059] p-4 flex justify-between items-center z-30">
-        <div className="flex gap-2">
-            <button 
-                onClick={() => setChapter(Math.max(1, chapter - 1))} 
-                className="px-4 py-2 border rounded-lg text-sm font-bold text-[#8B0000] dark:text-[#ff6b6b] border-[#8B0000] dark:border-[#ff6b6b]"
-            >
-                Anterior
-            </button>
-        </div>
 
+      {/* Floating Audio Button */}
+      <button 
+        onClick={togglePlay}
+        className="fixed bottom-24 right-4 w-12 h-12 bg-[#C5A059] text-[#1a0f0f] rounded-full shadow-2xl flex items-center justify-center z-30 hover:bg-[#d4b97a] transition-all"
+        title={isPlaying ? "Pausar Leitura" : "Ouvir Capítulo"}
+      >
+        {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-1" />}
+      </button>
+      
+      {/* Botões de Ação Inferior (Fixos acima da BottomNav) */}
+      <div className="fixed bottom-16 left-0 w-full bg-gradient-to-t from-white via-white to-transparent dark:from-[#121212] dark:via-[#121212] p-4 flex justify-center items-end z-20 pb-4 h-24 pointer-events-none">
         <button 
             onClick={handleMarkRead}
             disabled={!canMarkRead && !isRead}
-            className={`flex items-center gap-2 px-6 py-2 rounded-full font-bold transition-all ${
+            className={`pointer-events-auto flex items-center gap-2 px-6 py-3 rounded-full font-bold shadow-lg transition-all transform active:scale-95 ${
                 isRead 
-                ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 border border-green-300' 
+                ? 'bg-green-600 text-white' 
                 : canMarkRead 
-                    ? 'bg-[#8B0000] text-white shadow-lg animate-pulse' 
+                    ? 'bg-[#8B0000] text-white animate-pulse' 
                     : 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
             }`}
         >
@@ -330,15 +371,6 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
                 <span className="font-mono">{timeLeft}s</span>
             )}
         </button>
-
-        <div className="flex gap-2">
-             <button 
-                onClick={() => setChapter(chapter + 1)} 
-                className="px-4 py-2 border rounded-lg text-sm font-bold text-[#8B0000] dark:text-[#ff6b6b] border-[#8B0000] dark:border-[#ff6b6b]"
-            >
-                Próximo
-            </button>
-        </div>
       </div>
 
       <VersePanel 

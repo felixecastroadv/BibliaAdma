@@ -10,6 +10,7 @@ import RankingView from './components/ranking/RankingView';
 import MessagesView from './components/messages/MessagesView';
 import AdminPasswordModal from './components/modals/AdminPasswordModal';
 import Toast from './components/ui/Toast';
+import BottomNav from './components/ui/BottomNav'; // Nova Importação
 import { db } from './services/database';
 
 export default function App() {
@@ -51,7 +52,6 @@ export default function App() {
     const p = await db.entities.ReadingProgress.filter({ user_email: email });
     if (p.length) setUserProgress(p[0]);
     else {
-        // Correção: Garante que usamos o nome passado, se disponível
         const displayName = nameFallback || user?.user_name || email;
         const newP = await db.entities.ReadingProgress.create({ 
             user_email: email, 
@@ -74,7 +74,6 @@ export default function App() {
     localStorage.setItem('adma_user', JSON.stringify(u));
     setUser(u);
     setIsAuthenticated(true);
-    // Passa o nome explicitamente para evitar delay de estado
     loadProgress(email, fullName);
   };
 
@@ -105,6 +104,8 @@ export default function App() {
   const handleNavigate = (v: string, params?: any) => {
       setView(v);
       if(params) setNavParams(params);
+      // Scroll to top on navigation
+      window.scrollTo(0, 0);
   };
 
   if (!isAuthenticated) return <LoginScreen onLogin={handleLogin} loading={false} />;
@@ -157,8 +158,17 @@ export default function App() {
   };
 
   return (
-    <div className="font-sans text-gray-900 dark:text-gray-100 min-h-screen bg-background dark:bg-dark-bg transition-colors duration-300">
-        {renderView()}
+    <div className="font-sans text-gray-900 dark:text-gray-100 min-h-screen bg-background dark:bg-dark-bg transition-colors duration-300 flex flex-col">
+        {/* Main Content Area - PB-20 ensures content isn't hidden behind nav */}
+        <div className={`flex-1 ${isAuthenticated ? 'pb-20' : ''}`}>
+            {renderView()}
+        </div>
+        
+        {/* Bottom Navigation */}
+        {isAuthenticated && (
+            <BottomNav currentView={view} onNavigate={handleNavigate} />
+        )}
+
         <AdminPasswordModal isOpen={showAdminModal} onClose={() => setShowAdminModal(false)} onSuccess={handleAdminSuccess} />
         {toast.msg && <Toast message={toast.msg} type={toast.type} onClose={() => setToast({ ...toast, msg: '' })} />}
     </div>
