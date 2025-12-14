@@ -11,13 +11,13 @@
     
     <title>Bíblia ADMA - Prof. Michel Felix</title>
     
-    <!-- PWA Icons Config -->
-    <link rel="icon" type="image/svg+xml" href="icon.svg" />
-    <link rel="alternate icon" href="icon.svg" />
-    <link rel="apple-touch-icon" href="icon.svg" />
+    <!-- PWA Icons Config (Caminhos Absolutos) -->
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="alternate icon" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
     
-    <!-- Manifest Atualizado v4 -->
-    <link rel="manifest" href="manifest.json?v=4" />
+    <!-- Manifest Atualizado v6 -->
+    <link rel="manifest" href="/manifest.json?v=6" />
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -83,7 +83,7 @@
         iconCanvas.height = 180;
         var ctx = iconCanvas.getContext('2d');
         var img = new Image();
-        img.src = 'icon.svg'; 
+        img.src = '/icon.svg'; 
         img.onload = function() {
             ctx.fillStyle = '#8B0000'; 
             ctx.fillRect(0, 0, 180, 180);
@@ -118,7 +118,7 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('sw.js')
+          navigator.serviceWorker.register('/sw.js')
             .then(reg => {
                 reg.update(); // Força verificação de update
                 console.log('SW registered!', reg);

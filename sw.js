@@ -1,13 +1,12 @@
-// Service Worker Robusto - v4
-const CACHE_NAME = 'adma-bible-v4';
-const OFFLINE_URL = 'index.html';
+// Service Worker Vercel Friendly - v6
+const CACHE_NAME = 'adma-bible-v6';
 
-// Arquivos essenciais para o App Shell (estrutura básica)
+// Caminhos absolutos para garantir que funcione na raiz
 const PRECACHE_ASSETS = [
-  './',
-  'index.html',
-  'icon.svg',
-  'manifest.json?v=3'
+  '/',
+  '/index.html',
+  '/icon.svg',
+  '/manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -32,26 +31,27 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Estratégia: Network First (Tenta rede, se falhar, vai pro cache)
-  // Isso evita que o app fique preso numa versão velha ou quebrada
+  // Ignora requisições que não sejam GET ou para outros domínios (ex: APIs)
+  if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin)) {
+    return;
+  }
+
+  // Estratégia Stale-While-Revalidate para assets estáticos
+  // Estratégia Network First para navegação (HTML)
+  
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
         .catch(() => {
-          return caches.open(CACHE_NAME)
-            .then((cache) => {
-              // Se estiver offline e tentar navegar, retorna a página inicial cacheada
-              return cache.match(OFFLINE_URL) || cache.match('./');
-            });
+          return caches.match('/index.html');
         })
     );
     return;
   }
 
-  // Para outros recursos (JS, CSS, Imagens), tenta cache primeiro, depois rede
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
+    caches.match(event.request).then((cachedResponse) => {
+      return cachedResponse || fetch(event.request);
     })
   );
 });
