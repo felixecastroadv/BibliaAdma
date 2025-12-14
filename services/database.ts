@@ -35,10 +35,6 @@ const apiCall = async (action: 'list' | 'save' | 'delete', collection: string, p
             storage.set(collection, data);
         }
         
-        // Se salvou/deletou algo, precisamos invalidar ou atualizar o cache local na próxima leitura
-        // Por simplificação nesta arquitetura, ao salvar, não atualizamos o cache da lista inteira aqui, 
-        // confiamos que o próximo 'list' pegará do servidor.
-        
         return data;
 
     } catch (e) {
@@ -50,24 +46,33 @@ const apiCall = async (action: 'list' | 'save' | 'delete', collection: string, p
             return cached || []; // Retorna o que tem salvo ou array vazio
         }
 
-        // Se for SAVE ou DELETE offline, não podemos persistir na nuvem agora.
-        // Em um PWA complexo, usaríamos Background Sync.
-        // Aqui, retornamos sucesso falso ou lançamos erro tratado.
-        // Para 'ReadingProgress', podemos fingir sucesso para não travar a UI, 
-        // mas idealmente avisaríamos o usuário.
-        if (action === 'save' && collection === 'reading_progress') {
-             // Exceção: Progresso de leitura tentamos salvar localmente para não perder a sessão
-             // Mas isso requer lógica complexa de merge depois. 
-             // Por segurança, lançamos erro silencioso ou null para indicar falha de sync.
-             return null;
-        }
-        
         return null;
     }
 };
 
 export const db = {
   entities: {
+    // Nova Entidade para Texto Bíblico Persistente
+    BibleChapter: {
+        filter: async (query: any) => {
+            // Tenta pegar cache específico primeiro para performance
+            const cacheKey = `bible_${query.chapter_key}`;
+            const local = storage.get(cacheKey);
+            if (local) return [local];
+
+            const data = await apiCall('list', 'bible_text') || [];
+            return data.filter((item: any) => item.chapter_key === query.chapter_key);
+        },
+        create: async (data: any) => {
+            const newItem = { ...data, id: data.id || Date.now().toString() };
+            // Salva no banco
+            await apiCall('save', 'bible_text', { item: newItem });
+            // Salva no cache local individual para acesso rápido
+            storage.set(`bible_${data.chapter_key}`, newItem);
+            return newItem;
+        }
+    },
+
     ReadingProgress: {
       filter: async (query: any) => {
         const data = await apiCall('list', 'reading_progress');
@@ -76,7 +81,6 @@ export const db = {
       },
       create: async (data: any) => {
         const newItem = { ...data, id: data.id || Date.now().toString() };
-        // Optimistic Update Local (apenas para sensação de rapidez, mas apiCall gerencia a verdade)
         await apiCall('save', 'reading_progress', { item: newItem });
         return newItem;
       },
@@ -87,7 +91,6 @@ export const db = {
         if (existing) {
              const updated = { ...existing, ...updates };
              await apiCall('save', 'reading_progress', { item: updated });
-             // Atualiza cache local imediatamente para refletir na UI sem refresh
              const newCache = all.map((i: any) => i.id === id ? updated : i);
              storage.set('reading_progress', newCache);
              return updated;
