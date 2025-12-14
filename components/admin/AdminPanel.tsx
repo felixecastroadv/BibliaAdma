@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Key, ShieldCheck, RefreshCw, Loader2, Save, AlertTriangle, CheckCircle, XCircle, Info, BookOpen, Download, Server, Database, Upload, FileJson, MessageSquare, Languages, GraduationCap, Calendar } from 'lucide-react';
+import { ChevronLeft, Key, ShieldCheck, RefreshCw, Loader2, Save, AlertTriangle, CheckCircle, XCircle, Info, BookOpen, Download, Server, Database, Upload, FileJson, MessageSquare, Languages, GraduationCap, Calendar, Flag, Trash2, ExternalLink } from 'lucide-react';
 import { getStoredApiKey, setStoredApiKey, generateContent } from '../../services/geminiService';
 import { BIBLE_BOOKS, generateChapterKey, generateVerseKey } from '../../constants';
 import { db } from '../../services/database';
 import { Type as GenType } from "@google/genai";
+import { ContentReport } from '../../types';
 
 export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void, onShowToast: (msg: string, type: 'success' | 'error' | 'info') => void }) {
   // --- STATES DE INFRAESTRUTURA ---
@@ -26,11 +27,16 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   const [batchType, setBatchType] = useState<'commentary' | 'dictionary' | null>(null);
   const [stopBatch, setStopBatch] = useState(false);
 
+  // --- STATES DE RELATÓRIOS ---
+  const [reports, setReports] = useState<ContentReport[]>([]);
+  const [showReportsModal, setShowReportsModal] = useState(false);
+
   useEffect(() => {
     const k = getStoredApiKey();
     setStoredKey(k);
     if(k) setApiKey(k);
     checkDbConnection();
+    loadReports();
   }, []);
 
   const checkDbConnection = async () => {
@@ -41,6 +47,26 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
     } catch (e) {
         setDbStatus('error');
     }
+  };
+
+  const loadReports = async () => {
+      try {
+          const data = await db.entities.ContentReports.list();
+          setReports(data || []);
+      } catch (e) {
+          console.error("Erro ao carregar reports");
+      }
+  };
+
+  const handleDeleteReport = async (id: string) => {
+      if(!window.confirm("Marcar como resolvido e apagar?")) return;
+      try {
+          await db.entities.ContentReports.delete(id);
+          setReports(prev => prev.filter(r => r.id !== id));
+          onShowToast("Resolvido.", "success");
+      } catch(e) {
+          onShowToast("Erro ao deletar.", "error");
+      }
   };
 
   const handleSaveKey = () => {
@@ -340,6 +366,52 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] dark:bg-dark-bg transition-colors duration-300">
+      
+      {/* --- MODAL DE RELATÓRIOS --- */}
+      {showReportsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-black/60" onClick={() => setShowReportsModal(false)} />
+              <div className="bg-white dark:bg-[#1E1E1E] w-full max-w-2xl max-h-[80vh] rounded-2xl p-6 relative z-10 overflow-hidden flex flex-col shadow-2xl">
+                  <div className="flex justify-between items-center mb-4 pb-4 border-b border-[#C5A059]">
+                      <h3 className="font-cinzel font-bold text-xl dark:text-white flex items-center gap-2">
+                          <Flag className="w-5 h-5 text-red-500" /> Relatórios de Erros
+                      </h3>
+                      <button onClick={() => setShowReportsModal(false)}><XCircle className="w-6 h-6 text-gray-500" /></button>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto space-y-4">
+                      {reports.length === 0 ? (
+                          <div className="text-center py-10 text-gray-500">
+                              <CheckCircle className="w-12 h-12 mx-auto mb-2 text-green-500" />
+                              <p>Tudo limpo! Nenhum erro pendente.</p>
+                          </div>
+                      ) : (
+                          reports.map(rep => (
+                              <div key={rep.id} className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900 p-4 rounded-lg">
+                                  <div className="flex justify-between items-start mb-2">
+                                      <div>
+                                          <span className="font-bold text-red-700 dark:text-red-300 block">{rep.reference_text}</span>
+                                          <span className="text-xs text-gray-500 uppercase font-bold">{rep.type}</span>
+                                      </div>
+                                      <button onClick={() => handleDeleteReport(rep.id!)} className="text-gray-400 hover:text-green-600" title="Marcar como Resolvido">
+                                          <CheckCircle className="w-5 h-5" />
+                                      </button>
+                                  </div>
+                                  <p className="text-gray-800 dark:text-gray-200 text-sm mb-2 font-mono bg-white dark:bg-black/20 p-2 rounded">
+                                      "{rep.report_text}"
+                                  </p>
+                                  <div className="text-xs text-gray-400 flex justify-between">
+                                      <span>Reportado por: {rep.user_name}</span>
+                                      <span>{new Date(rep.date).toLocaleDateString()}</span>
+                                  </div>
+                              </div>
+                          ))
+                      )}
+                  </div>
+              </div>
+          </div>
+      )}
+
       <div className="bg-[#1a0f0f] text-white p-4 flex items-center gap-4 sticky top-0 shadow-lg z-10">
         <button onClick={onBack}><ChevronLeft /></button>
         <h1 className="font-cinzel font-bold text-[#C5A059] flex items-center gap-2">
@@ -486,8 +558,27 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
             )}
         </div>
 
-        {/* === SEÇÃO 4: OUTROS === */}
+        {/* === SEÇÃO 4: FEEDBACK DA COMUNIDADE (NOVO) === */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+            <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow flex items-center justify-between border border-red-100 dark:border-red-900/30">
+                <div className="flex items-center gap-3">
+                    <div className="bg-red-100 p-2 rounded-full relative">
+                        <Flag className="w-5 h-5 text-red-600" />
+                        {reports.length > 0 && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full animate-ping"></span>}
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-sm dark:text-white">Relatórios de Erros</h4>
+                        <p className="text-xs text-gray-500">{reports.length} pendentes</p>
+                    </div>
+                </div>
+                <button 
+                    className="px-3 py-1 bg-red-600 text-white rounded text-xs font-bold hover:bg-red-700 transition"
+                    onClick={() => setShowReportsModal(true)}
+                >
+                    Ver Lista
+                </button>
+            </div>
+
             <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <div className="bg-purple-100 p-2 rounded-full"><Calendar className="w-5 h-5 text-purple-600" /></div>

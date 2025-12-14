@@ -111,3 +111,13 @@ export interface Announcement {
   author: string;
   priority: 'alta' | 'normal';
 }
+
+export interface ContentReport {
+  id?: string;
+  type: 'commentary' | 'dictionary' | 'other';
+  reference_text: string; // Ex: "Gênesis 1:1"
+  report_text: string;
+  user_name?: string; // Quem reportou
+  date: string;
+  status: 'pending' | 'resolved';
+}

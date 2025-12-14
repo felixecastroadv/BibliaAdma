@@ -224,6 +224,31 @@ export const db = {
         delete: async (id: string) => {
              await apiCall('delete', 'announcements', { id });
         }
+    },
+
+    ContentReports: {
+        list: async () => {
+            const data = await apiCall('list', 'content_reports') || [];
+            return data.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        },
+        create: async (data: any) => {
+            const newItem = { ...data, id: data.id || Date.now().toString() };
+            await apiCall('save', 'content_reports', { item: newItem });
+            return newItem;
+        },
+        update: async (id: string, updates: any) => {
+            const all = await apiCall('list', 'content_reports') || [];
+            const existing = all.find((i: any) => i.id === id);
+            if(existing) {
+                const updated = { ...existing, ...updates };
+                await apiCall('save', 'content_reports', { item: updated });
+                return updated;
+            }
+            return null;
+        },
+        delete: async (id: string) => {
+             await apiCall('delete', 'content_reports', { id });
+        }
     }
   }
 };

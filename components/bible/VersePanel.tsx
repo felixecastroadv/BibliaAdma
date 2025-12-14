@@ -4,7 +4,7 @@ import { X, BookOpen, Languages, Loader2, RefreshCw, AlertTriangle, Send, Lock, 
 import { db } from '../../services/database';
 import { generateContent } from '../../services/geminiService';
 import { generateVerseKey } from '../../constants';
-import { DictionaryEntry, Commentary } from '../../types';
+import { DictionaryEntry, Commentary, ContentReport } from '../../types';
 import { Type } from "@google/genai";
 
 interface VersePanelProps {
@@ -38,8 +38,11 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
   const [dictionary, setDictionary] = useState<DictionaryEntry | null>(null);
   const [loading, setLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Report State
   const [showReport, setShowReport] = useState(false);
   const [reportText, setReportText] = useState('');
+  const [isSendingReport, setIsSendingReport] = useState(false);
 
   // Admin Edit States
   const [isEditingCommentary, setIsEditingCommentary] = useState(false);
@@ -81,6 +84,9 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
         setIsEditingCommentary(false);
         setCustomAiInstruction('');
         setShowAiInput(false);
+        // Reset Report
+        setShowReport(false);
+        setReportText('');
     }
     // Stop audio when closing
     if (!isOpen) {
@@ -165,6 +171,33 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
     } finally {
         setLoading(false);
     }
+  };
+
+  const handleSendReport = async () => {
+      if (!reportText.trim()) {
+          onShowToast("Por favor, descreva o erro.", "error");
+          return;
+      }
+      setIsSendingReport(true);
+      try {
+          const report: ContentReport = {
+              type: activeTab === 'professor' ? 'commentary' : 'dictionary',
+              reference_text: `${book} ${chapter}:${verseNumber}`,
+              report_text: reportText,
+              user_name: userProgress?.user_name || 'Anônimo',
+              date: new Date().toISOString(),
+              status: 'pending'
+          };
+          
+          await db.entities.ContentReports.create(report);
+          onShowToast("Erro reportado com sucesso! Obrigado pela ajuda.", "success");
+          setReportText('');
+          setShowReport(false);
+      } catch (e) {
+          onShowToast("Erro ao enviar reporte. Tente novamente.", "error");
+      } finally {
+          setIsSendingReport(false);
+      }
   };
 
   const handleSendQuestion = async (text: string) => {
@@ -676,8 +709,12 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                                             placeholder="Descreva o erro..." 
                                             className="w-full p-2 text-sm border border-[#C5A059] rounded dark:bg-gray-900 dark:text-white"
                                         />
-                                        <button className="mt-2 bg-[#8B0000] text-white px-3 py-1 rounded text-xs flex items-center gap-1">
-                                            <Send className="w-3 h-3" /> Enviar
+                                        <button 
+                                            onClick={handleSendReport}
+                                            disabled={isSendingReport}
+                                            className="mt-2 bg-[#8B0000] text-white px-3 py-1 rounded text-xs flex items-center gap-1"
+                                        >
+                                            {isSendingReport ? <Loader2 className="w-3 h-3 animate-spin"/> : <Send className="w-3 h-3" />} Enviar
                                         </button>
                                     </div>
                                 )}
