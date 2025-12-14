@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { X, BookOpen, Languages, Loader2, RefreshCw, AlertTriangle, Send, Lock, Save, Sparkles, Volume2, Pause, Play, FastForward, MessageCircle, User, Bot, Battery } from 'lucide-react';
+import { X, BookOpen, Languages, Loader2, RefreshCw, AlertTriangle, Send, Lock, Save, Sparkles, Volume2, Pause, Play, FastForward, MessageCircle, User, Bot, Battery, Edit, Command, FileText } from 'lucide-react';
 import { db } from '../../services/database';
 import { generateContent } from '../../services/geminiService';
 import { generateVerseKey } from '../../constants';
@@ -40,6 +41,12 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
   const [showReport, setShowReport] = useState(false);
   const [reportText, setReportText] = useState('');
 
+  // Admin Edit States
+  const [isEditingCommentary, setIsEditingCommentary] = useState(false);
+  const [manualEditText, setManualEditText] = useState('');
+  const [customAiInstruction, setCustomAiInstruction] = useState('');
+  const [showAiInput, setShowAiInput] = useState(false);
+
   // Chat State
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -70,6 +77,10 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
             text: `Olá! Sou o assistente virtual do Prof. Michel Felix. Qual sua dúvida sobre ${book} ${chapter}:${verseNumber}?`
         }]);
         checkQuota();
+        // Reset Admin states
+        setIsEditingCommentary(false);
+        setCustomAiInstruction('');
+        setShowAiInput(false);
     }
     // Stop audio when closing
     if (!isOpen) {
@@ -260,11 +271,16 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
   const generateCommentary = async () => {
     setLoading(true);
 
+    const customPromptAddon = customAiInstruction 
+        ? `\n\nATENÇÃO - INSTRUÇÃO ESPECIAL DO ADMIN: ${customAiInstruction}` 
+        : "";
+
     try {
         const prompt = `
             ATUE COMO: Professor Michel Felix (Teólogo Conservador).
             TAREFA: Comentário bíblico ortodoxo e vibrante sobre ${book} ${chapter}:${verseNumber}.
             TEXTO BÍBLICO: "${verse}"
+            ${customPromptAddon}
 
             --- SEGURANÇA DOUTRINÁRIA (CRÍTICO) ---
             1. ORTODOXIA ESTRITA: Interprete a Bíblia com a Bíblia. Rejeite interpretações baseadas em livros apócrifos.
@@ -279,18 +295,42 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
             - Comece contextualizando e termine com aplicação prática.
         `;
         const text = await generateContent(prompt);
-        const data = { book, chapter, verse: verseNumber, verse_key: verseKey, commentary_text: text };
+        const data = { 
+            ...(commentary || {}), // Mantém ID se existir
+            book, chapter, verse: verseNumber, verse_key: verseKey, commentary_text: text 
+        };
         
         setIsSaving(true);
         await db.entities.Commentary.create(data);
         setCommentary(data as Commentary);
         onShowToast('Comentário gerado e salvo para todos!', 'success');
+        setShowAiInput(false); // Fecha o input após gerar
     } catch (e: any) {
         onShowToast(`Erro: ${e.message}`, 'error');
     } finally {
         setLoading(false);
         setIsSaving(false);
     }
+  };
+
+  const handleManualSave = async () => {
+      if (!manualEditText) return;
+      setIsSaving(true);
+      try {
+          const data = {
+              ...(commentary || {}),
+              book, chapter, verse: verseNumber, verse_key: verseKey,
+              commentary_text: manualEditText
+          };
+          await db.entities.Commentary.create(data);
+          setCommentary(data as Commentary);
+          setIsEditingCommentary(false);
+          onShowToast('Edição manual salva com sucesso!', 'success');
+      } catch (e) {
+          onShowToast('Erro ao salvar edição.', 'error');
+      } finally {
+          setIsSaving(false);
+      }
   };
 
   const speakText = () => {
@@ -315,6 +355,11 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
     }
   };
 
+  const startEditing = () => {
+      setManualEditText(commentary?.commentary_text || '');
+      setIsEditingCommentary(true);
+  };
+
   if (!isOpen) return null;
 
   const msgsLeft = dailyQuota - msgsUsed;
@@ -332,7 +377,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                 </div>
                 <div className="flex gap-2">
                     {/* Audio Controls for Commentary */}
-                    {activeTab === 'professor' && commentary && (
+                    {activeTab === 'professor' && commentary && !isEditingCommentary && (
                         <button onClick={() => setShowAudioSettings(!showAudioSettings)} className="p-1 hover:bg-white/20 rounded-full">
                             <Volume2 className={isPlaying ? "w-6 h-6 animate-pulse" : "w-6 h-6"} />
                         </button>
@@ -393,16 +438,81 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                 ) : (
                     <>
                         {activeTab === 'professor' && (
-                            <div className="p-5 space-y-4">
-                                {commentary ? (
+                            <div className="p-5 space-y-4 flex-1 flex flex-col">
+                                {isEditingCommentary ? (
+                                    <div className="flex-1 flex flex-col gap-2">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="font-bold text-[#8B0000] flex items-center gap-2"><Edit className="w-4 h-4"/> Editando Manualmente</span>
+                                            <button onClick={() => setIsEditingCommentary(false)} className="text-gray-500 text-sm hover:text-red-500"><X className="w-4 h-4" /></button>
+                                        </div>
+                                        <textarea 
+                                            value={manualEditText}
+                                            onChange={(e) => setManualEditText(e.target.value)}
+                                            className="w-full h-80 p-3 border border-[#C5A059] rounded font-cormorant text-lg shadow-inner dark:bg-gray-800 dark:text-white"
+                                        />
+                                        <button 
+                                            onClick={handleManualSave}
+                                            disabled={isSaving}
+                                            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded flex items-center justify-center gap-2"
+                                        >
+                                            {isSaving ? <Loader2 className="w-4 h-4 animate-spin"/> : <Save className="w-4 h-4" />} Salvar Alteração
+                                        </button>
+                                    </div>
+                                ) : commentary ? (
                                     <>
                                         <div className="prose prose-lg font-cormorant text-gray-900 dark:text-gray-200">
                                             <p className="whitespace-pre-line leading-relaxed text-justify">{commentary.commentary_text}</p>
                                         </div>
+                                        
                                         {isAdmin && (
-                                            <button onClick={generateCommentary} className="w-full mt-4 py-2 border border-[#8B0000] text-[#8B0000] dark:text-[#ff6b6b] dark:border-[#ff6b6b] rounded font-cinzel text-sm flex items-center justify-center gap-2 hover:bg-[#8B0000]/5">
-                                                <RefreshCw className="w-4 h-4"/> Regenerar e Salvar (Admin)
-                                            </button>
+                                            <div className="mt-6 pt-4 border-t border-[#C5A059]/20 space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                     <h4 className="font-cinzel font-bold text-xs text-gray-500 flex items-center gap-1"><Command className="w-3 h-3"/> ADMIN CONTROLS</h4>
+                                                </div>
+                                                
+                                                {/* Botões de Ação Admin */}
+                                                <div className="flex gap-2">
+                                                    <button 
+                                                        onClick={startEditing} 
+                                                        className="flex-1 py-2 border border-gray-400 text-gray-600 dark:text-gray-400 rounded text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center gap-1"
+                                                    >
+                                                        <Edit className="w-3 h-3"/> Editar Texto
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => setShowAiInput(!showAiInput)} 
+                                                        className={`flex-1 py-2 border rounded text-xs font-bold flex items-center justify-center gap-1 ${showAiInput ? 'bg-[#8B0000] text-white border-[#8B0000]' : 'border-[#8B0000] text-[#8B0000] hover:bg-[#8B0000]/5'}`}
+                                                    >
+                                                        <Bot className="w-3 h-3"/> IA Personalizada
+                                                    </button>
+                                                </div>
+
+                                                {/* Área de Input da IA Personalizada */}
+                                                {showAiInput && (
+                                                    <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg animate-in slide-in-from-top-2">
+                                                        <label className="text-xs font-bold text-gray-600 dark:text-gray-400 block mb-1">Instrução Especial para a IA:</label>
+                                                        <textarea 
+                                                            value={customAiInstruction}
+                                                            onChange={e => setCustomAiInstruction(e.target.value)}
+                                                            placeholder="Ex: Foque na escatologia deste versículo..."
+                                                            className="w-full p-2 text-sm border border-gray-300 rounded mb-2 dark:bg-gray-900 dark:text-white"
+                                                            rows={2}
+                                                        />
+                                                        <button 
+                                                            onClick={generateCommentary}
+                                                            className="w-full bg-[#8B0000] text-white py-2 rounded text-xs font-bold flex items-center justify-center gap-2 hover:bg-[#600018]"
+                                                        >
+                                                            <RefreshCw className="w-3 h-3" /> Regerar com Instrução
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                {/* Botão Padrão de Regerar (se menu IA fechado) */}
+                                                {!showAiInput && (
+                                                    <button onClick={generateCommentary} className="w-full py-2 border border-gray-300 text-gray-500 rounded text-xs flex items-center justify-center gap-1 hover:bg-gray-50 dark:hover:bg-gray-800">
+                                                        <RefreshCw className="w-3 h-3"/> Regerar (Padrão)
+                                                    </button>
+                                                )}
+                                            </div>
                                         )}
                                     </>
                                 ) : (
