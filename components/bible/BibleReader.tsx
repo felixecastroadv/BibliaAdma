@@ -136,29 +136,33 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
         const engBook = BOOK_NAME_MAPPING[book] || book;
         const isSingleChapter = ONE_CHAPTER_BOOKS.includes(book);
         
-        // Estratégia Dupla:
-        // 1. Tenta pegar versículos específicos (1-200) para forçar array (bom para livros curtos)
-        // 2. Se falhar, tenta pegar o capítulo inteiro padrão
+        // Estratégia Híbrida:
+        // 1. Livros normais: Busca padrão (Book + Chapter)
+        // 2. Livros de 1 capítulo: Busca com Range (Book + 1:1-200) para forçar versículos
         
+        const standardUrl = `https://bible-api.com/${engBook}+${chapter}?translation=almeida`;
+        // Nota: Para livros de 1 cap, a API espera "Book+1:1-200" para retornar corretamente
+        const rangeUrl = `https://bible-api.com/${engBook}+${isSingleChapter ? '1' : chapter}:1-200?translation=almeida`;
+
+        let urlToUse = isSingleChapter ? rangeUrl : standardUrl;
+        let fallbackUrl = isSingleChapter ? standardUrl : rangeUrl;
+
         let data;
-        let usedUrl = '';
 
         try {
-            // TENTATIVA 1: Forçar range (Resolve Obadias, Judas, etc)
-            usedUrl = `https://bible-api.com/${engBook}+${chapter}:1-200?translation=almeida`;
-            const res = await fetch(usedUrl);
-            if (!res.ok) throw new Error('Range fetch failed');
+            // TENTATIVA 1 (Prioritária)
+            const res = await fetch(urlToUse);
+            if (!res.ok) throw new Error("Primary fetch failed");
             data = await res.json();
             
-            // Validação: Se voltou vazio ou erro, força erro para ir pro catch
-            if (!data.verses || data.verses.length === 0) throw new Error('Empty verses');
-
+            // Validação extra
+            if (!data.verses || data.verses.length === 0) throw new Error("Empty verses");
+            
         } catch (firstError) {
-            // TENTATIVA 2: Fallback para capítulo simples
-            console.warn("Tentativa 1 falhou, tentando fallback...", firstError);
-            usedUrl = `https://bible-api.com/${engBook}+${chapter}?translation=almeida`;
-            const res2 = await fetch(usedUrl);
-            if (!res2.ok) throw new Error("API Indisponível no momento.");
+            // TENTATIVA 2 (Fallback)
+            console.warn(`Tentativa 1 falhou para ${book}, tentando fallback...`);
+            const res2 = await fetch(fallbackUrl);
+            if (!res2.ok) throw new Error("API Indisponível");
             data = await res2.json();
         }
 
@@ -168,7 +172,7 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
                  text: v.text.replace(/\n/g, ' ').trim() 
              })));
         } else {
-             throw new Error("Formato de dados inválido recebido da API.");
+             throw new Error("Formato inválido");
         }
 
     } catch (e: any) {
