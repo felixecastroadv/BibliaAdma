@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, BookOpen, Languages, Loader2, RefreshCw, AlertTriangle, Send, Lock, Save, Sparkles, Volume2, Pause, Play, FastForward } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, BookOpen, Languages, Loader2, RefreshCw, AlertTriangle, Send, Lock, Save, Sparkles, Volume2, Pause, Play, FastForward, MessageCircle, User, Bot, Battery } from 'lucide-react';
 import { db } from '../../services/database';
 import { generateContent } from '../../services/geminiService';
 import { generateVerseKey } from '../../constants';
@@ -16,18 +16,39 @@ interface VersePanelProps {
   isAdmin: boolean;
   onShowToast: (msg: string, type: 'success' | 'error' | 'info') => void;
   userName?: string;
+  userProgress?: any;
+}
+
+interface ChatMessage {
+    role: 'user' | 'model';
+    text: string;
 }
 
 const OLD_TESTAMENT_BOOKS = ['Gênesis', 'Êxodo', 'Levítico', 'Números', 'Deuteronômio', 'Josué', 'Juízes', 'Rute', '1 Samuel', '2 Samuel', '1 Reis', '2 Reis', '1 Crônicas', '2 Crônicas', 'Esdras', 'Neemias', 'Ester', 'Jó', 'Salmos', 'Provérbios', 'Eclesiastes', 'Cantares', 'Isaías', 'Jeremias', 'Lamentações', 'Ezequiel', 'Daniel', 'Oséias', 'Joel', 'Amós', 'Obadias', 'Jonas', 'Miquéias', 'Naum', 'Habacuque', 'Sofonias', 'Ageu', 'Zacarias', 'Malaquias'];
 
-export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, chapter, isAdmin, onShowToast }: VersePanelProps) {
-  const [activeTab, setActiveTab] = useState<'professor' | 'dicionario'>('professor');
+// --- CONFIGURAÇÃO DE COTAS ---
+const BASE_DAILY_LIMIT = 3; // Todo mundo tem 3
+const BONUS_CHAPTER_STEP = 10; // A cada 10 caps lidos ganha +1
+const MAX_DAILY_LIMIT = 15; // Teto máximo
+
+export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, chapter, isAdmin, onShowToast, userProgress }: VersePanelProps) {
+  const [activeTab, setActiveTab] = useState<'professor' | 'dicionario' | 'chat'>('professor');
   const [commentary, setCommentary] = useState<Commentary | null>(null);
   const [dictionary, setDictionary] = useState<DictionaryEntry | null>(null);
   const [loading, setLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [reportText, setReportText] = useState('');
+
+  // Chat State
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Quota State
+  const [dailyQuota, setDailyQuota] = useState(BASE_DAILY_LIMIT);
+  const [msgsUsed, setMsgsUsed] = useState(0);
 
   // Audio State
   const [isPlaying, setIsPlaying] = useState(false);
@@ -43,13 +64,23 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
   useEffect(() => {
     if (isOpen && verse) {
         loadContent();
+        // Reset chat on open new verse
+        setChatMessages([{
+            role: 'model',
+            text: `Olá! Sou o assistente virtual do Prof. Michel Felix. Qual sua dúvida sobre ${book} ${chapter}:${verseNumber}?`
+        }]);
+        checkQuota();
     }
     // Stop audio when closing
     if (!isOpen) {
         window.speechSynthesis.cancel();
         setIsPlaying(false);
     }
-  }, [isOpen, verse, activeTab]);
+  }, [isOpen, verse]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, activeTab]);
 
   useEffect(() => {
     const loadVoices = () => {
@@ -68,29 +99,101 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
     }
   }, [playbackRate]);
 
+  // --- LÓGICA DE COTAS ---
+  const checkQuota = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const saved = localStorage.getItem('adma_chat_usage');
+    let usage = 0;
+
+    if (saved) {
+        const data = JSON.parse(saved);
+        if (data.date === today) {
+            usage = data.count;
+        } else {
+            // Reset se for outro dia
+            localStorage.setItem('adma_chat_usage', JSON.stringify({ date: today, count: 0 }));
+        }
+    }
+
+    setMsgsUsed(usage);
+
+    // Calcula limite baseado no progresso
+    const chaptersRead = userProgress?.total_chapters || 0;
+    const bonus = Math.floor(chaptersRead / BONUS_CHAPTER_STEP);
+    const totalLimit = Math.min(MAX_DAILY_LIMIT, BASE_DAILY_LIMIT + bonus);
+    
+    setDailyQuota(totalLimit);
+  };
+
+  const incrementUsage = () => {
+      const today = new Date().toISOString().split('T')[0];
+      const newCount = msgsUsed + 1;
+      localStorage.setItem('adma_chat_usage', JSON.stringify({ date: today, count: newCount }));
+      setMsgsUsed(newCount);
+  };
+  // -----------------------
+
   const loadContent = async () => {
+    if (commentary && dictionary) return;
+
     setLoading(true);
     try {
-        if (activeTab === 'professor') {
-            const existing = await db.entities.Commentary.filter({ verse_key: verseKey });
-            if (existing && existing.length > 0) {
-                setCommentary(existing[0]);
-            } else {
-                setCommentary(null);
-            }
-        } else {
-            const existing = await db.entities.Dictionary.filter({ verse_key: verseKey });
-            if (existing && existing.length > 0) {
-                setDictionary(existing[0]);
-            } else {
-                setDictionary(null);
-            }
-        }
+        const [commRes, dictRes] = await Promise.all([
+            db.entities.Commentary.filter({ verse_key: verseKey }),
+            db.entities.Dictionary.filter({ verse_key: verseKey })
+        ]);
+
+        if (commRes && commRes.length > 0) setCommentary(commRes[0]);
+        else setCommentary(null);
+
+        if (dictRes && dictRes.length > 0) setDictionary(dictRes[0]);
+        else setDictionary(null);
+
     } catch (e) {
         console.error("Erro ao carregar", e);
     } finally {
         setLoading(false);
     }
+  };
+
+  const handleSendQuestion = async (text: string) => {
+      if (!text.trim()) return;
+
+      // Verifica cota
+      if (msgsUsed >= dailyQuota && !isAdmin) {
+          onShowToast(`Limite diário atingido! Leia mais ${BONUS_CHAPTER_STEP} capítulos para ganhar +1 pergunta.`, 'error');
+          return;
+      }
+      
+      const userMsg: ChatMessage = { role: 'user', text };
+      setChatMessages(prev => [...prev, userMsg]);
+      setChatInput('');
+      setIsChatLoading(true);
+
+      // Incrementa uso ANTES de chamar a API para evitar race conditions
+      if (!isAdmin) incrementUsage();
+
+      const prompt = `
+        CONTEXTO BÍBLICO: Livro de ${book}, Capítulo ${chapter}, Versículo ${verseNumber}.
+        TEXTO: "${verse}"
+        
+        PERSONA: Você é o Prof. Michel Felix, um teólogo Pentecostal Clássico da Assembleia de Deus (Ministério Ágape).
+        ESTILO: Responda de forma curta, direta, pastoral e encorajadora. Use emojis moderados.
+        DOUTRINA: Arminiana, Ortodoxa, Bibliocêntrica. Rejeite liberalismo teológico.
+        
+        PERGUNTA DO ALUNO: "${text}"
+        
+        RESPOSTA:
+      `;
+
+      try {
+          const response = await generateContent(prompt);
+          setChatMessages(prev => [...prev, { role: 'model', text: response || "Desculpe, não consegui processar sua dúvida agora." }]);
+      } catch (error) {
+          setChatMessages(prev => [...prev, { role: 'model', text: "Erro de conexão com o Professor. Tente novamente." }]);
+      } finally {
+          setIsChatLoading(false);
+      }
   };
 
   const generateDictionary = async () => {
@@ -164,20 +267,16 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
             TEXTO BÍBLICO: "${verse}"
 
             --- SEGURANÇA DOUTRINÁRIA (CRÍTICO) ---
-            1. ORTODOXIA ESTRITA: Interprete a Bíblia com a Bíblia. Rejeite interpretações baseadas em livros apócrifos (como Enoque) ou mitologias que contradigam o restante das Escrituras.
-            2. CHECAGEM DE HERESIAS: 
-               - Se o texto for polêmico (ex: Gênesis 6, "Filhos de Deus"), ADOTE A VISÃO CONSERVADORA (Linhagem de Sete x Caim) e REJEITE a visão de híbridos anjos-humanos, pois Jesus afirmou que anjos não se casam (Mt 22:30).
-               - Evite especulações fantásticas. Fique no "assim diz o Senhor".
-            3. VIÉS: Arminiano e Pentecostal Clássico (Foque na graça, responsabilidade humana e poder de Deus, mas com equilíbrio e sanidade bíblica).
+            1. ORTODOXIA ESTRITA: Interprete a Bíblia com a Bíblia. Rejeite interpretações baseadas em livros apócrifos.
+            2. VIÉS: Arminiano e Pentecostal Clássico.
 
             --- ESTILO DE ESCRITA ---
-            - Vibrante, Pastoral e Acessível (como um professor apaixonado em sala de aula).
-            - Use exclamações moderadas para enfatizar verdades espirituais.
-            - NUNCA use frases de auto-identificação ("Eu como teólogo...", "Nós cremos...", "Prezados"). Apenas ENTREGUE o conteúdo.
+            - Vibrante, Pastoral e Acessível.
+            - NUNCA use frases de auto-identificação ("Eu como teólogo...", "Nós cremos...").
 
             ESTRUTURA:
             - 2 a 3 parágrafos fluídos.
-            - Comece contextualizando e termine com aplicação prática para a Igreja hoje.
+            - Comece contextualizando e termine com aplicação prática.
         `;
         const text = await generateContent(prompt);
         const data = { book, chapter, verse: verseNumber, verse_key: verseKey, commentary_text: text };
@@ -195,7 +294,6 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
   };
 
   const speakText = () => {
-    // Only speak commentary for now
     if (!commentary || activeTab !== 'professor') return;
     
     const utter = new SpeechSynthesisUtterance(commentary.commentary_text);
@@ -219,11 +317,15 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
 
   if (!isOpen) return null;
 
+  const msgsLeft = dailyQuota - msgsUsed;
+  const isQuotaFull = msgsLeft <= 0 && !isAdmin;
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-        <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-        <div className="relative w-full md:w-[600px] h-full bg-[#FDFBF7] dark:bg-dark-card shadow-2xl overflow-y-auto flex flex-col animate-in slide-in-from-right duration-300">
-            <div className="sticky top-0 bg-[#8B0000] text-white p-4 z-10 flex justify-between items-start shadow-md">
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+        <div className="relative w-full md:w-[600px] h-full bg-[#FDFBF7] dark:bg-dark-card shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-right duration-300">
+            {/* Header */}
+            <div className="sticky top-0 bg-[#8B0000] text-white p-4 z-10 flex justify-between items-start shadow-md shrink-0">
                 <div>
                     <h3 className="font-cinzel text-xl font-bold">{book} {chapter}:{verseNumber}</h3>
                     <p className="font-cormorant text-sm opacity-90 mt-1 line-clamp-2">{verse}</p>
@@ -241,7 +343,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
 
             {/* Audio Settings Panel */}
             {showAudioSettings && activeTab === 'professor' && (
-                <div className="bg-white dark:bg-gray-900 p-3 border-b border-[#C5A059] flex flex-col gap-2 animate-in slide-in-from-top-2">
+                <div className="bg-white dark:bg-gray-900 p-3 border-b border-[#C5A059] flex flex-col gap-2 animate-in slide-in-from-top-2 shrink-0">
                     <div className="flex items-center justify-between">
                         <button 
                             onClick={togglePlay}
@@ -254,43 +356,36 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                             {voices.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
                         </select>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                            <FastForward className="w-3 h-3" /> Vel:
-                        </span>
-                        <div className="flex gap-1 flex-1">
-                            {[0.75, 1, 1.25, 1.5, 2].map(rate => (
-                                <button 
-                                    key={rate}
-                                    onClick={() => setPlaybackRate(rate)}
-                                    className={`flex-1 py-1 text-[10px] font-bold rounded border ${playbackRate === rate ? 'bg-[#8B0000] text-white border-[#8B0000]' : 'bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600'}`}
-                                >
-                                    {rate}x
-                                </button>
-                            ))}
-                        </div>
-                    </div>
                 </div>
             )}
 
-            <div className="flex bg-[#F5F5DC] dark:bg-black border-b border-[#C5A059]">
+            {/* Tabs */}
+            <div className="flex bg-[#F5F5DC] dark:bg-black border-b border-[#C5A059] shrink-0 overflow-x-auto">
                 <button 
                     onClick={() => setActiveTab('professor')}
-                    className={`flex-1 py-3 font-montserrat font-medium text-sm flex items-center justify-center gap-2 transition-colors ${activeTab === 'professor' ? 'bg-[#8B0000] text-white' : 'text-[#8B0000] dark:text-[#C5A059] hover:bg-[#C5A059]/20'}`}
+                    className={`flex-1 min-w-[100px] py-3 font-montserrat font-medium text-xs md:text-sm flex items-center justify-center gap-1 md:gap-2 transition-colors ${activeTab === 'professor' ? 'bg-[#8B0000] text-white' : 'text-[#8B0000] dark:text-[#C5A059] hover:bg-[#C5A059]/20'}`}
                 >
                     <BookOpen className="w-4 h-4" /> Professor
                 </button>
                 <button 
                     onClick={() => setActiveTab('dicionario')}
-                    className={`flex-1 py-3 font-montserrat font-medium text-sm flex items-center justify-center gap-2 transition-colors ${activeTab === 'dicionario' ? 'bg-[#8B0000] text-white' : 'text-[#8B0000] dark:text-[#C5A059] hover:bg-[#C5A059]/20'}`}
+                    className={`flex-1 min-w-[100px] py-3 font-montserrat font-medium text-xs md:text-sm flex items-center justify-center gap-1 md:gap-2 transition-colors ${activeTab === 'dicionario' ? 'bg-[#8B0000] text-white' : 'text-[#8B0000] dark:text-[#C5A059] hover:bg-[#C5A059]/20'}`}
                 >
-                    <Languages className="w-4 h-4" /> Dicionário Original
+                    <Languages className="w-4 h-4" /> Dicionário
+                </button>
+                <button 
+                    onClick={() => setActiveTab('chat')}
+                    className={`flex-1 min-w-[100px] py-3 font-montserrat font-bold text-xs md:text-sm flex items-center justify-center gap-1 md:gap-2 transition-colors ${activeTab === 'chat' ? 'bg-[#C5A059] text-white' : 'text-[#8B0000] dark:text-[#C5A059] hover:bg-[#C5A059]/20'}`}
+                >
+                    <MessageCircle className="w-4 h-4" /> Tira-Dúvidas
+                    {msgsLeft > 0 && <span className="bg-red-600 text-white text-[10px] px-1.5 rounded-full">{msgsLeft}</span>}
                 </button>
             </div>
 
-            <div className="flex-1 p-5 dark:text-gray-200">
-                {loading ? (
-                    <div className="h-full flex flex-col items-center justify-center text-[#8B0000] dark:text-white">
+            {/* Content Area */}
+            <div className="flex-1 overflow-y-auto dark:text-gray-200 bg-[#FDFBF7] dark:bg-dark-card flex flex-col relative">
+                {loading && activeTab !== 'chat' ? (
+                    <div className="h-full flex flex-col items-center justify-center text-[#8B0000] dark:text-white absolute inset-0 bg-[#FDFBF7]/90 dark:bg-dark-card/90 z-20">
                         <Loader2 className="w-10 h-10 animate-spin mb-2" />
                         <p className="font-cinzel">Consultando o Mestre...</p>
                         {isSaving && <p className="text-xs mt-2 font-bold animate-pulse">Salvando no Banco de Dados...</p>}
@@ -298,7 +393,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                 ) : (
                     <>
                         {activeTab === 'professor' && (
-                            <div className="space-y-4">
+                            <div className="p-5 space-y-4">
                                 {commentary ? (
                                     <>
                                         <div className="prose prose-lg font-cormorant text-gray-900 dark:text-gray-200">
@@ -324,7 +419,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                         )}
 
                         {activeTab === 'dicionario' && (
-                            <div className="space-y-6">
+                            <div className="p-5 space-y-6">
                                 {dictionary ? (
                                     <>
                                         <div className="bg-gradient-to-br from-[#8B0000] to-black p-4 rounded-lg text-white text-center shadow-lg">
@@ -382,8 +477,84 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                             </div>
                         )}
 
-                        {!isAdmin && (commentary || dictionary) && (
-                            <div className="mt-8 pt-4 border-t border-[#C5A059]/20">
+                        {activeTab === 'chat' && (
+                            <div className="flex flex-col h-full bg-[#E5DDD5] dark:bg-[#0b141a]">
+                                {/* Chat Header Info */}
+                                <div className="bg-white/80 dark:bg-black/40 p-2 text-center text-xs font-bold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-800 flex justify-center items-center gap-2 backdrop-blur-sm">
+                                    <Battery className={`w-4 h-4 ${isQuotaFull ? 'text-red-500' : 'text-green-500'}`} />
+                                    <span>{msgsLeft} perguntas restantes hoje</span>
+                                </div>
+
+                                {/* Chat Messages */}
+                                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                                    {chatMessages.map((msg, idx) => {
+                                        const isModel = msg.role === 'model';
+                                        return (
+                                            <div key={idx} className={`flex ${isModel ? 'justify-start' : 'justify-end'}`}>
+                                                <div className={`max-w-[85%] rounded-lg p-3 shadow-sm text-sm relative ${isModel ? 'bg-white dark:bg-[#1f2c34] text-gray-800 dark:text-gray-100 rounded-tl-none' : 'bg-[#d9fdd3] dark:bg-[#005c4b] text-gray-900 dark:text-white rounded-tr-none'}`}>
+                                                    {isModel && <p className="text-[10px] font-bold text-[#8B0000] dark:text-[#C5A059] mb-1 font-montserrat">Prof. Michel Felix</p>}
+                                                    <p className="font-cormorant text-base leading-snug whitespace-pre-line">{msg.text}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    {isChatLoading && (
+                                        <div className="flex justify-start">
+                                            <div className="bg-white dark:bg-[#1f2c34] rounded-lg p-3 shadow-sm rounded-tl-none flex items-center gap-2">
+                                                <Loader2 className="w-4 h-4 animate-spin text-[#8B0000]" />
+                                                <span className="text-xs text-gray-500 italic">Digitando...</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div ref={chatEndRef} />
+                                </div>
+
+                                {/* Quota Reached Warning */}
+                                {isQuotaFull && (
+                                    <div className="px-4 py-3 bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 text-xs font-bold text-center border-t border-red-200">
+                                        <Lock className="w-4 h-4 inline mb-1" /> Limite diário atingido! Leia mais capítulos para ganhar perguntas extras amanhã.
+                                    </div>
+                                )}
+
+                                {/* Suggested Questions */}
+                                {!isQuotaFull && chatMessages.length < 2 && (
+                                    <div className="px-4 py-2 flex gap-2 overflow-x-auto bg-opacity-10 bg-black/5 shrink-0">
+                                        {["Como aplicar na minha vida?", "Contexto Histórico", "Significado no Original"].map(q => (
+                                            <button 
+                                                key={q}
+                                                onClick={() => handleSendQuestion(q)}
+                                                className="whitespace-nowrap px-3 py-1 bg-white dark:bg-[#1f2c34] rounded-full text-xs border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-[#C5A059] hover:text-white transition-colors"
+                                            >
+                                                {q}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Input Area */}
+                                <div className="p-3 bg-white dark:bg-[#1f2c34] flex gap-2 items-center shrink-0">
+                                    <input 
+                                        type="text" 
+                                        value={chatInput}
+                                        onChange={e => setChatInput(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && !isQuotaFull && handleSendQuestion(chatInput)}
+                                        placeholder={isQuotaFull ? "Volte amanhã ou leia mais..." : "Tire sua dúvida com o Professor..."}
+                                        className="flex-1 p-2 rounded-full bg-gray-100 dark:bg-[#2a3942] border-none focus:ring-1 focus:ring-[#C5A059] dark:text-white text-sm disabled:opacity-50"
+                                        disabled={isChatLoading || isQuotaFull}
+                                    />
+                                    <button 
+                                        onClick={() => handleSendQuestion(chatInput)}
+                                        disabled={isChatLoading || !chatInput.trim() || isQuotaFull}
+                                        className="p-2 bg-[#8B0000] dark:bg-[#00a884] text-white rounded-full disabled:opacity-50 disabled:bg-gray-400"
+                                    >
+                                        <Send className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {!isAdmin && (commentary || dictionary) && activeTab !== 'chat' && (
+                            <div className="mt-8 pt-4 border-t border-[#C5A059]/20 p-5">
                                 <button onClick={() => setShowReport(!showReport)} className="text-xs text-gray-500 hover:text-[#8B0000] flex items-center gap-1 mx-auto">
                                     <AlertTriangle className="w-3 h-3" /> Reportar erro neste conteúdo
                                 </button>

@@ -382,6 +382,7 @@ export default function BibleReader({ userProgress, isAdmin, onProgressUpdate, o
         chapter={chapter}
         isAdmin={isAdmin}
         onShowToast={onShowToast}
+        userProgress={userProgress} // Prop passada aqui
       />
     </div>
   );
