@@ -207,7 +207,13 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
     const generateMetadata = async () => {
         if (isGeneratingMeta) return;
         setIsGeneratingMeta(true);
-        const prompt = `Resuma o tema teológico de ${book} ${chapter} em um Título Curto e Subtítulo. JSON: { "title": "...", "subtitle": "..." }`;
+        // Prompt ajustado para gerar títulos curtos e clássicos, como no padrão antigo
+        const prompt = `Gere uma EPÍGRAFE CLÁSSICA (Estilo Almeida/Sociedade Bíblica) para ${book} ${chapter}. 
+        JSON: { 
+            "title": "Título Curto (Máximo 5 palavras, ex: A Torre de Babel)", 
+            "subtitle": "Resumo teológico do capítulo em uma frase simples e curta." 
+        }`;
+        
         const schema = { type: GenType.OBJECT, properties: { title: { type: GenType.STRING }, subtitle: { type: GenType.STRING } } };
         try {
             const res = await generateContent(prompt, schema);
@@ -341,19 +347,32 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                              <div className="h-3 w-1/3 bg-gray-200 dark:bg-gray-800 rounded"></div>
                         </div>
                     ) : (
-                        <div className="text-center mb-10 mt-4 cursor-pointer" onClick={() => generateMetadata()} title="Regerar Título">
+                        <div className="text-center mb-8 mt-4 cursor-pointer" onClick={() => generateMetadata()} title="Regerar Epígrafe">
+                            {/* --- TÍTULO PRINCIPAL (PADRÃO ANTIGO) --- */}
+                            <h1 className="font-cinzel text-3xl md:text-4xl font-bold text-[#8B0000] dark:text-[#ff6b6b] mb-3 uppercase tracking-tight drop-shadow-sm">
+                                {book} {chapter}
+                            </h1>
+
+                            {/* --- EPÍGRAFE GERADA (COMO SUBTÍTULO) --- */}
                             {isGeneratingMeta ? (
-                                <div className="flex flex-col items-center text-[#C5A059] animate-pulse">
-                                    <Sparkles className="w-6 h-6 mb-1" />
-                                    <p className="font-cinzel text-xs font-bold uppercase tracking-widest">Gerando tema teológico...</p>
+                                <div className="flex flex-col items-center text-[#C5A059] animate-pulse mt-2">
+                                    <Sparkles className="w-4 h-4 mb-1" />
+                                    <p className="font-cinzel text-[10px] font-bold uppercase tracking-widest">Contextualizando...</p>
+                                </div>
+                            ) : metadata ? (
+                                <div className="max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-2">
+                                    <h2 className="font-cinzel text-sm md:text-base font-bold text-[#C5A059] uppercase tracking-[0.2em] mb-1">
+                                        {metadata.title}
+                                    </h2>
+                                    <p className="font-cormorant text-lg text-gray-600 dark:text-gray-400 italic leading-relaxed">
+                                        {metadata.subtitle}
+                                    </p>
+                                    {/* Linha decorativa sutil */}
+                                    <div className="w-12 h-[1px] bg-[#C5A059] mx-auto mt-4 opacity-40"></div>
                                 </div>
                             ) : (
-                                <>
-                                    <h2 className="font-cinzel text-xl md:text-2xl font-bold text-[#8B0000] dark:text-[#ff6b6b] uppercase tracking-widest mb-2">
-                                        {metadata?.title || `${book} ${chapter}`}
-                                    </h2>
-                                    {metadata?.subtitle && <p className="font-cormorant text-lg italic text-gray-600 dark:text-gray-400">{metadata.subtitle}</p>}
-                                </>
+                                // Espaço vazio se não houver metadata, para manter layout limpo
+                                <div className="h-4"></div>
                             )}
                         </div>
                     )}
