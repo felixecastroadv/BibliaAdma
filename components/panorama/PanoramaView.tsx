@@ -273,7 +273,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                     );
                 }
                 return (
-                    <p key={lineIdx} className="font-cormorant text-xl leading-loose text-gray-900 dark:text-gray-300 text-justify indent-8 mb-6 tracking-wide">
+                    <p key={lineIdx} className="font-cormorant text-xl leading-loose text-gray-900 dark:text-gray-200 text-justify indent-8 mb-6 tracking-wide">
                         {parseInlineStyles(trimmed)}
                     </p>
                 );
@@ -319,31 +319,40 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         ATUE COMO: Professor Michel Felix.
         PERFIL: Teólogo Pentecostal Clássico, Arminiano, Erudito e Assembleiano.
 
-        --- PROTOCOLO DE SEGURANÇA TEOLÓGICA E ORTODOXIA (NÍVEL MÁXIMO) ---
-        1. HERMENÊUTICA: Use a "Analogia da Fé". A Bíblia interpreta a própria Bíblia. Qualquer afirmação deve ser corroborada por outros textos canônicos.
-        2. PROIBIÇÕES ESTRITAS:
-           - ZERO heresias ou contradições.
-           - ZERO uso de livros Apócrifos (Enoque, Jasar, etc) como base doutrinária.
-           - ZERO misticismo judaico especulativo (Cabala/Fábulas Judaicas) que contradiga o Novo Testamento.
-           - ZERO auto-identificação ("Eu acho", "Nós cremos"). Use tom impessoal, acadêmico e magistral (ex: "As Escrituras afirmam...", "A teologia entende que...").
-        3. VIÉS DOUTRINÁRIO: Arminiano e Pentecostal Clássico (Assembleia de Deus).
+        --- PROTOCOLO DE SEGURANÇA TEOLÓGICA (NÍVEL MÁXIMO) ---
+        1. HERMENÊUTICA: Analogia da Fé. A Bíblia interpreta a Bíblia.
+        2. PROIBIDO: Heresias, Apócrifos, Misticismo Cabalístico, Auto-identificação ("Eu acho", "Nós").
+        3. TOM: Magistral, Impessoal, Acadêmico, Vibrante e Ortodoxo.
 
-        --- ESTRUTURA DO ESTUDO (OBRIGATÓRIO SEGUIR) ---
-        1. TÍTULO E INTRODUÇÃO: Contextualização histórica e geográfica robusta.
-        2. TÓPICOS DO ESTUDO (I, II, III...): Exegese profunda (cite hebraico/grego quando relevante), mas com aplicação prática.
-        3. CONCLUSÃO: Fechamento pastoral.
-        4. ### CONEXÃO COM JESUS CRISTO (TIPOLOGIA): Cristocentrismo. Como este texto aponta para a Cruz e o Messias?
-        5. ### CURIOSIDADES E ARQUEOLOGIA: Dados científicos e arqueológicos REAIS que confirmam a narrativa bíblica (evite lendas).
+        --- ESTRUTURA VISUAL OBRIGATÓRIA (BASEADA NO MODELO ADMA) ---
+        Use EXATAMENTE esta estrutura de tópicos. NÃO use cabeçalhos como "Introdução" ou "Desenvolvimento" explicitamente, apenas comece o texto ou use os números.
 
-        --- DENSIDADE E FORMATO ---
-        1. TEXTO LONGO: Entre 600 a 800 palavras por geração.
-        2. FORMATAÇÃO: Use Markdown. Destaque palavras chaves em negrito.
-        3. QUEBRA DE PÁGINA: Ao final de um tópico longo, insira: <hr class="page-break">
-        4. CONTINUIDADE: Se for continuação, não repita introduções, avance no conteúdo.
+        1. TÍTULO PRINCIPAL:
+           PANORÂMA BÍBLICO - ${book.toUpperCase()} ${chapter} (PROF. MICHEL FELIX)
+
+        2. INTRODUÇÃO GERAL:
+           Texto rico contextualizando o capítulo, autor e cenário histórico. Sem tópicos aqui.
+
+        3. TÓPICOS DO ESTUDO (Use Numeração 1., 2., 3...):
+           Exemplo:
+           1. TÍTULO DO TÓPICO EM MAIÚSCULO
+           Texto explicativo profundo, citando versículos e fazendo a exegese sem usar a palavra "exegese" no título.
+
+        4. SEÇÕES FINAIS OBRIGATÓRIAS (No final do estudo):
+           ### TIPOLOGIA: CONEXÃO COM JESUS CRISTO
+           (Liste de forma enumerada se houver múltiplos pontos, ou texto corrido. Mostre como o texto aponta para o Messias).
+
+           ### CURIOSIDADES E ARQUEOLOGIA
+           (Fatos históricos, culturais e arqueológicos relevantes).
+
+        --- INSTRUÇÕES DE PAGINAÇÃO ---
+        1. Texto LONGO (600-800 palavras por geração).
+        2. Insira <hr class="page-break"> entre os tópicos principais para dividir as páginas.
+        3. Se for CONTINUAÇÃO, não repita o título nem a introdução, siga para o próximo tópico numérico ou para as Seções Finais.
     `;
     
     const instructions = customInstructions ? `\nINSTRUÇÕES EXTRAS: ${customInstructions}` : "";
-    const continuationInstructions = `MODO CONTINUAÇÃO. O texto anterior terminou assim: "...${cleanContext.slice(-400)}...". Continue o raciocínio. Se já cobriu os tópicos principais, GERE AGORA AS SEÇÕES FINAIS: "CONEXÃO COM JESUS" e "CURIOSIDADES E ARQUEOLOGIA".`;
+    const continuationInstructions = `MODO CONTINUAÇÃO. O texto anterior terminou assim: "...${cleanContext.slice(-400)}...". Continue o raciocínio no próximo tópico numérico. Se já cobriu todo o texto bíblico, GERE AS SEÇÕES FINAIS (Tipologia e Arqueologia).`;
 
     let specificPrompt = target === 'student' ? 
         `OBJETIVO: AULA DO ALUNO para ${book} ${chapter}. ${WRITING_STYLE} ${instructions} ${mode === 'continue' ? continuationInstructions : 'INÍCIO DO ESTUDO COMPLETO.'}` : 
@@ -371,7 +380,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         else await db.entities.PanoramaBiblico.create(data);
 
         await loadContent();
-        onShowToast('Conteúdo gerado com Arqueologia e Tipologia!', 'success');
+        onShowToast('Conteúdo gerado no Padrão ADMA!', 'success');
         if (mode === 'continue') setTimeout(() => setCurrentPage(pages.length), 500); 
 
     } catch (e: any) {
