@@ -4,7 +4,6 @@ import { ChevronLeft, Bell, Flame, Plus, Trash2, Send, Megaphone, User, Heart } 
 import { db } from '../../services/database';
 import { Announcement, PrayerRequest } from '../../types';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 
 interface MessagesViewProps {
   onBack: () => void;
@@ -198,7 +197,7 @@ export default function MessagesView({ onBack, isAdmin = false, user }: Messages
                             <p className="font-cormorant text-lg text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{ann.message}</p>
                             <div className="mt-4 flex justify-between items-center text-xs text-gray-500 font-montserrat">
                                 <span>{ann.author}</span>
-                                <span>{format(new Date(ann.date), "dd 'de' MMM, HH:mm", { locale: ptBR })}</span>
+                                <span>{new Date(ann.date).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
                         </div>
                     ))
@@ -219,7 +218,7 @@ export default function MessagesView({ onBack, isAdmin = false, user }: Messages
                                 </div>
                                 <div>
                                     <p className="font-bold text-sm dark:text-white">{req.user_name}</p>
-                                    <p className="text-xs text-gray-500 capitalize">{req.category} • {format(new Date(req.date), "dd/MM", { locale: ptBR })}</p>
+                                    <p className="text-xs text-gray-500 capitalize">{req.category} • {format(new Date(req.date), "dd/MM")}</p>
                                 </div>
                                 {(isAdmin || user?.user_email === req.user_email) && (
                                     <button onClick={() => handleDelete(req.id!)} className="ml-auto text-gray-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>

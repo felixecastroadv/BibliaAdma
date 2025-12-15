@@ -5,8 +5,7 @@ import { generateContent } from '../../services/geminiService';
 import { db } from '../../services/database';
 import { Devotional } from '../../types';
 import { Type as GenType } from "@google/genai";
-import { format, addDays, differenceInDays, isAfter, subDays } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { format, addDays, differenceInDays, isAfter } from 'date-fns';
 
 export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
   const [devotional, setDevotional] = useState<Devotional | null>(null);
