@@ -243,15 +243,23 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
     const loadMetadata = async () => {
         setMetadata(null);
         try {
+            // 1. Tenta Local (IndexedDB)
             let meta = await db.entities.ChapterMetadata.get(chapterKey);
+            
             if (!meta) {
-               const apiMetas = await db.entities.ChapterMetadata.filter({ chapter_key: chapterKey });
-               if (apiMetas && apiMetas.length > 0) meta = apiMetas[0];
+               // 2. Tenta Nuvem (Supabase - Universal)
+               const cloudMeta = await db.entities.ChapterMetadata.getCloud(chapterKey);
+               if (cloudMeta) {
+                   meta = cloudMeta;
+                   // Salva localmente para não precisar baixar de novo
+                   await db.entities.ChapterMetadata.save(meta);
+               }
             }
 
             if (meta) {
                 setMetadata(meta);
             } else {
+                // 3. Se não existe nem local nem na nuvem, gera.
                 if (navigator.onLine) {
                     generateMetadata();
                 }
@@ -270,6 +278,7 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                 const res = JSON.parse(cleanJson);
                 if (res && res.title) {
                     const data = { chapter_key: chapterKey, title: res.title, subtitle: res.subtitle };
+                    // A função .save agora salva tanto no Local quanto na Nuvem (Universal)
                     await db.entities.ChapterMetadata.save(data);
                     setMetadata(data);
                 }

@@ -178,7 +178,17 @@ export const db = {
             return await metaStorage.get(chapterKey);
         },
         save: async (data: any) => {
-            return await metaStorage.save(data.chapter_key, data);
+            // Garante que o ID seja a chave do capítulo para busca direta
+            const item = { ...data, id: data.chapter_key };
+            // Salva na Nuvem (Universal)
+            await apiCall('save', 'chapter_metadata', { item });
+            // Salva Local (Offline)
+            return await metaStorage.save(data.chapter_key, item);
+        },
+        // Nova função para buscar especificamente da nuvem pelo ID
+        getCloud: async (chapterKey: string) => {
+             const data = await apiCall('get', 'chapter_metadata', { id: chapterKey });
+             return data;
         },
         filter: async (query: any) => {
             const data = await apiCall('list', 'chapter_metadata') || [];
