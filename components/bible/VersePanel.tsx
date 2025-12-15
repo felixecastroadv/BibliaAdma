@@ -297,6 +297,11 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
             TEXTO BÍBLICO: "${verse}"
             ${customPromptAddon}
 
+            --- OBJETIVO SUPREMO: O EFEITO "AH! ENTENDI!" ---
+            1. O aluno deve terminar a leitura e pensar: "Ah! Agora tudo faz sentido!".
+            2. NÃO seja genérico. Traga DETALHES que iluminam o texto (costumes da época, geografia, ou o sentido exato de uma palavra original que muda tudo).
+            3. Explique de forma INDUBITÁVEL. O texto deve eliminar as dúvidas, não criar novas. Descomplique o difícil.
+
             --- PROTOCOLO DE SEGURANÇA HERMENÊUTICA (PRIORIDADE TOTAL) ---
             1. A BÍBLIA EXPLICA A BÍBLIA: Antes de formular o comentário, verifique mentalmente versículos conexos. A interpretação NÃO pode contradizer o restante das Escrituras.
             2. ZERO POLÊMICAS/ESPECULAÇÕES: Rejeite interpretações baseadas em livros apócrifos, mitologia (ex: anjos coabitando com humanos) ou cultura judaica extra-bíblica. 
@@ -313,11 +318,11 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
 
             --- ESTRUTURA BLINDADA (3 PARÁGRAFOS - Max 250 Palavras) ---
             
-            1. PARÁGRAFO 1 (EXEGESE): 
-               - Explique o texto dentro do contexto imediato. O que está acontecendo? Qual o sentido original das palavras? Descomplique.
+            1. PARÁGRAFO 1 (O DESVENDAR DO TEXTO): 
+               - Explique o que está acontecendo com clareza cristalina. Traga aquele detalhe histórico ou linguístico que faz a diferença. Responda: O que isso significava para quem ouviu pela primeira vez?
 
-            2. PARÁGRAFO 2 (TEOLOGIA ORTODOXA): 
-               - Aprofunde o ensino doutrinário. Conecte com outros textos bíblicos (Analogia da Fé) para confirmar a interpretação correta e afastar heresias. (Foco principal).
+            2. PARÁGRAFO 2 (A CONEXÃO TEOLÓGICA): 
+               - Aprofunde o ensino. Conecte com outros textos bíblicos (Analogia da Fé) para confirmar a interpretação correta. Mostre como isso se encaixa no plano de Deus.
 
             3. PARÁGRAFO 3 (APLICAÇÃO): 
                - Curto e prático. Como essa verdade bíblica transforma a vida do aluno hoje? (Max 15% do texto).
