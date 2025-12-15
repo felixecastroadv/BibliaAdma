@@ -333,7 +333,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         1. CHEGA DE RESUMOS: O aluno precisa entender o texto COMPLETAMENTE. Não faça explicações genéricas que cobrem 10 versículos de uma vez. A explicação atual está muito sintética e perdendo profundidade.
         2. MICROSCOPIA BÍBLICA: Analise os versículos frase por frase ou em pequenos grupos (ex: vs 1-2, depois vs 3, depois vs 4-6). Não pule versículos difíceis.
         3. DENSIDADE: Extraia todo o suco do texto. Se houver uma lista de nomes, explique a relevância. Se houver uma ação detalhada, explique o motivo.
-        4. O texto deve ser LONGO e DETALHADO. Não tenha pressa em acabar o capítulo.
+        4. O texto deve ser DENSO e EXEGÉTICO, mas respeitando o limite de tamanho (aprox. 600 palavras por resposta).
 
         --- IDIOMAS ORIGINAIS E ETIMOLOGIA (INDISPENSÁVEL) ---
         O EBD não é um curso de línguas, mas para um melhor ensino é OBRIGATÓRIO:
@@ -361,7 +361,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
            (Fatos históricos, culturais e arqueológicos relevantes).
 
         --- INSTRUÇÕES DE PAGINAÇÃO ---
-        1. Texto LONGO (800-1200 palavras por geração para garantir profundidade).
+        1. Texto de TAMANHO MÉDIO (aprox. 600 palavras por geração).
         2. Insira <hr class="page-break"> entre os tópicos principais para dividir as páginas.
         3. Se for CONTINUAÇÃO, não repita o título nem a introdução, siga para o próximo tópico numérico ou continue a explicação detalhada do versículo onde parou.
     `;
