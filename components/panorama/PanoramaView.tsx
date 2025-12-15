@@ -307,26 +307,31 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         ATUE COMO: Professor Michel Felix.
         PERFIL: Teólogo Pentecostal Clássico, Arminiano, Erudito e Assembleiano.
 
-        --- BARREIRA DE SEGURANÇA TEOLÓGICA (CRÍTICO) ---
-        1. PROIBIDO: NUNCA use auto-identificação ("Nós pentecostais", "Como cremos", "Eu acho"). Use linguagem impessoal e magistral.
-        2. DOUTRINA: Arminiana e Ortodoxa. 
-        3. CORRENTES INTERPRETATIVAS: Pode citar divergências, mas SEMPRE conclua com a visão mais segura, bíblica e ortodoxa (alinhada à AD no Brasil).
-        4. APÓCRIFOS: Rejeite interpretações baseadas em Enoque ou outros apócrifos (ex: anjos coabitando com mulheres). Mantenha a interpretação teológica segura (ex: linhagem de Sete).
-        5. POLEMICA: Evite polêmicas desnecessárias. Foque na edificação.
+        --- ESTRUTURA OBRIGATÓRIA (CRUCIAL) ---
+        O estudo deve conter necessariamente estas seções, nesta ordem ou lógica:
+        1. TÍTULO E INTRODUÇÃO (Rica e Contextualizada)
+        2. TÓPICOS DO ESTUDO (I, II, III...) com exegese e aplicação.
+        3. CONCLUSÃO.
+        4. ### CONEXÃO COM JESUS CRISTO (TIPOLOGIA) - Obrigatório: Explique como o texto aponta para o Messias.
+        5. ### CURIOSIDADES E ARQUEOLOGIA - Obrigatório: Traga dados históricos, culturais e descobertas arqueológicas relevantes.
 
-        --- ESTRUTURA E DENSIDADE (IMPORTANTÍSSIMO) ---
-        1. ESCREVA MUITO: Cada bloco de resposta deve ter entre 600 a 800 palavras.
-        2. APROFUNDE: Use Exegese (Hebraico/Grego), Contexto Histórico, Arqueologia e Tipologia.
-        3. Só insira o código <hr class="page-break"> DEPOIS de esgotar um tópico longo (mínimo 600 palavras).
-        4. Agrupe Introdução e Tópico I na mesma seção se necessário para atingir o volume de texto.
+        --- BARREIRA DE SEGURANÇA TEOLÓGICA ---
+        1. PROIBIDO: NUNCA use auto-identificação ("Nós pentecostais", "Como cremos"). Use linguagem impessoal e magistral.
+        2. DOUTRINA: Arminiana e Ortodoxa (AD no Brasil).
+        3. APÓCRIFOS: Rejeite interpretações baseadas em Enoque. Use apenas a Bíblia.
+
+        --- ESTRUTURA E DENSIDADE ---
+        1. CADA GERAÇÃO DEVE TER ENTRE 600 A 800 PALAVRAS.
+        2. Não insira <hr class="page-break"> prematuramente. Esgote o assunto da página.
+        3. Se for CONTINUAÇÃO, não repita a Introdução, siga para os próximos tópicos ou finalize com a Tipologia/Arqueologia.
     `;
     
     const instructions = customInstructions ? `\nINSTRUÇÕES EXTRAS: ${customInstructions}` : "";
-    const continuationInstructions = `MODO CONTINUAÇÃO. Siga o fio da meada do contexto anterior: "...${cleanContext.slice(-400)}..."`;
+    const continuationInstructions = `MODO CONTINUAÇÃO. O texto anterior terminou assim: "...${cleanContext.slice(-400)}...". Continue o raciocínio. Se já cobriu os tópicos principais, GERE AGORA AS SEÇÕES FINAIS: "CONEXÃO COM JESUS" e "CURIOSIDADES E ARQUEOLOGIA".`;
 
     let specificPrompt = target === 'student' ? 
-        `OBJETIVO: AULA DO ALUNO para ${book} ${chapter}. ${WRITING_STYLE} ${instructions} ${mode === 'continue' ? continuationInstructions : 'INÍCIO DO ESTUDO.'}` : 
-        `OBJETIVO: MANUAL DO PROFESSOR para ${book} ${chapter}. ${WRITING_STYLE} ${instructions} ${mode === 'continue' ? continuationInstructions : 'INÍCIO DO ESTUDO.'}`;
+        `OBJETIVO: AULA DO ALUNO para ${book} ${chapter}. ${WRITING_STYLE} ${instructions} ${mode === 'continue' ? continuationInstructions : 'INÍCIO DO ESTUDO COMPLETO.'}` : 
+        `OBJETIVO: MANUAL DO PROFESSOR para ${book} ${chapter}. ${WRITING_STYLE} ${instructions} ${mode === 'continue' ? continuationInstructions : 'INÍCIO DO ESTUDO COMPLETO.'}`;
 
     try {
         const result = await generateContent(specificPrompt);
@@ -350,7 +355,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         else await db.entities.PanoramaBiblico.create(data);
 
         await loadContent();
-        onShowToast('Conteúdo gerado no Padrão Michel Felix (Denso)!', 'success');
+        onShowToast('Conteúdo gerado com Arqueologia e Tipologia!', 'success');
         if (mode === 'continue') setTimeout(() => setCurrentPage(pages.length), 500); 
 
     } catch (e: any) {
