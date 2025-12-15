@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, ChevronRight, List, Book, ChevronDown, RefreshCw, WifiOff, Zap, Volume2, X, FastForward, Search, Trash2, Sparkles, Loader2 } from 'lucide-react';
+import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, ChevronRight, List, Book, ChevronDown, RefreshCw, WifiOff, Zap, Volume2, X, FastForward, Search, Trash2, Sparkles, Loader2, Clock, Lock } from 'lucide-react';
 import VersePanel from './VersePanel';
 import { db } from '../../services/database';
 import { generateChapterKey, BIBLE_BOOKS } from '../../constants';
@@ -91,8 +91,13 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
     const [selectedVoice, setSelectedVoice] = useState<string>('');
     const [playbackRate, setPlaybackRate] = useState(1);
     
+    // --- LÓGICA DO TIMER DE LEITURA (RANKING JUSTO) ---
+    const READING_TIME_SEC = 40;
+    const [readingTimer, setReadingTimer] = useState(0);
+
     const chapterKey = generateChapterKey(book, chapter);
     const isRead = userProgress?.chapters_read?.includes(chapterKey);
+    const isLocked = !isRead && readingTimer > 0;
 
     useEffect(() => {
         const load = () => {
@@ -112,11 +117,31 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
         }
     }, [playbackRate, selectedVoice]);
 
+    // Efeito para carregar capítulo e INICIAR TIMER
     useEffect(() => {
         window.scrollTo(0, 0);
         fetchChapter();
         loadMetadata();
-    }, [book, chapter]);
+
+        // Se já foi lido, timer é 0. Se não, inicia em 40s.
+        if (isRead) {
+            setReadingTimer(0);
+        } else {
+            setReadingTimer(READING_TIME_SEC);
+        }
+
+    }, [book, chapter]); // Reinicia sempre que muda o capítulo
+
+    // Efeito para contagem regressiva
+    useEffect(() => {
+        let interval: any;
+        if (readingTimer > 0 && !isRead) {
+            interval = setInterval(() => {
+                setReadingTimer((prev) => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [readingTimer, isRead]);
 
     const fetchChapter = async () => {
         setLoading(true);
@@ -251,6 +276,13 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
 
     const toggleRead = async () => {
         if (!userProgress) return;
+        
+        // Bloqueio de Segurança Anti-Fraude
+        if (isLocked) {
+            onShowToast(`Leia o capítulo por mais ${readingTimer} segundos para confirmar.`, "info");
+            return;
+        }
+
         let newRead = isRead ? userProgress.chapters_read.filter((k: string) => k !== chapterKey) : [...(userProgress.chapters_read || []), chapterKey];
         let newTotal = isRead ? Math.max(0, (userProgress.total_chapters || 0) - 1) : (userProgress.total_chapters || 0) + 1;
         onShowToast(isRead ? "Marcado como não lido" : "Capítulo concluído!", isRead ? "info" : "success");
@@ -291,7 +323,29 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                 </div>
                 <div className="flex items-center gap-2">
                     <button onClick={togglePlay} className="p-2 hover:bg-white/10 rounded-full transition-all active:scale-90">{isPlaying ? <Pause className="w-5 h-5 animate-pulse text-[#C5A059]" /> : <Play className="w-5 h-5" />}</button>
-                    <button onClick={toggleRead} className={`p-2 rounded-full transition-all active:scale-90 ${isRead ? 'text-green-400 bg-green-900/20' : 'hover:bg-white/10 text-white/70'}`}><CheckCircle className="w-5 h-5" /></button>
+                    
+                    {/* Botão de Check no Header com Feedback Visual de Bloqueio */}
+                    <button 
+                        onClick={toggleRead} 
+                        disabled={isLocked}
+                        className={`p-2 rounded-full transition-all active:scale-90 relative ${
+                            isRead 
+                            ? 'text-green-400 bg-green-900/20' 
+                            : isLocked 
+                                ? 'text-gray-400 opacity-50 cursor-not-allowed' 
+                                : 'hover:bg-white/10 text-white/70'
+                        }`}
+                    >
+                        {isLocked ? (
+                            <div className="relative">
+                                <Lock className="w-5 h-5" />
+                                <span className="absolute -top-2 -right-2 text-[8px] font-bold bg-[#C5A059] text-black px-1 rounded-full">{readingTimer}</span>
+                            </div>
+                        ) : (
+                            <CheckCircle className="w-5 h-5" />
+                        )}
+                    </button>
+                    
                     <button onClick={() => setShowSettings(!showSettings)} className={`p-2 rounded-full transition-all active:scale-90 ${showSettings ? 'bg-white/20 text-[#C5A059]' : 'hover:bg-white/10'}`}><Settings className="w-5 h-5" /></button>
                 </div>
             </div>
@@ -420,8 +474,29 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                     <ChevronLeft className="w-6 h-6" />
                  </button>
 
-                 <button onClick={toggleRead} className={`pointer-events-auto px-6 py-3 rounded-full font-cinzel font-bold shadow-xl transition-all transform active:scale-95 flex items-center gap-2 text-sm border backdrop-blur-md ${isRead ? 'bg-green-600/90 text-white border-green-500 shadow-green-500/30' : 'bg-[#8B0000]/90 text-white border-red-800 shadow-red-900/30 hover:scale-105'}`}>
-                    {isRead ? <CheckCircle className="w-4 h-4" /> : null} {isRead ? 'LIDO' : 'MARCAR LIDO'}
+                 <button 
+                    onClick={toggleRead}
+                    disabled={isLocked}
+                    className={`pointer-events-auto px-6 py-3 rounded-full font-cinzel font-bold shadow-xl transition-all transform active:scale-95 flex items-center gap-2 text-sm border backdrop-blur-md ${
+                        isRead 
+                        ? 'bg-green-600/90 text-white border-green-500 shadow-green-500/30' 
+                        : isLocked
+                            ? 'bg-gray-400/90 text-gray-100 border-gray-500 cursor-not-allowed grayscale'
+                            : 'bg-[#8B0000]/90 text-white border-red-800 shadow-red-900/30 hover:scale-105'
+                    }`}
+                 >
+                    {isRead ? (
+                        <CheckCircle className="w-4 h-4" />
+                    ) : isLocked ? (
+                        <Clock className="w-4 h-4 animate-spin-slow" />
+                    ) : null}
+                    
+                    {isRead 
+                        ? 'LIDO' 
+                        : isLocked 
+                            ? `LENDO (${readingTimer}s)` 
+                            : 'MARCAR LIDO'
+                    }
                 </button>
 
                  <button onClick={handleNext} className="pointer-events-auto w-12 h-12 bg-white/90 dark:bg-[#1E1E1E]/90 backdrop-blur shadow-lg rounded-full flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-[#8B0000] hover:scale-110 active:scale-95 transition-all border border-gray-200 dark:border-gray-700">
