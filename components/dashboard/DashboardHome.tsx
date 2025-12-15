@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, GraduationCap, ShieldCheck, Trophy, Calendar, ListChecks, Mail, CheckCircle2, Moon, Sun, Download, Instagram, X, Share, MoreVertical, Monitor, LogOut } from 'lucide-react';
+import { BookOpen, GraduationCap, ShieldCheck, Trophy, Calendar, ListChecks, Mail, CheckCircle2, Moon, Sun, Download, Instagram, X, Share, MoreVertical, Monitor, LogOut, Sparkles } from 'lucide-react';
 import { CHURCH_NAME, TOTAL_CHAPTERS, APP_VERSION, PASTOR_PRESIDENT } from '../../constants';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -106,7 +106,7 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
   const progressPercent = userProgress ? Math.min(100, (userProgress.total_chapters / TOTAL_CHAPTERS) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-[#F5F5DC] dark:bg-dark-bg transition-colors duration-500">
+    <div className="min-h-screen bg-[#FDFBF7] dark:bg-dark-bg transition-colors duration-500 font-sans">
         {/* MODAL DE INSTRUÇÕES IOS */}
         <AnimatePresence>
             {showIOSInstructions && (
@@ -185,12 +185,17 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
             )}
         </AnimatePresence>
 
-        {/* HERO SECTION */}
-        <div className="relative bg-gradient-to-br from-[#600010] via-[#8B0000] to-[#500000] text-white pb-20 rounded-b-[40px] shadow-2xl overflow-hidden">
-             {/* Background Pattern */}
-             <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
+        {/* HERO SECTION - REESTRUTURADO E PREMIUM */}
+        <div className="relative bg-[#0F0505] text-white pb-24 rounded-b-[50px] shadow-2xl overflow-hidden isolate">
              
-             {/* Top Bar */}
+             {/* Background Effects */}
+             <div className="absolute inset-0 bg-gradient-to-b from-[#600010] via-[#45000A] to-[#250005] z-0"></div>
+             <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay z-0"></div>
+             
+             {/* Glow decorativo no topo */}
+             <div className="absolute top-[-50%] left-1/2 -translate-x-1/2 w-[120%] h-[100%] bg-[#8B0000] opacity-30 blur-[100px] rounded-full pointer-events-none z-0"></div>
+
+             {/* Top Bar (Glass) */}
              <div className="relative z-20 px-6 pt-6 flex justify-between items-center">
                 <AnimatePresence>
                     {!isStandalone && (
@@ -199,131 +204,156 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -20 }}
                             onClick={handleInstallClick} 
-                            className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-3 py-1.5 rounded-full flex items-center gap-2 hover:bg-white/20 transition-all active:scale-95"
+                            className="bg-white/5 backdrop-blur-md border border-white/10 text-white/90 px-4 py-2 rounded-full flex items-center gap-2 hover:bg-white/10 transition-all active:scale-95 shadow-lg"
                         >
-                            <Download className="w-4 h-4" />
-                            <span className="text-[10px] font-bold uppercase tracking-wider">Instalar</span>
+                            <Download className="w-3 h-3" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Instalar App</span>
                         </motion.button>
                     )}
                 </AnimatePresence>
-                <div className={`flex gap-2 ${isStandalone ? 'ml-auto' : ''}`}>
-                    <button onClick={toggleDarkMode} className="p-2.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20 transition-all active:scale-90">
-                        {darkMode ? <Sun className="w-5 h-5 text-[#C5A059]" /> : <Moon className="w-5 h-5 text-white" />}
+                <div className={`flex gap-3 ${isStandalone ? 'ml-auto' : ''}`}>
+                    <button onClick={toggleDarkMode} className="p-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 hover:bg-white/10 transition-all active:scale-90 shadow-lg">
+                        {darkMode ? <Sun className="w-4 h-4 text-[#C5A059]" /> : <Moon className="w-4 h-4 text-white/80" />}
                     </button>
-                    <button onClick={onLogout} className="p-2.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 hover:bg-red-500/50 transition-all active:scale-90 text-white/80 hover:text-white">
-                        <LogOut className="w-5 h-5" />
+                    <button onClick={onLogout} className="p-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 hover:bg-red-500/20 hover:border-red-500/30 transition-all active:scale-90 text-white/80 shadow-lg group">
+                        <LogOut className="w-4 h-4 group-hover:text-red-400" />
                     </button>
                 </div>
             </div>
 
-            {/* Main Hero Content */}
-            <div className="relative z-10 px-6 pt-8 text-center">
+            {/* Main Content Centered */}
+            <div className="relative z-10 px-6 pt-10 flex flex-col items-center justify-center text-center space-y-6">
+                
+                {/* Header Info (Minimalista) */}
                 <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6 }}
+                    transition={{ delay: 0.1 }}
+                    className="flex flex-col items-center gap-2"
                 >
-                    {/* CHURCH AND PASTOR NAME */}
-                    <div className="flex flex-col items-center justify-center mb-6">
-                        <div className="inline-flex items-center justify-center gap-2 opacity-80">
-                             <span className="h-[1px] w-6 bg-[#C5A059]"></span>
-                             <h2 className="font-montserrat text-[10px] tracking-[0.2em] uppercase">{CHURCH_NAME}</h2>
-                             <span className="h-[1px] w-6 bg-[#C5A059]"></span>
-                        </div>
-                        <div className="mt-1.5 bg-white/5 px-4 py-1 rounded-full border border-white/10 backdrop-blur-sm">
-                            <span className="font-cinzel text-[10px] text-[#C5A059] uppercase tracking-widest font-bold">
-                                {PASTOR_PRESIDENT}
-                            </span>
-                        </div>
-                    </div>
+                    <h3 className="font-montserrat text-[10px] font-bold tracking-[0.3em] text-[#C5A059] uppercase opacity-90">
+                        {CHURCH_NAME}
+                    </h3>
+                    <div className="h-[1px] w-12 bg-gradient-to-r from-transparent via-[#C5A059]/50 to-transparent"></div>
+                    <p className="font-cormorant text-sm italic text-white/60">
+                        Presidência: {PASTOR_PRESIDENT}
+                    </p>
+                </motion.div>
 
-                    {/* APP LOGO MINIATURE (Inline SVG to fix loading issue) */}
-                    <motion.div 
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ delay: 0.3, type: "spring" }}
-                        className="mb-6 mt-4 relative inline-block group"
-                    >
-                        <div className="absolute inset-0 bg-[#C5A059] blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-700"></div>
-                        <div className="relative w-20 h-20 bg-gradient-to-b from-white/10 to-transparent rounded-2xl border border-[#C5A059]/30 shadow-2xl flex items-center justify-center backdrop-blur-sm p-4">
-                             {/* Inline SVG para garantir que a imagem nunca quebre */}
-                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" className="w-full h-full drop-shadow-lg">
-                                <rect width="512" height="512" rx="120" ry="120" fill="#8B0000"/>
-                                <g fill="none" stroke="#FFFFFF" strokeWidth="36" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M256 140c-50 0-110 20-130 40v200c20-20 80-40 130-40"/>
-                                    <path d="M256 140c50 0 110 20 130 40v200c-20-20-80-40-130-40"/>
-                                    <path d="M256 140v200"/>
-                                </g>
-                             </svg>
-                        </div>
-                    </motion.div>
-
-                    <h1 onClick={handleLogoClick} className="font-cinzel text-5xl font-bold mb-2 cursor-pointer select-none drop-shadow-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-white/80">
-                        Bíblia ADMA
-                    </h1>
-                    <p className="font-cormorant italic text-xl text-[#C5A059] mb-8 font-light">Prof. Michel Felix</p>
+                {/* LOGO PREMIUM (Vidro e Ouro) */}
+                <motion.div 
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.2, type: "spring", stiffness: 100 }}
+                    className="relative group cursor-pointer"
+                    onClick={handleLogoClick}
+                >
+                    {/* Glow Effect */}
+                    <div className="absolute inset-0 bg-[#C5A059] blur-3xl opacity-20 group-hover:opacity-30 transition-opacity duration-700 rounded-full"></div>
                     
-                    <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-lg px-4 py-2 rounded-full border border-white/10 shadow-lg">
-                        <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-                        <span className="font-montserrat text-xs font-bold">Olá, {user?.user_name?.split(' ')[0] || 'Visitante'}</span>
+                    {/* Container */}
+                    <div className="relative w-24 h-24 bg-gradient-to-br from-white/10 to-transparent rounded-[32px] border border-[#C5A059]/40 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] backdrop-blur-md flex items-center justify-center overflow-hidden group-hover:border-[#C5A059]/60 transition-colors duration-500">
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#C5A059]/10 to-transparent opacity-50"></div>
+                        {/* Reflection */}
+                        <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/10 to-transparent opacity-50"></div>
+                        
+                        <BookOpen className="w-10 h-10 text-[#C5A059] drop-shadow-[0_2px_10px_rgba(197,160,89,0.5)] z-10" strokeWidth={1.5} />
                     </div>
                 </motion.div>
+
+                {/* Title Section */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                >
+                    <h1 className="font-cinzel text-4xl md:text-5xl font-bold text-white mb-1 drop-shadow-lg tracking-tight">
+                        Bíblia ADMA
+                    </h1>
+                    <p className="font-cormorant text-lg text-[#C5A059] italic opacity-80 font-light">
+                        Prof. Michel Felix
+                    </p>
+                </motion.div>
+
+                {/* User Greeting Badge */}
+                <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className="flex items-center gap-2 bg-[#0F0505]/40 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/5 shadow-inner"
+                >
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse box-shadow-green"></div>
+                    <span className="font-montserrat text-[10px] font-bold text-white/90 uppercase tracking-wide">
+                        Olá, {user?.user_name?.split(' ')[0] || 'Visitante'}
+                    </span>
+                </motion.div>
+
             </div>
         </div>
 
-        {/* PROGRESS CARD (Floating) */}
-        <div className="px-6 -mt-12 relative z-20 mb-8">
+        {/* PROGRESS CARD (Floating Overlap) */}
+        <div className="px-6 -mt-16 relative z-30 mb-8">
             <motion.div 
-                initial={{ opacity: 0, y: 30 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.5 }}
-                className="bg-white dark:bg-[#1E1E1E] p-6 rounded-3xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] border border-white/50 dark:border-white/5 backdrop-blur-sm"
+                transition={{ delay: 0.5, duration: 0.5 }}
+                className="bg-white dark:bg-[#1E1E1E] p-6 rounded-[32px] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] border border-[#C5A059]/20 backdrop-blur-sm relative overflow-hidden"
             >
-                <div className="flex justify-between items-end mb-4">
+                {/* Decorative background element */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#C5A059]/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+
+                <div className="flex justify-between items-end mb-4 relative z-10">
                     <div className="flex flex-col">
-                        <span className="font-montserrat text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Seu Progresso</span>
-                        <span className="font-cinzel font-bold text-[#8B0000] dark:text-[#ff6b6b] text-xl flex items-center gap-2">
-                             Leitura Bíblica <Trophy className="w-4 h-4 text-[#C5A059]" />
+                        <span className="font-montserrat text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                            <Sparkles className="w-3 h-3 text-[#C5A059]" /> Seu Progresso
+                        </span>
+                        <span className="font-cinzel font-bold text-[#8B0000] dark:text-[#ff6b6b] text-xl">
+                             Leitura Bíblica
                         </span>
                     </div>
-                    <span className="font-montserrat font-bold text-3xl dark:text-white leading-none">{progressPercent.toFixed(0)}<span className="text-sm align-top opacity-50">%</span></span>
+                    <div className="flex items-baseline gap-1">
+                        <span className="font-montserrat font-bold text-4xl dark:text-white leading-none">{progressPercent.toFixed(0)}</span>
+                        <span className="text-sm text-gray-400 font-bold">%</span>
+                    </div>
                 </div>
                 
-                <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-3 mb-3 overflow-hidden">
+                <div className="w-full bg-gray-100 dark:bg-black/40 rounded-full h-2 mb-3 overflow-hidden">
                     <motion.div 
                         initial={{ width: 0 }}
                         animate={{ width: `${progressPercent}%` }}
                         transition={{ duration: 1.5, ease: "easeOut" }}
-                        className="bg-gradient-to-r from-[#8B0000] to-[#C5A059] h-full rounded-full shadow-[0_0_10px_rgba(197,160,89,0.5)]"
-                    ></motion.div>
+                        className="bg-gradient-to-r from-[#8B0000] via-[#A00000] to-[#C5A059] h-full rounded-full shadow-[0_0_15px_rgba(197,160,89,0.4)] relative"
+                    >
+                        <div className="absolute top-0 right-0 h-full w-1 bg-white/50 animate-pulse"></div>
+                    </motion.div>
                 </div>
                 <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                    <span>Iniciante</span>
-                    <span>{userProgress?.total_chapters || 0} / {TOTAL_CHAPTERS} Caps</span>
-                    <span>Mestre</span>
+                    <span>Início</span>
+                    <span>{userProgress?.total_chapters || 0} de {TOTAL_CHAPTERS}</span>
+                    <span>Meta</span>
                 </div>
             </motion.div>
         </div>
 
-        {/* MENU GRID (Bento Style) */}
-        <div className="px-6 pb-24 grid grid-cols-2 gap-4">
+        {/* MENU GRID (Bento Style Clean) */}
+        <div className="px-6 pb-32 grid grid-cols-2 gap-4">
             {menuItems.map((item, idx) => (
                 <motion.button 
                     key={item.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 + (idx * 0.05) }}
+                    transition={{ delay: 0.6 + (idx * 0.05) }}
                     whileHover={{ scale: 1.02, y: -2 }}
                     whileTap={{ scale: 0.96 }}
                     onClick={() => onNavigate(item.id)} 
-                    className={`relative overflow-hidden group bg-white dark:bg-[#1E1E1E] p-5 rounded-3xl shadow-sm hover:shadow-xl dark:shadow-none dark:hover:bg-[#252525] border border-gray-100 dark:border-white/5 transition-all duration-300 text-left h-36 flex flex-col justify-between`}
+                    className={`relative overflow-hidden group bg-white dark:bg-[#1E1E1E] p-6 rounded-[24px] shadow-sm hover:shadow-xl dark:shadow-none dark:hover:bg-[#252525] border border-gray-100 dark:border-white/5 transition-all duration-300 text-left h-40 flex flex-col justify-between`}
                 >
-                    <div className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center shadow-lg text-white mb-2 group-hover:scale-110 transition-transform duration-300`}>
-                        <item.icon className="w-5 h-5" />
+                    <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center shadow-md text-white mb-2 group-hover:scale-110 transition-transform duration-500`}>
+                        <item.icon className="w-6 h-6" />
                     </div>
                     <div>
-                        <span className="font-cinzel font-bold text-[#1a0f0f] dark:text-gray-100 text-sm block leading-tight">{item.label}</span>
-                        <span className="font-montserrat text-[10px] text-gray-400 dark:text-gray-500 font-medium mt-1 block">{item.desc}</span>
+                        <span className="font-cinzel font-bold text-[#1a0f0f] dark:text-gray-100 text-base block leading-tight mb-1">{item.label}</span>
+                        <span className="font-montserrat text-[10px] text-gray-400 dark:text-gray-500 font-medium block">{item.desc}</span>
                     </div>
                     {/* Subtle Gradient Overlay on Hover */}
                     <div className="absolute inset-0 bg-gradient-to-br from-transparent to-black/5 dark:to-white/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
@@ -336,10 +366,11 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                     animate={{ opacity: 1 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => onNavigate('admin')} 
-                    className="col-span-2 bg-[#1a0f0f] dark:bg-black text-[#C5A059] p-5 rounded-3xl shadow-lg border border-[#C5A059]/30 flex items-center justify-center gap-4 group mt-2"
+                    className="col-span-2 bg-[#1a0f0f] dark:bg-black text-[#C5A059] p-5 rounded-3xl shadow-lg border border-[#C5A059]/30 flex items-center justify-center gap-4 group mt-4 relative overflow-hidden"
                 >
+                    <div className="absolute inset-0 bg-[#C5A059]/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     <ShieldCheck className="w-6 h-6 group-hover:rotate-12 transition-transform" />
-                    <div className="text-left">
+                    <div className="text-left relative z-10">
                         <span className="font-cinzel font-bold block text-sm">Painel Editor Chefe</span>
                         <span className="text-[10px] opacity-60 uppercase tracking-widest">Acesso Restrito</span>
                     </div>
@@ -352,16 +383,16 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                 target="_blank" 
                 rel="noopener noreferrer"
                 whileTap={{ scale: 0.98 }}
-                className="col-span-2 mt-2 w-full bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white p-5 rounded-3xl shadow-lg shadow-pink-500/20 flex items-center justify-center gap-3"
+                className="col-span-2 w-full bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white p-5 rounded-3xl shadow-lg shadow-pink-500/20 flex items-center justify-center gap-3 mt-2"
             >
-                <Instagram className="w-6 h-6" />
+                <Instagram className="w-5 h-5" />
                 <span className="font-cinzel font-bold text-sm">Siga a ADMA no Instagram</span>
             </motion.a>
         </div>
         
         {/* Footer */}
-        <div className="text-center pb-24 opacity-40">
-            <p className="font-cinzel text-[10px] font-bold flex items-center justify-center gap-1.5 text-green-700 dark:text-green-500">
+        <div className="text-center pb-8 opacity-40">
+            <p className="font-cinzel text-[10px] font-bold flex items-center justify-center gap-1.5 text-gray-500 dark:text-gray-500">
                  <CheckCircle2 className="w-3 h-3"/> Sistema Conectado • {APP_VERSION}
             </p>
         </div>
