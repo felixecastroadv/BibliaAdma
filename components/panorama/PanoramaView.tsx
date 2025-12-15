@@ -515,7 +515,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                                 }`}
                              >
                                  {isRead ? <CheckCircle className="w-6 h-6" /> : <GraduationCap className="w-6 h-6" />}
-                                 {isRead ? 'ESTUDO CONCLUÍDO' : 'CONCLUIR ESTUDO'}
+                                 {isRead ? 'ESTUDO CONCLUÍDO' : 'MARCAR COMO LIDO'}
                              </button>
                              {isRead && <p className="text-xs text-green-600 mt-2 font-bold">Registrado no Ranking de EBD</p>}
                          </div>

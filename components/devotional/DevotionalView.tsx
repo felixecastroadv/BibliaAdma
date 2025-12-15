@@ -367,7 +367,7 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
       {!isFuture && !isExpired && devotional && (
           <button 
             onClick={togglePlay}
-            className="fixed bottom-6 right-6 w-14 h-14 bg-[#C5A059] text-[#1a0f0f] rounded-full shadow-2xl flex items-center justify-center z-30 hover:bg-[#d4b97a] transition-all transform hover:scale-110 active:scale-95"
+            className="fixed bottom-24 right-6 w-14 h-14 bg-[#C5A059] text-[#1a0f0f] rounded-full shadow-2xl flex items-center justify-center z-50 hover:bg-[#d4b97a] transition-all transform hover:scale-110 active:scale-95 border-2 border-white"
             title={isPlaying ? "Parar Leitura" : "Ouvir Devocional"}
           >
             {isPlaying ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
