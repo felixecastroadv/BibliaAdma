@@ -98,13 +98,11 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     return text.trim();
   };
 
-  // --- NOVA PAGINAÇÃO HÍBRIDA ---
-  // Garante que, mesmo que a IA não quebre a página, o frontend faça isso pelos títulos
+  // --- PAGINAÇÃO HÍBRIDA ---
   const processAndPaginate = (html: string) => {
     if (!html) { setPages([]); return; }
     
     // 1. Tenta dividir pelos marcadores explícitos da IA
-    // O Regex agora pega <hr>, <hr class=...>, e também o __CONTINUATION_MARKER__
     let rawSegments = html.split(/<hr[^>]*>|__CONTINUATION_MARKER__/i)
                           .map(s => cleanText(s))
                           .filter(s => s.length > 50);
@@ -113,7 +111,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     if (rawSegments.length === 1 && rawSegments[0].length > 4000) {
         const bigText = rawSegments[0];
         // Tenta quebrar pelos Títulos (### ou Numerais Romanos/Arábicos no início de linha)
-        // Usamos Lookahead (?=...) para não perder o título na quebra
         const forcedSegments = bigText.split(/(?=\n### |^\s*[IVX]+\.|^\s*\d+\.\s+[A-Z])/gm);
         
         if (forcedSegments.length > 1) {
@@ -133,18 +130,13 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         if (!currentBuffer) {
             currentBuffer = segment;
         } else {
-            // Se o buffer + segmento atual ainda for "tamanho de leitura confortável"
             if ((currentBuffer.length + segment.length) < (CHAR_LIMIT_MIN * 1.5)) {
-                // Adiciona marcador interno para renderizar a linha dourada sem quebrar a página
                 currentBuffer += "\n\n__CONTINUATION_MARKER__\n\n" + segment;
             } else {
-                // Se somar ficar muito grande, fecha a página atual e começa nova
-                // Mas garante que a página atual tenha o mínimo
                 if (currentBuffer.length > 2000) {
                     finalPages.push(currentBuffer);
                     currentBuffer = segment;
                 } else {
-                    // Se for muito curto, força a junção
                     currentBuffer += "\n\n__CONTINUATION_MARKER__\n\n" + segment;
                 }
             }
@@ -217,7 +209,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             {lines.map((line, lineIdx) => {
                 const trimmed = line.trim();
 
-                // RENDERIZADOR DO SEPARADOR VISUAL (Substitui código por UI)
                 if (trimmed === '__CONTINUATION_MARKER__') {
                     return (
                         <div key={lineIdx} className="my-12 flex items-center justify-center select-none animate-in fade-in duration-500">
@@ -328,22 +319,27 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         ATUE COMO: Professor Michel Felix.
         PERFIL: Teólogo Pentecostal Clássico, Arminiano, Erudito e Assembleiano.
 
+        --- PROTOCOLO DE SEGURANÇA TEOLÓGICA E ORTODOXIA (NÍVEL MÁXIMO) ---
+        1. HERMENÊUTICA: Use a "Analogia da Fé". A Bíblia interpreta a própria Bíblia. Qualquer afirmação deve ser corroborada por outros textos canônicos.
+        2. PROIBIÇÕES ESTRITAS:
+           - ZERO heresias ou contradições.
+           - ZERO uso de livros Apócrifos (Enoque, Jasar, etc) como base doutrinária.
+           - ZERO misticismo judaico especulativo (Cabala/Fábulas Judaicas) que contradiga o Novo Testamento.
+           - ZERO auto-identificação ("Eu acho", "Nós cremos"). Use tom impessoal, acadêmico e magistral (ex: "As Escrituras afirmam...", "A teologia entende que...").
+        3. VIÉS DOUTRINÁRIO: Arminiano e Pentecostal Clássico (Assembleia de Deus).
+
         --- ESTRUTURA DO ESTUDO (OBRIGATÓRIO SEGUIR) ---
-        1. TÍTULO E INTRODUÇÃO (Rica e Contextualizada)
-        2. TÓPICOS DO ESTUDO (I, II, III...) com exegese e aplicação.
-        3. CONCLUSÃO.
-        4. ### CONEXÃO COM JESUS CRISTO (TIPOLOGIA) - Obrigatório: Explique como o texto aponta para o Messias.
-        5. ### CURIOSIDADES E ARQUEOLOGIA - Obrigatório: Traga dados históricos, culturais e descobertas arqueológicas relevantes.
+        1. TÍTULO E INTRODUÇÃO: Contextualização histórica e geográfica robusta.
+        2. TÓPICOS DO ESTUDO (I, II, III...): Exegese profunda (cite hebraico/grego quando relevante), mas com aplicação prática.
+        3. CONCLUSÃO: Fechamento pastoral.
+        4. ### CONEXÃO COM JESUS CRISTO (TIPOLOGIA): Cristocentrismo. Como este texto aponta para a Cruz e o Messias?
+        5. ### CURIOSIDADES E ARQUEOLOGIA: Dados científicos e arqueológicos REAIS que confirmam a narrativa bíblica (evite lendas).
 
-        --- BARREIRA DE SEGURANÇA TEOLÓGICA (CRÍTICO) ---
-        1. PROIBIDO: NUNCA use auto-identificação ("Nós pentecostais", "Como cremos"). Use linguagem impessoal e magistral.
-        2. DOUTRINA: Arminiana e Ortodoxa (AD no Brasil).
-        3. APÓCRIFOS: Rejeite interpretações baseadas em Enoque. Use apenas a Bíblia.
-
-        --- REGRAS DE PAGINAÇÃO (FUNDAMENTAL) ---
-        1. ESCREVA MUITO: Cada resposta deve ter entre 600 a 800 palavras no total.
-        2. Ao final de um tópico longo, insira: <hr class="page-break">
-        3. Se for CONTINUAÇÃO, não repita a Introdução, siga para os próximos tópicos ou finalize com a Tipologia/Arqueologia.
+        --- DENSIDADE E FORMATO ---
+        1. TEXTO LONGO: Entre 600 a 800 palavras por geração.
+        2. FORMATAÇÃO: Use Markdown. Destaque palavras chaves em negrito.
+        3. QUEBRA DE PÁGINA: Ao final de um tópico longo, insira: <hr class="page-break">
+        4. CONTINUIDADE: Se for continuação, não repita introduções, avance no conteúdo.
     `;
     
     const instructions = customInstructions ? `\nINSTRUÇÕES EXTRAS: ${customInstructions}` : "";
