@@ -28,6 +28,9 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   const [stopBatch, setStopBatch] = useState(false);
   const [batchLogs, setBatchLogs] = useState<string[]>([]);
 
+  // --- STATE DE DEVOCIONAL ---
+  const [devotionalDate, setDevotionalDate] = useState(new Date().toISOString().split('T')[0]);
+
   // --- STATES DE RELATÓRIOS ---
   const [reports, setReports] = useState<ContentReport[]>([]);
   const [showReportsModal, setShowReportsModal] = useState(false);
@@ -236,13 +239,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       for (let c = batchStartChapter; c <= bookMeta.chapters; c++) {
           if (stopBatch) { addLog("Processo interrompido pelo usuário."); break; }
 
-          // Vamos processar VERSÍCULO POR VERSÍCULO
-          // Como isso é muito pesado, vamos limitar a gerar apenas para o versículo 1 de cada capítulo neste exemplo batch,
-          // OU (Melhor) gerar para todo o capítulo de uma vez se fosse resumo, mas o app usa versículo a versículo.
-          // Para não quebrar a cota, vamos fazer APENAS o versículo 1 de cada capítulo como demonstração/seed.
-          
-          // Num cenário real de produção, iteraríamos v=1 até v=totalVerses.
-          // Aqui faremos v=1 para demonstrar a funcionalidade sem estourar a API key em segundos.
           const verseNum = 1; 
           
           try {
@@ -321,53 +317,54 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       onShowToast(`Lote finalizado. ${processed} itens gerados.`, 'success');
   };
 
-  const handleBatchDevotionals = async () => {
+  const handleGenerateDevotional = async () => {
+      if (!devotionalDate) return;
+      
       setIsGeneratingBatch(true);
       setStopBatch(false);
       setBatchType(null);
-      let count = 0;
       
-      // Começa de amanhã ou da última data registrada
-      let startDate = new Date();
+      // Data já vem no formato YYYY-MM-DD do input date
+      const dateStr = devotionalDate;
+      const displayDate = new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR');
       
-      for (let i = 0; i < 10; i++) { // Gera 10 dias
-          if (stopBatch) break;
-          
-          const targetDate = addDays(startDate, i + 1);
-          const dateStr = format(targetDate, 'yyyy-MM-dd');
-          
-          addLog(`Gerando devocional para ${dateStr}...`);
-          
-          try {
-             // Reutiliza lógica de geração (simplificada aqui)
-             const prompt = `
-                ATUE COMO: Michel Felix.
-                TAREFA: Devocional para ${dateStr}.
-                TEMA: Aleatório bíblico.
-                JSON FORMAT: { title, reference, verse_text, body (com \\n\\n), prayer }.
-             `;
-             const schema = {
-                type: GenType.OBJECT,
-                properties: {
-                    title: { type: GenType.STRING },
-                    reference: { type: GenType.STRING },
-                    verse_text: { type: GenType.STRING },
-                    body: { type: GenType.STRING },
-                    prayer: { type: GenType.STRING }
-                }
-             };
-             
-             const res = await generateContent(prompt, schema);
-             await db.entities.Devotional.create({ ...res, date: dateStr, is_published: true });
-             count++;
-             await new Promise(r => setTimeout(r, 2000));
-          } catch (e: any) {
-              addLog(`Erro dia ${dateStr}: ${e.message}`);
-          }
+      addLog(`Gerando devocional para ${displayDate}...`);
+      
+      try {
+         // Verifica se já existe e deleta para substituir
+         const existing = await db.entities.Devotional.filter({ date: dateStr });
+         if(existing.length > 0) {
+             addLog(`Substituindo devocional existente de ${displayDate}...`);
+             await db.entities.Devotional.delete(existing[0].id);
+         }
+
+         const prompt = `
+            ATUE COMO: Michel Felix.
+            TAREFA: Devocional para ${displayDate}.
+            TEMA: Aleatório bíblico, focando em encorajamento e doutrina.
+            JSON FORMAT: { title, reference, verse_text, body (com \\n\\n), prayer }.
+         `;
+         const schema = {
+            type: GenType.OBJECT,
+            properties: {
+                title: { type: GenType.STRING },
+                reference: { type: GenType.STRING },
+                verse_text: { type: GenType.STRING },
+                body: { type: GenType.STRING },
+                prayer: { type: GenType.STRING }
+            }
+         };
+         
+         const res = await generateContent(prompt, schema);
+         await db.entities.Devotional.create({ ...res, date: dateStr, is_published: true });
+         
+         addLog(`Devocional de ${displayDate} criado com sucesso!`);
+         onShowToast(`Devocional de ${displayDate} gerado!`, "success");
+      } catch (e: any) {
+          addLog(`Erro dia ${dateStr}: ${e.message}`);
       }
       
       setIsGeneratingBatch(false);
-      onShowToast(`${count} Devocionais gerados!`, "success");
   };
 
   if (showBuilder) {
@@ -556,11 +553,22 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                         Gerar Dicionários
                         <span className="text-[10px] font-normal opacity-70">A partir do cap. selecionado</span>
                     </button>
-                    <button onClick={handleBatchDevotionals} className="bg-purple-700 text-white py-3 rounded font-bold flex flex-col items-center justify-center gap-1 hover:bg-purple-800">
-                        <Calendar className="w-5 h-5" />
-                        Gerar 10 Devocionais
-                        <span className="text-[10px] font-normal opacity-70">Dias futuros</span>
-                    </button>
+                    
+                    {/* GERADOR DE DEVOCIONAL POR DATA */}
+                    <div className="bg-purple-50 dark:bg-purple-900/20 p-2 rounded border border-purple-200 dark:border-purple-800 flex flex-col gap-2">
+                        <label className="text-[10px] font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                            <Calendar className="w-3 h-3" /> Gerador de Devocional
+                        </label>
+                        <input 
+                            type="date" 
+                            value={devotionalDate} 
+                            onChange={e => setDevotionalDate(e.target.value)} 
+                            className="p-1.5 text-xs border rounded w-full dark:bg-gray-900 dark:text-white"
+                        />
+                        <button onClick={handleGenerateDevotional} className="bg-purple-700 text-white py-1.5 rounded text-xs font-bold hover:bg-purple-800 w-full">
+                            Gerar para esta Data
+                        </button>
+                    </div>
                 </div>
             )}
         </div>
