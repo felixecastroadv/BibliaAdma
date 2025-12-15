@@ -16,9 +16,37 @@ export default function RankingView({ onBack }: any) {
 
   const loadData = async () => {
     setLoading(true);
-    const data = await db.entities.ReadingProgress.list(activeTab, 100);
-    setUsers(data);
-    setLoading(false);
+    try {
+        const data = await db.entities.ReadingProgress.list();
+        
+        if (data && Array.isArray(data)) {
+            // Ordenação Decrescente (Maior Pontuação Primeiro)
+            const sorted = [...data].sort((a, b) => {
+                if (activeTab === 'chapters') {
+                    // Ordena por capítulos lidos
+                    const capsA = a.total_chapters || 0;
+                    const capsB = b.total_chapters || 0;
+                    if (capsB !== capsA) return capsB - capsA;
+                    // Desempate por nome
+                    return (a.user_name || "").localeCompare(b.user_name || "");
+                } else {
+                    // Ordena por estudos EBD lidos
+                    const ebdsA = a.total_ebd_read || 0;
+                    const ebdsB = b.total_ebd_read || 0;
+                    if (ebdsB !== ebdsA) return ebdsB - ebdsA;
+                    return (a.user_name || "").localeCompare(b.user_name || "");
+                }
+            });
+            setUsers(sorted);
+        } else {
+            setUsers([]);
+        }
+    } catch(e) {
+        console.error("Erro ranking:", e);
+        setUsers([]);
+    } finally {
+        setLoading(false);
+    }
   };
 
   const formatUserName = (rawName: string) => {
@@ -35,7 +63,7 @@ export default function RankingView({ onBack }: any) {
         case 0: return 'bg-gradient-to-r from-yellow-300 to-yellow-500 text-yellow-900 border-yellow-400 transform scale-105';
         case 1: return 'bg-gradient-to-r from-gray-300 to-gray-400 text-gray-900 border-gray-400';
         case 2: return 'bg-gradient-to-r from-orange-300 to-orange-400 text-orange-900 border-orange-400';
-        default: return 'bg-white dark:bg-dark-card border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer';
+        default: return 'bg-white dark:bg-dark-card border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer text-gray-700 dark:text-gray-200';
     }
   };
 
@@ -180,17 +208,17 @@ export default function RankingView({ onBack }: any) {
                             </div>
                             
                             <div className="flex-1">
-                                <p className="font-cinzel font-bold truncate text-lg dark:text-black">
+                                <p className="font-cinzel font-bold truncate text-lg">
                                     {formatUserName(u.user_name)}
                                 </p>
-                                <div className="flex items-center gap-2 text-xs opacity-80 font-bold uppercase tracking-wider dark:text-gray-800">
+                                <div className="flex items-center gap-2 text-xs opacity-80 font-bold uppercase tracking-wider">
                                     {activeTab === 'chapters' ? <BookOpen className="w-3 h-3" /> : <GraduationCap className="w-3 h-3" />}
                                     {activeTab === 'chapters' ? `${u.total_chapters || 0} Capítulos` : `${u.total_ebd_read || 0} Estudos`}
                                 </div>
                             </div>
 
                             {idx === 0 && (
-                                <div className="text-xs font-bold bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full animate-pulse">
+                                <div className="text-xs font-bold bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full animate-pulse border border-yellow-200">
                                     LÍDER
                                 </div>
                             )}
