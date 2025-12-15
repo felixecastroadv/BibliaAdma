@@ -293,24 +293,33 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
     try {
         const prompt = `
             ATUE COMO: Professor Michel Felix (Teólogo Erudito, Pentecostal Clássico e Mestre em Exegese).
-            TAREFA: Escrever um comentário BÍBLICO-DEVOCIONAL CURTO sobre ${book} ${chapter}:${verseNumber}.
+            TAREFA: Escrever um comentário EXEGÉTICO PROFUNDO sobre ${book} ${chapter}:${verseNumber}.
             TEXTO BÍBLICO: "${verse}"
             ${customPromptAddon}
 
-            --- REGRAS DE TAMANHO (CRÍTICO: MÁXIMO 200-250 PALAVRAS) ---
-            1. O comentário deve ser BREVE e DIRETO. Não enrole.
-            2. Mantenha os 3 parágrafos, mas eles devem ser curtos.
-            3. Corte excessos. Vá direto ao ponto central do versículo.
+            --- DIRETRIZ MESTRA: INTERPRETAÇÃO (85%) > APLICAÇÃO (15%) ---
+            1. O OBJETIVO É ENSINAR A INTENÇÃO DO AUTOR: O aluno deve sair entendendo o que o texto significava originalmente.
+            2. FUJA DA AUTOAJUDA: Não gaste texto com frases motivacionais vazias. Foque na riqueza da Palavra.
+            3. APLICAÇÃO SECUNDÁRIA: A aplicação prática deve vir apenas no final, como consequência lógica da interpretação.
 
-            --- ESTILO DE ESCRITA (PADRÃO LIVRO DE OURO) ---
-            1. Texto corrido, elegante e inspirador.
-            2. USO DE ORIGINAIS: Cite hebraico/grego APENAS se for uma chave de ouro para o entendimento. Se não for essencial, não use.
-            3. TOM: Solene, mas acessível.
+            --- USO OBRIGATÓRIO DOS ORIGINAIS ---
+            Cite palavras chaves em Hebraico/Grego (transliteradas) para explicar nuances, nomes, lugares ou polissemia. Isso é essencial para o "estilo Professor".
 
-            --- ESTRUTURA BLINDADA (3 PARÁGRAFOS CURTOS) ---
-            1. CONTEXTO (Max 2-3 frases): O que está acontecendo aqui? Defina o cenário ou palavra-chave.
-            2. TEOLOGIA (Max 3-4 frases): A doutrina central (Visão Arminiana/Pentecostal).
-            3. APLICAÇÃO (Max 2-3 frases): O chamado para hoje.
+            --- ESTRUTURA BLINDADA (3 PARÁGRAFOS - Max 250 Palavras) ---
+            
+            1. PARÁGRAFO 1 (O TEXTO E O CONTEXTO): 
+               - Explique o versículo dentro do contexto histórico e gramatical. 
+               - Traga o significado dos termos originais. O que o autor quis dizer aqui?
+
+            2. PARÁGRAFO 2 (TEOLOGIA E DOUTRINA): 
+               - Aprofunde o significado teológico. Conecte com a doutrina cristã (Visão Arminiana/Pentecostal).
+               - Explique a "interpretação correta" contra possíveis erros.
+
+            3. PARÁGRAFO 3 (DESFECHO/APLICAÇÃO): 
+               - Curto e forte. Como essa verdade interpretada confronta ou consola a igreja hoje? (Max 15% do texto).
+
+            --- ESTILO VISUAL ---
+            Texto corrido, elegante ("Livro de Ouro"), culto e reverente.
         `;
         const text = await generateContent(prompt);
         const data = { 
