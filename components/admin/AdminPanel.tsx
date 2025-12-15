@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ShieldCheck, RefreshCw, Loader2, Upload, Download, Server, HardDrive, Flag, CheckCircle, XCircle, MessageSquare, Languages, GraduationCap, Calendar, CloudUpload, Wand2, Play, StopCircle, Trash2, AlertTriangle, FileJson, Save, Users, Lock, Unlock, KeyRound, Search, Cloud, CloudOff } from 'lucide-react';
 import { generateContent } from '../../services/geminiService';
@@ -177,7 +178,8 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                     const data = await fetchWithRetry(`https://www.abibliadigital.com.br/api/verses/acf/${book.abbrev}/${c}`);
                     if (data && data.verses) {
                         const optimizedVerses = data.verses.map((v: any) => v.text.trim());
-                        await bibleStorage.save(key, optimizedVerses);
+                        // Usa o novo método Universal (Local + Nuvem)
+                        await db.entities.BibleChapter.saveUniversal(key, optimizedVerses);
                         setOfflineCount(prev => (prev || 0) + 1);
                     }
                 } catch(e: any) {
@@ -205,8 +207,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       setProgress(0);
 
       try {
-          // 1. Busca todos os capítulos do Supabase
-          // Nota: 'list' já traz tudo. Se for muita coisa, o loading pode demorar um pouco.
           const result = await db.entities.BibleChapter.list();
           const allChapters = (Array.isArray(result) ? result : []) as any[];
           
@@ -218,24 +218,19 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
 
           setProcessStatus(`Sincronizando ${allChapters.length} arquivos...`);
           
-          // 2. Salva localmente em paralelo/lote
           let count = 0;
           const total = allChapters.length;
 
-          // Limpa banco local para evitar conflitos
           await bibleStorage.clear();
 
           for (const item of allChapters) {
               if (item.id && item.verses) {
-                  // O ID no Supabase é a 'key' (ex: bible_acf_gn_1)
                   await bibleStorage.save(item.id, item.verses);
                   count++;
                   
-                  // Atualiza barra a cada 20 itens para performance
                   if (count % 20 === 0) {
                       setProgress(Math.round((count / total) * 100));
                       setProcessStatus(`Restaurando: ${Math.round((count / total) * 100)}%`);
-                      // Pequena pausa para a UI respirar
                       await new Promise(r => setTimeout(r, 0)); 
                   }
               }
@@ -263,63 +258,72 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       reader.onload = async (e) => {
           try {
               const jsonText = e.target?.result as string;
-              // Remove BOM se existir
               const cleanJson = jsonText.replace(/^\uFEFF/, ''); 
               const rawData = JSON.parse(cleanJson);
               
-              if (!Array.isArray(rawData)) throw new Error("Formato inválido. O arquivo deve conter uma lista (array).");
+              const jsonData = Array.isArray(rawData) ? rawData : (rawData.verses || rawData.chapters || []);
               
-              const jsonData = rawData as any[];
+              if (!Array.isArray(jsonData)) throw new Error("Formato inválido. O JSON deve ser um array ou conter uma lista em 'verses'/'chapters'.");
               
-              setProcessStatus("Processando dados...");
+              setProcessStatus("Processando dados (UNIVERSAL)...");
               let count = 0;
               const total = jsonData.length;
-
-              // Limpa armazenamento atual para importação limpa (opcional, mas recomendado para evitar lixo)
-              // await bibleStorage.clear(); 
 
               for (let i = 0; i < total; i++) {
                   const item = jsonData[i];
                   let key = item.key;
-                  let verses = item.verses;
+                  let verses = item.verses || item.text; // Aceita 'text' como lista de versículos
 
-                  // --- CORREÇÃO DE FORMATO ---
-                  // Se não tiver 'key', tenta gerar baseada em 'book' e 'chapter' ou 'book_name'
+                  // --- PARSER INTELIGENTE (Correção para seus arquivos) ---
                   if (!key) {
-                      const bName = item.book || item.book_name || item.name;
-                      const cNum = item.chapter || item.c;
+                      let bName = item.book || item.book_name || item.name;
+                      const abbrev = item.abbrev || (item.book && item.book.abbrev); // Tenta achar abreviação
+                      const cNum = item.chapter || item.c || item.number;
+
+                      // Se tiver abreviação (ex: "gn"), busca o nome completo
+                      if (!bName && abbrev) {
+                          const foundBook = BIBLE_BOOKS.find(b => b.abbrev.toLowerCase() === abbrev.toLowerCase());
+                          if (foundBook) bName = foundBook.name;
+                      }
+
                       if (bName && cNum) {
                           key = generateChapterKey(bName, cNum);
                       }
                   }
 
                   if (key && verses && Array.isArray(verses)) {
-                      await bibleStorage.save(key, verses);
+                      // Se os versículos forem objetos { number: 1, text: "..." }, extrai só o texto
+                      if (typeof verses[0] === 'object' && verses[0].text) {
+                          verses = verses.map((v: any) => v.text);
+                      }
+
+                      // SALVAMENTO UNIVERSAL (Nuvem + Local)
+                      // Nota: Isso pode demorar para arquivos grandes, mas garante a Nuvem.
+                      await db.entities.BibleChapter.saveUniversal(key, verses);
                       count++;
                   }
 
-                  if (i % 50 === 0) {
+                  if (i % 20 === 0) {
                       setProgress(Math.round((i / total) * 100));
-                      setProcessStatus(`Importando ${i}/${total}...`);
-                      await new Promise(r => setTimeout(r, 0));
+                      setProcessStatus(`Salvando na Nuvem: ${i}/${total}`);
+                      await new Promise(r => setTimeout(r, 0)); // Respiro para UI
                   }
               }
               
               setOfflineCount(await bibleStorage.count());
               
               if (count === 0) {
-                  onShowToast("Nenhum capítulo válido encontrado. Verifique o formato do JSON (precisa de 'key' ou 'book'/'chapter' e 'verses').", "error");
+                  onShowToast("Nenhum capítulo reconhecido. Verifique se o JSON tem 'book'/'abbrev', 'chapter' e 'verses'.", "error");
               } else {
-                  onShowToast(`${count} capítulos importados com sucesso!`, "success");
+                  onShowToast(`${count} capítulos salvos na NUVEM e LOCALMENTE!`, "success");
               }
 
-          } catch (error) {
+          } catch (error: any) {
               console.error(error);
-              onShowToast("Erro ao ler JSON. O arquivo pode estar corrompido.", "error");
+              onShowToast(`Erro ao ler JSON: ${error.message}`, "error");
           } finally {
               setIsProcessing(false);
               setProgress(0);
-              // Limpa o input para permitir re-upload do mesmo arquivo se falhar
               if (fileInputRef.current) fileInputRef.current.value = '';
           }
       };
@@ -375,14 +379,14 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           const verseNum = 1; 
           try {
               const chapKey = `bible_acf_${bookMeta.abbrev}_${c}`;
-              const verses = await bibleStorage.get(chapKey);
+              const verses = (await bibleStorage.get(chapKey)) as any[]; // Added explicit cast to prevent type error
               
               if (!verses || verses.length === 0) {
                   addLog(`[Pular] ${bookMeta.name} ${c}: Texto bíblico não encontrado offline.`);
                   continue;
               }
 
-              const verseText = verses[verseNum - 1]; 
+              const verseText = (verses as any)[verseNum - 1]; 
               const verseKey = generateVerseKey(bookMeta.name, c, verseNum);
 
               addLog(`Gerando ${type} para ${bookMeta.name} ${c}:${verseNum}...`);

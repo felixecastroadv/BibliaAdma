@@ -23,7 +23,7 @@ export const bibleStorage = {
     get: async (key: string) => {
         try {
             const db = await openDB();
-            return new Promise((resolve, reject) => {
+            return new Promise<any>((resolve, reject) => {
                 const transaction = db.transaction([STORE_NAME], 'readonly');
                 const store = transaction.objectStore(STORE_NAME);
                 const request = store.get(key);
@@ -70,7 +70,7 @@ export const bibleStorage = {
     }
 };
 
-// --- HELPER LOCALSTORAGE (Backup de Segurança) ---
+// --- HELPER LOCALSTORAGE (Backup de Segurança para Pequenos Dados) ---
 const localBackup = {
     list: (collection: string) => {
         try {
@@ -119,7 +119,7 @@ const apiCall = async (action: string, collection: string, payload: any = {}) =>
 // --- HYBRID DATA MANAGER ---
 const createHelpers = (col: string) => ({
     list: async (key?: string, limit?: number) => {
-        // 1. Tenta Nuvem
+        // 1. Tenta Nuvem (Prioridade Total)
         const cloudData = await apiCall('list', col);
         
         // 2. Se Nuvem ok, atualiza backup local e retorna nuvem
@@ -128,14 +128,10 @@ const createHelpers = (col: string) => ({
             return cloudData;
         }
 
-        // 3. Se Nuvem falhou ou vazia, retorna Backup Local (RESGATE)
-        // Isso recupera os dados gerados anteriormente que não subiram
-        console.warn(`Usando dados locais para ${col}`);
+        // 3. Se Nuvem falhou ou vazia, retorna Backup Local (Modo Offline/Resgate)
         return localBackup.list(col);
     },
     filter: async (criteria: any) => {
-        // Tenta buscar tudo (híbrido) e filtrar na memória
-        // Isso garante que o filtro funcione mesmo offline
         let allItems = await apiCall('list', col);
         
         if (!allItems || allItems.length === 0) {
@@ -161,16 +157,15 @@ const createHelpers = (col: string) => ({
     create: async (data: any) => {
         const newItem = { ...data, id: data.id || Date.now().toString() };
         
-        // Salva Local Primeiro (Garantia de Velocidade)
+        // Salva Local Primeiro (Feedback Instantâneo)
         localBackup.saveItem(col, newItem);
         
-        // Tenta Salvar Nuvem em Background
+        // Salva Nuvem (Persistência Real)
         await apiCall('save', col, { item: newItem });
         
         return newItem;
     },
     update: async (id: string, updates: any) => {
-        // Busca versão atual (Local ou Nuvem)
         let existing = await apiCall('get', col, { id });
         if (!existing) {
              const localList = localBackup.list(col);
@@ -179,13 +174,8 @@ const createHelpers = (col: string) => ({
 
         if (existing) {
             const merged = { ...existing, ...updates };
-            
-            // Atualiza Local
             localBackup.saveItem(col, merged);
-            
-            // Atualiza Nuvem
             await apiCall('save', col, { item: merged });
-            
             return merged;
         }
         return null;
@@ -202,26 +192,42 @@ const createHelpers = (col: string) => ({
     }
 });
 
+// Helper Especial para Bíblia (Evita LocalStorage, usa IndexedDB + Nuvem)
+const createBibleHelpers = () => ({
+    getOffline: async (key: string) => await bibleStorage.get(key),
+    saveOffline: async (key: string, data: any) => await bibleStorage.save(key, data),
+    getCloud: async (key: string) => {
+        const item = await apiCall('get', 'bible_chapters', { id: key });
+        return item ? item.verses : null;
+    },
+    // NOVO: Método de salvamento Universal
+    saveUniversal: async (key: string, verses: string[]) => {
+        // 1. Salva no Cache Local (Rápido)
+        await bibleStorage.save(key, verses);
+        
+        // 2. Salva na Nuvem (Seguro)
+        const item = { id: key, verses: verses };
+        await apiCall('save', 'bible_chapters', { item });
+    },
+    list: async () => {
+        // Tenta listar da nuvem primeiro (para restaurar)
+        const cloudList = await apiCall('list', 'bible_chapters');
+        if (cloudList) return cloudList;
+        return []; // Não lista do IndexedDB diretamente pois é muito pesado, usa count() na UI
+    }
+});
+
 export const db = {
     entities: {
         ReadingProgress: createHelpers('reading_progress'),
         AppConfig: createHelpers('app_config'),
         DynamicModules: createHelpers('dynamic_modules'),
-        BibleChapter: {
-            ...createHelpers('bible_chapters'),
-            getOffline: async (key: string) => await bibleStorage.get(key),
-            saveOffline: async (key: string, data: any) => await bibleStorage.save(key, data),
-            getCloud: async (key: string) => {
-                const item = await apiCall('get', 'bible_chapters', { id: key });
-                return item ? item.verses : null;
-            }
-        },
+        BibleChapter: createBibleHelpers(), // Usa helper otimizado
         ChapterMetadata: {
             ...createHelpers('chapter_metadata'),
             getCloud: async (key: string) => await apiCall('get', 'chapter_metadata', { id: key }),
             save: async (data: any) => {
                 const item = { ...data, id: data.chapter_key };
-                // Salva local e nuvem para metadata também
                 localBackup.saveItem('chapter_metadata', item);
                 await apiCall('save', 'chapter_metadata', { item });
                 return item;
