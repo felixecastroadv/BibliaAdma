@@ -270,7 +270,8 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
     const generateMetadata = async () => {
         if (isGeneratingMeta) return;
         setIsGeneratingMeta(true);
-        const prompt = `Para o capítulo bíblico de ${book} ${chapter}, responda APENAS um objeto JSON (sem markdown) neste formato: { "title": "Título Curto (Max 5 palavras)", "subtitle": "Resumo em 1 frase" }. Seja clássico e conservador.`;
+        // Prompt reforçado para Português do Brasil
+        const prompt = `ATUE COMO: Teólogo Brasileiro. TAREFA: Gerar metadados para ${book} ${chapter}. IDIOMA DE RESPOSTA: PORTUGUÊS DO BRASIL (pt-BR). FORMATO JSON OBRIGATÓRIO (sem markdown): { "title": "Título Curto (Max 5 palavras)", "subtitle": "Resumo em 1 frase" }. Estilo: Clássico e Conservador.`;
         try {
             const rawText = await generateContent(prompt, null);
             if (rawText) {
@@ -438,7 +439,7 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                             <BibleSkeleton />
                         </>
                     ) : (
-                        <div className="text-center mb-12 mt-4 cursor-pointer select-none" onClick={() => generateMetadata()} title="Regerar Epígrafe">
+                        <div className="text-center mb-12 mt-4 select-none">
                             <h1 className="font-cinzel text-4xl md:text-5xl font-bold text-[#8B0000] dark:text-[#ff6b6b] mb-4 uppercase tracking-tighter drop-shadow-sm leading-none">
                                 {book} <span className="text-[#C5A059]">{chapter}</span>
                             </h1>
