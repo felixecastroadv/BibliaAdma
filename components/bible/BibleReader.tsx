@@ -53,6 +53,22 @@ const BookSelector = ({ isOpen, onClose, currentBook, onSelect }: any) => {
     );
 };
 
+// Componente Skeleton Loading
+const BibleSkeleton = () => (
+    <div className="space-y-6 animate-pulse mt-4">
+        {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex gap-3">
+                <div className="w-6 h-6 bg-[#C5A059]/20 rounded-full flex-shrink-0 mt-1"></div>
+                <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-full"></div>
+                    <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-5/6"></div>
+                    <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-4/6"></div>
+                </div>
+            </div>
+        ))}
+    </div>
+);
+
 export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook, initialChapter, userProgress, onProgressUpdate }: any) {
     const [book, setBook] = useState(initialBook || 'Gênesis');
     const [chapter, setChapter] = useState(initialChapter || 1);
@@ -64,7 +80,7 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
     
     const [showSelector, setShowSelector] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
-    const [fontSize, setFontSize] = useState(18);
+    const [fontSize, setFontSize] = useState(20); // Aumentado o padrão para mais conforto
     const [selectedVerse, setSelectedVerse] = useState<{text: string, number: number} | null>(null);
 
     const [metadata, setMetadata] = useState<ChapterMetadata | null>(null);
@@ -117,14 +133,13 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
             const cached = await db.entities.BibleChapter.getOffline(cacheKey);
             
             if (cached && Array.isArray(cached) && cached.length > 0) {
-                // Suporte ao formato array de strings ["No principio", "criou Deus"]
                 const formatted = cached.map((t: string, i: number) => ({ number: i + 1, text: t }));
                 setVerses(formatted);
                 setLoading(false);
                 return;
             }
 
-            // 2. Fallback: LocalStorage (Legado)
+            // 2. Fallback: LocalStorage
             const legacyCache = localStorage.getItem(cacheKey);
             if (legacyCache) {
                 try {
@@ -157,7 +172,6 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                     text: v.text.trim()
                 }));
                 
-                // Tenta salvar no IndexedDB para a próxima vez
                 const simpleVerses = cleanVerses.map((v:any) => v.text);
                 await db.entities.BibleChapter.saveOffline(cacheKey, simpleVerses);
                 
@@ -185,10 +199,7 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
     const loadMetadata = async () => {
         setMetadata(null);
         try {
-            // Tenta carregar do IndexedDB primeiro (Novo método)
             let meta = await db.entities.ChapterMetadata.get(chapterKey);
-            
-            // Fallback para API antiga se não achar no IDB
             if (!meta) {
                const apiMetas = await db.entities.ChapterMetadata.filter({ chapter_key: chapterKey });
                if (apiMetas && apiMetas.length > 0) meta = apiMetas[0];
@@ -207,7 +218,6 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
     const generateMetadata = async () => {
         if (isGeneratingMeta) return;
         setIsGeneratingMeta(true);
-        // Prompt ajustado para gerar títulos curtos e clássicos, como no padrão antigo
         const prompt = `Gere uma EPÍGRAFE CLÁSSICA (Estilo Almeida/Sociedade Bíblica) para ${book} ${chapter}. 
         JSON: { 
             "title": "Título Curto (Máximo 5 palavras, ex: A Torre de Babel)", 
@@ -219,7 +229,6 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
             const res = await generateContent(prompt, schema);
             if (res && res.title) {
                 const data = { chapter_key: chapterKey, title: res.title, subtitle: res.subtitle };
-                // Salva no IndexedDB (Garante persistência)
                 await db.entities.ChapterMetadata.save(data);
                 setMetadata(data);
             }
@@ -271,24 +280,25 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
     };
 
     return (
-        <div className="min-h-screen bg-[#FDFBF7] dark:bg-[#121212] flex flex-col transition-colors duration-300">
-            <div className="sticky top-0 z-30 bg-[#8B0000] text-white p-3 shadow-lg flex justify-between items-center">
+        <div className="min-h-screen bg-transparent flex flex-col transition-colors duration-300">
+            {/* Header com Glassmorphism */}
+            <div className="sticky top-0 z-30 bg-[#8B0000]/95 backdrop-blur-md text-white p-3 shadow-lg flex justify-between items-center border-b border-[#ffffff]/10">
                 <div className="flex items-center gap-2">
-                    <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full"><ChevronLeft /></button>
+                    <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full transition-colors"><ChevronLeft /></button>
                     <div className="flex flex-col cursor-pointer" onClick={() => setShowSelector(true)}>
-                        <h1 className="font-cinzel font-bold text-lg flex items-center gap-1 leading-none">{book} {chapter} <ChevronDown className="w-4 h-4" /></h1>
-                        <span className="text-[10px] uppercase tracking-widest opacity-80 font-montserrat">Almeida Corrigida {sourceMode === 'offline' ? '(Offline)' : '(Online)'}</span>
+                        <h1 className="font-cinzel font-bold text-lg flex items-center gap-1 leading-none drop-shadow-sm">{book} {chapter} <ChevronDown className="w-4 h-4" /></h1>
+                        <span className="text-[10px] uppercase tracking-widest opacity-80 font-montserrat">Almeida Corrigida {sourceMode === 'offline' ? 'Offline' : 'Online'}</span>
                     </div>
                 </div>
                 <div className="flex items-center gap-1">
-                    <button onClick={togglePlay} className="p-2 hover:bg-white/10 rounded-full">{isPlaying ? <Pause className="w-5 h-5 animate-pulse" /> : <Play className="w-5 h-5" />}</button>
+                    <button onClick={togglePlay} className="p-2 hover:bg-white/10 rounded-full transition-colors">{isPlaying ? <Pause className="w-5 h-5 animate-pulse" /> : <Play className="w-5 h-5" />}</button>
                     <button onClick={toggleRead} className={`p-2 rounded-full transition-colors ${isRead ? 'text-green-300' : 'hover:bg-white/10 text-white/70'}`}><CheckCircle className="w-5 h-5" /></button>
                     <button onClick={() => setShowSettings(!showSettings)} className={`p-2 rounded-full transition-colors ${showSettings ? 'bg-white/20' : 'hover:bg-white/10'}`}><Settings className="w-5 h-5" /></button>
                 </div>
             </div>
 
             {showSettings && (
-                <div className="bg-white dark:bg-[#1E1E1E] border-b border-[#C5A059] p-4 shadow-xl animate-in slide-in-from-top-5 relative z-20">
+                <div className="bg-white/95 dark:bg-[#1E1E1E]/95 backdrop-blur-md border-b border-[#C5A059] p-4 shadow-xl animate-in slide-in-from-top-5 relative z-20">
                     <div className="grid gap-4 max-w-lg mx-auto">
                         <div className="flex items-center justify-between">
                             <span className="font-bold text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2"><Type className="w-4 h-4"/> Tamanho</span>
@@ -299,13 +309,11 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                             </div>
                         </div>
 
-                        {/* Controles de Voz adicionados */}
                         <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
-                            <span className="font-bold text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2 mb-2"><Volume2 className="w-4 h-4"/> Opções de Áudio</span>
-                            
+                            <span className="font-bold text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2 mb-2"><Volume2 className="w-4 h-4"/> Áudio</span>
                             <div className="space-y-3">
                                 <div>
-                                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 block mb-1">Voz do Leitor:</label>
+                                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 block mb-1">Voz:</label>
                                     <select 
                                         className="w-full p-2 text-sm border rounded dark:bg-gray-800 dark:text-white"
                                         value={selectedVoice} 
@@ -314,7 +322,6 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                                         {voices.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
                                     </select>
                                 </div>
-                                
                                 <div className="flex items-center justify-between">
                                     <span className="text-xs font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
                                         <FastForward className="w-3 h-3" /> Velocidade:
@@ -342,18 +349,21 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
             <div className="flex-1 overflow-y-auto pb-24">
                 <div className="max-w-3xl mx-auto p-6 md:p-10">
                     {loading ? (
-                        <div className="h-20 flex flex-col items-center justify-center space-y-2 animate-pulse mt-8">
-                             <div className="h-4 w-1/2 bg-gray-200 dark:bg-gray-800 rounded"></div>
-                             <div className="h-3 w-1/3 bg-gray-200 dark:bg-gray-800 rounded"></div>
-                        </div>
+                        <>
+                            {/* Skeleton do Título */}
+                            <div className="flex flex-col items-center mb-10 space-y-2">
+                                <div className="h-8 w-48 bg-gray-300 dark:bg-gray-700 rounded animate-pulse"></div>
+                                <div className="h-4 w-64 bg-gray-200 dark:bg-gray-800 rounded animate-pulse"></div>
+                            </div>
+                            {/* Skeleton dos Versículos */}
+                            <BibleSkeleton />
+                        </>
                     ) : (
                         <div className="text-center mb-8 mt-4 cursor-pointer" onClick={() => generateMetadata()} title="Regerar Epígrafe">
-                            {/* --- TÍTULO PRINCIPAL (PADRÃO ANTIGO) --- */}
                             <h1 className="font-cinzel text-3xl md:text-4xl font-bold text-[#8B0000] dark:text-[#ff6b6b] mb-3 uppercase tracking-tight drop-shadow-sm">
                                 {book} {chapter}
                             </h1>
 
-                            {/* --- EPÍGRAFE GERADA (COMO SUBTÍTULO) --- */}
                             {isGeneratingMeta ? (
                                 <div className="flex flex-col items-center text-[#C5A059] animate-pulse mt-2">
                                     <Sparkles className="w-4 h-4 mb-1" />
@@ -367,21 +377,15 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                                     <p className="font-cormorant text-lg text-gray-600 dark:text-gray-400 italic leading-relaxed">
                                         {metadata.subtitle}
                                     </p>
-                                    {/* Linha decorativa sutil */}
                                     <div className="w-12 h-[1px] bg-[#C5A059] mx-auto mt-4 opacity-40"></div>
                                 </div>
                             ) : (
-                                // Espaço vazio se não houver metadata, para manter layout limpo
                                 <div className="h-4"></div>
                             )}
                         </div>
                     )}
 
-                    {loading ? (
-                        <div className="space-y-6">
-                            {[1,2,3].map(i => <div key={i} className="space-y-2 animate-pulse"><div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-full"></div><div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-5/6"></div></div>)}
-                        </div>
-                    ) : errorMsg ? (
+                    {errorMsg ? (
                         <div className="text-center py-20">
                             <WifiOff className="w-16 h-16 mx-auto mb-4 text-[#8B0000] opacity-50"/>
                             <p className="text-gray-500 mb-4">{errorMsg}</p>
@@ -394,12 +398,12 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                                 </button>
                             </div>
                         </div>
-                    ) : (
+                    ) : !loading && (
                         <div className="space-y-4">
                             {verses.map(v => (
-                                <div key={v.number} onClick={() => setSelectedVerse(v)} className={`relative pl-8 pr-2 py-2 rounded transition-colors cursor-pointer border-l-2 border-transparent hover:border-[#C5A059] ${selectedVerse?.number === v.number ? 'bg-[#C5A059]/10 border-[#C5A059]' : ''}`}>
-                                    <span className="absolute left-0 top-1.5 font-cinzel font-bold text-[#8B0000] dark:text-[#ff6b6b] text-xs w-6 text-center select-none">{v.number}</span>
-                                    <p className="font-cormorant leading-relaxed text-[#1a0f0f] dark:text-gray-200 text-justify" style={{ fontSize: `${fontSize}px`, lineHeight: '1.6' }}>{v.text}</p>
+                                <div key={v.number} onClick={() => setSelectedVerse(v)} className={`relative pl-8 pr-2 py-2 rounded transition-all duration-200 cursor-pointer border-l-4 border-transparent hover:border-[#C5A059] group ${selectedVerse?.number === v.number ? 'bg-[#C5A059]/10 border-[#C5A059]' : 'hover:bg-black/5 dark:hover:bg-white/5'}`}>
+                                    <span className="absolute left-2 top-2 font-cinzel font-bold text-[#8B0000]/70 dark:text-[#ff6b6b]/70 text-xs w-6 text-center select-none group-hover:text-[#8B0000] transition-colors">{v.number}</span>
+                                    <p className="font-cormorant leading-relaxed text-[#2D2D2D] dark:text-gray-200 text-justify tracking-wide" style={{ fontSize: `${fontSize}px`, lineHeight: '1.6' }}>{v.text}</p>
                                 </div>
                             ))}
                         </div>
@@ -407,12 +411,12 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                 </div>
             </div>
 
-            <div className="fixed bottom-0 left-0 w-full bg-white dark:bg-[#121212] border-t border-[#C5A059] p-4 flex justify-between items-center z-20 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.1)]">
-                <button onClick={handlePrev} className="flex items-center gap-1 text-gray-600 dark:text-gray-400 hover:text-[#8B0000] font-bold text-sm"><ChevronLeft className="w-5 h-5" /> Anterior</button>
-                <button onClick={toggleRead} className={`px-6 py-2 rounded-full font-bold shadow-lg transition-all transform active:scale-95 flex items-center gap-2 ${isRead ? 'bg-green-600 text-white' : 'bg-[#8B0000] text-white'}`}>
+            <div className="fixed bottom-0 left-0 w-full bg-white/90 dark:bg-[#121212]/90 backdrop-blur-lg border-t border-[#C5A059]/30 p-4 flex justify-between items-center z-20 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.1)]">
+                <button onClick={handlePrev} className="flex items-center gap-1 text-gray-600 dark:text-gray-400 hover:text-[#8B0000] font-bold text-sm transition-colors"><ChevronLeft className="w-5 h-5" /> Anterior</button>
+                <button onClick={toggleRead} className={`px-6 py-2 rounded-full font-bold shadow-lg transition-all transform active:scale-95 flex items-center gap-2 ${isRead ? 'bg-green-600 text-white shadow-green-500/30' : 'bg-[#8B0000] text-white shadow-[#8B0000]/30 hover:scale-105'}`}>
                     {isRead ? <CheckCircle className="w-4 h-4" /> : null} {isRead ? 'LIDO' : 'MARCAR COMO LIDO'}
                 </button>
-                <button onClick={handleNext} className="flex items-center gap-1 text-gray-600 dark:text-gray-400 hover:text-[#8B0000] font-bold text-sm">Próximo <ChevronRight className="w-5 h-5" /></button>
+                <button onClick={handleNext} className="flex items-center gap-1 text-gray-600 dark:text-gray-400 hover:text-[#8B0000] font-bold text-sm transition-colors">Próximo <ChevronRight className="w-5 h-5" /></button>
             </div>
 
             <VersePanel isOpen={!!selectedVerse} onClose={() => setSelectedVerse(null)} verse={selectedVerse?.text || ''} verseNumber={selectedVerse?.number || 1} book={book} chapter={chapter} isAdmin={isAdmin} onShowToast={onShowToast} userProgress={userProgress} />
