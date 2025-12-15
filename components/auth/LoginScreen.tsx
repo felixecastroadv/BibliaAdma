@@ -1,23 +1,142 @@
 
 import React, { useState } from 'react';
-import { BookOpen, User, ArrowRight, Loader2, Moon, Sun } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { BookOpen, User, ArrowRight, Loader2, Lock, ShieldAlert, KeyRound, CheckCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { CHURCH_NAME, PASTOR_PRESIDENT } from '../../constants';
+import { db } from '../../services/database';
 
 interface LoginScreenProps {
   onLogin: (firstName: string, lastName: string) => void;
   loading: boolean;
 }
 
+type LoginStep = 'IDENTIFY' | 'CREATE_PIN' | 'ENTER_PIN' | 'BLOCKED' | 'FORGOT_PIN_SENT';
+
 export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
+  const [step, setStep] = useState<LoginStep>('IDENTIFY');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [pin, setPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [userData, setUserData] = useState<any>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const generateEmail = (first: string, last: string) => `${first.trim().toLowerCase()}.${last.trim().toLowerCase()}@adma.local`;
+
+  const handleIdentitySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (firstName.trim() && lastName.trim()) {
-      onLogin(firstName.trim(), lastName.trim());
+    if (!firstName.trim() || !lastName.trim()) return;
+
+    setIsProcessing(true);
+    setErrorMsg('');
+    const email = generateEmail(firstName, lastName);
+
+    try {
+        const users = await db.entities.ReadingProgress.filter({ user_email: email });
+        
+        if (users.length > 0) {
+            const user = users[0];
+            setUserData(user);
+
+            if (user.is_blocked) {
+                setStep('BLOCKED');
+            } else if (!user.password_pin || user.password_pin === '') {
+                // Usuário antigo sem senha ou resetada pelo admin -> Cria nova
+                setStep('CREATE_PIN');
+            } else {
+                // Usuário com senha -> Pede senha
+                setStep('ENTER_PIN');
+            }
+        } else {
+            // Novo usuário -> Cria senha
+            setStep('CREATE_PIN');
+        }
+    } catch (err) {
+        setErrorMsg('Erro ao conectar. Tente novamente.');
+    } finally {
+        setIsProcessing(false);
     }
+  };
+
+  const handleCreatePin = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (pin.length !== 6 || isNaN(Number(pin))) {
+          setErrorMsg('A senha deve ter exatamente 6 números.');
+          return;
+      }
+      if (pin !== confirmPin) {
+          setErrorMsg('As senhas não conferem.');
+          return;
+      }
+
+      setIsProcessing(true);
+      
+      try {
+          if (userData) {
+              // Atualiza usuário existente (reset ou migração)
+              await db.entities.ReadingProgress.update(userData.id, { 
+                  password_pin: pin,
+                  reset_requested: false // Limpa flag se existia
+              });
+          } else {
+              // Cria novo usuário já com o PIN, mas delegamos a criação real para o App.tsx via onLogin
+              // Aqui apenas validamos e salvamos no localStorage temporariamente ou passamos direto?
+              // Melhor: onLogin espera que a gente chame. O App.tsx cria se não existe.
+              // Mas precisamos garantir que o PIN seja salvo.
+              // Estratégia: Criamos aqui mesmo para garantir o PIN.
+              const email = generateEmail(firstName, lastName);
+              const fullName = `${firstName.trim()} ${lastName.trim()}`;
+              await db.entities.ReadingProgress.create({
+                  user_email: email,
+                  user_name: fullName,
+                  password_pin: pin,
+                  chapters_read: [],
+                  total_chapters: 0
+              });
+          }
+          
+          // Login sucesso
+          onLogin(firstName, lastName);
+      } catch (e) {
+          setErrorMsg('Erro ao salvar senha.');
+      } finally {
+          setIsProcessing(false);
+      }
+  };
+
+  const handleEnterPin = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!userData) return;
+
+      if (pin === userData.password_pin) {
+          onLogin(firstName, lastName);
+      } else {
+          setErrorMsg('Senha incorreta.');
+          setPin('');
+      }
+  };
+
+  const handleForgotPassword = async () => {
+      if (!userData) return;
+      setIsProcessing(true);
+      try {
+          await db.entities.ReadingProgress.update(userData.id, { reset_requested: true });
+          setStep('FORGOT_PIN_SENT');
+      } catch (e) {
+          setErrorMsg('Erro ao solicitar reset.');
+      } finally {
+          setIsProcessing(false);
+      }
+  };
+
+  const resetForm = () => {
+      setStep('IDENTIFY');
+      setPin('');
+      setConfirmPin('');
+      setErrorMsg('');
+      setUserData(null);
   };
 
   return (
@@ -32,87 +151,191 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
           {/* Decorative Gradient Line */}
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#8B0000] via-[#C5A059] to-[#8B0000]" />
           
-          <div className="text-center mb-10">
+          {step !== 'IDENTIFY' && (
+              <button onClick={resetForm} className="absolute top-4 left-4 text-gray-400 hover:text-[#8B0000] text-xs font-bold uppercase tracking-wider">
+                  Voltar
+              </button>
+          )}
+
+          <div className="text-center mb-8">
             <motion.div 
                 initial={{ rotate: -5, scale: 0.9 }}
                 animate={{ rotate: 0, scale: 1 }}
                 transition={{ duration: 0.8, type: "spring" }}
-                className="w-24 h-24 bg-gradient-to-br from-[#8B0000] to-[#500000] rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-lg shadow-red-900/30"
+                className="w-20 h-20 bg-gradient-to-br from-[#8B0000] to-[#500000] rounded-3xl mx-auto mb-4 flex items-center justify-center shadow-lg shadow-red-900/30"
             >
-              <BookOpen className="w-12 h-12 text-[#F5F5DC]" />
+              <BookOpen className="w-10 h-10 text-[#F5F5DC]" />
             </motion.div>
             
-            <h1 className="font-cinzel text-4xl font-bold text-[#1a0f0f] dark:text-white mb-2 tracking-tight">Bíblia ADMA</h1>
-            <p className="font-cormorant text-[#1a0f0f]/70 dark:text-white/70 text-xl italic tracking-wide">Prof. Michel Felix</p>
+            <h1 className="font-cinzel text-3xl font-bold text-[#1a0f0f] dark:text-white mb-1 tracking-tight">Bíblia ADMA</h1>
+            <p className="font-cormorant text-[#1a0f0f]/70 dark:text-white/70 text-lg italic tracking-wide">Prof. Michel Felix</p>
+          </div>
+
+          <AnimatePresence mode="wait">
             
-            <div className="mt-6 flex flex-col items-center gap-1">
-                <span className="px-3 py-1 rounded-full bg-[#8B0000]/5 dark:bg-[#C5A059]/10 border border-[#8B0000]/10 dark:border-[#C5A059]/20 font-montserrat text-[10px] font-bold text-[#8B0000] dark:text-[#C5A059] uppercase tracking-[0.2em]">
-                    {CHURCH_NAME}
-                </span>
-                <span className="text-[10px] text-gray-400 dark:text-gray-500 font-montserrat font-medium mt-1">
-                    Presidente: {PASTOR_PRESIDENT}
-                </span>
-            </div>
-          </div>
+            {/* ETAPA 1: IDENTIFICAÇÃO */}
+            {step === 'IDENTIFY' && (
+                <motion.form 
+                    key="identify"
+                    initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+                    onSubmit={handleIdentitySubmit} 
+                    className="space-y-4"
+                >
+                    <div className="space-y-2">
+                    <label className="font-montserrat text-xs font-bold text-gray-500 dark:text-gray-400 uppercase ml-2 tracking-wider">Nome</label>
+                    <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <User className="w-5 h-5 text-[#C5A059] group-focus-within:text-[#8B0000] transition-colors" />
+                        </div>
+                        <input
+                        type="text"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        className="block w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-[#252525] border border-transparent focus:bg-white dark:focus:bg-[#2A2A2A] text-gray-900 dark:text-white rounded-2xl font-montserrat text-sm transition-all duration-300 focus:ring-2 focus:ring-[#C5A059]/50 focus:border-[#C5A059]/30 placeholder-gray-400 dark:placeholder-gray-600 shadow-inner"
+                        placeholder="Seu primeiro nome"
+                        required
+                        />
+                    </div>
+                    </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <label className="font-montserrat text-xs font-bold text-gray-500 dark:text-gray-400 uppercase ml-2 tracking-wider">Nome</label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <User className="w-5 h-5 text-[#C5A059] group-focus-within:text-[#8B0000] transition-colors" />
-                </div>
-                <input
-                  type="text"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  className="block w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-[#252525] border border-transparent focus:bg-white dark:focus:bg-[#2A2A2A] text-gray-900 dark:text-white rounded-2xl font-montserrat text-sm transition-all duration-300 focus:ring-2 focus:ring-[#C5A059]/50 focus:border-[#C5A059]/30 placeholder-gray-400 dark:placeholder-gray-600 shadow-inner"
-                  placeholder="Seu primeiro nome"
-                  required
-                />
-              </div>
-            </div>
+                    <div className="space-y-2">
+                    <label className="font-montserrat text-xs font-bold text-gray-500 dark:text-gray-400 uppercase ml-2 tracking-wider">Sobrenome</label>
+                    <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <User className="w-5 h-5 text-[#C5A059] group-focus-within:text-[#8B0000] transition-colors" />
+                        </div>
+                        <input
+                        type="text"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        className="block w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-[#252525] border border-transparent focus:bg-white dark:focus:bg-[#2A2A2A] text-gray-900 dark:text-white rounded-2xl font-montserrat text-sm transition-all duration-300 focus:ring-2 focus:ring-[#C5A059]/50 focus:border-[#C5A059]/30 placeholder-gray-400 dark:placeholder-gray-600 shadow-inner"
+                        placeholder="Seu sobrenome"
+                        required
+                        />
+                    </div>
+                    </div>
 
-            <div className="space-y-2">
-              <label className="font-montserrat text-xs font-bold text-gray-500 dark:text-gray-400 uppercase ml-2 tracking-wider">Sobrenome</label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <User className="w-5 h-5 text-[#C5A059] group-focus-within:text-[#8B0000] transition-colors" />
-                </div>
-                <input
-                  type="text"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  className="block w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-[#252525] border border-transparent focus:bg-white dark:focus:bg-[#2A2A2A] text-gray-900 dark:text-white rounded-2xl font-montserrat text-sm transition-all duration-300 focus:ring-2 focus:ring-[#C5A059]/50 focus:border-[#C5A059]/30 placeholder-gray-400 dark:placeholder-gray-600 shadow-inner"
-                  placeholder="Seu sobrenome"
-                  required
-                />
-              </div>
-            </div>
+                    <button
+                    type="submit"
+                    disabled={isProcessing || !firstName || !lastName}
+                    className="w-full bg-gradient-to-r from-[#8B0000] to-[#600018] hover:to-[#800000] text-white font-cinzel font-bold py-4 rounded-2xl shadow-[0_10px_20px_-5px_rgba(139,0,0,0.3)] mt-4 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+                    >
+                    {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Continuar <ArrowRight className="w-5 h-5" /></>}
+                    </button>
+                </motion.form>
+            )}
 
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              type="submit"
-              disabled={loading || !firstName || !lastName}
-              className="w-full bg-gradient-to-r from-[#8B0000] to-[#600018] hover:to-[#800000] text-white font-cinzel font-bold py-4 rounded-2xl shadow-[0_10px_20px_-5px_rgba(139,0,0,0.3)] mt-8 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 tracking-wide"
-            >
-              {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <>
-                  Entrar no App <ArrowRight className="w-5 h-5" />
-                </>
-              )}
-            </motion.button>
-          </form>
+            {/* ETAPA 2: CRIAR PIN (NOVO USUÁRIO OU RESET) */}
+            {step === 'CREATE_PIN' && (
+                <motion.form 
+                    key="create-pin"
+                    initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+                    onSubmit={handleCreatePin} 
+                    className="space-y-4"
+                >
+                    <div className="text-center mb-4">
+                        <h2 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#C5A059]">Criar Senha de Acesso</h2>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Crie um PIN numérico de 6 dígitos para proteger sua conta.</p>
+                    </div>
 
-          <div className="mt-8 text-center opacity-60">
-             <p className="font-cormorant text-sm italic text-gray-600 dark:text-gray-400">
-                "Lâmpada para os meus pés é a tua palavra..."
-             </p>
-             <p className="font-montserrat text-[10px] text-gray-400 mt-1">Salmos 119:105</p>
-          </div>
+                    <div className="space-y-2">
+                        <label className="font-montserrat text-xs font-bold text-gray-500 uppercase ml-2">Senha (6 números)</label>
+                        <div className="relative">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#C5A059]" />
+                            <input
+                                type="password" inputMode="numeric" maxLength={6}
+                                value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                                className="block w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-[#252525] rounded-2xl font-mono text-lg tracking-widest text-center focus:ring-2 focus:ring-[#C5A059]"
+                                placeholder="******" required
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="font-montserrat text-xs font-bold text-gray-500 uppercase ml-2">Confirmar Senha</label>
+                        <div className="relative">
+                            <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#C5A059]" />
+                            <input
+                                type="password" inputMode="numeric" maxLength={6}
+                                value={confirmPin} onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
+                                className="block w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-[#252525] rounded-2xl font-mono text-lg tracking-widest text-center focus:ring-2 focus:ring-[#C5A059]"
+                                placeholder="******" required
+                            />
+                        </div>
+                    </div>
+
+                    {errorMsg && <p className="text-red-500 text-xs text-center font-bold">{errorMsg}</p>}
+
+                    <button type="submit" disabled={isProcessing} className="w-full bg-[#8B0000] text-white font-bold py-4 rounded-2xl mt-4 flex justify-center items-center gap-2">
+                        {isProcessing ? <Loader2 className="animate-spin" /> : <CheckCircle />} Salvar e Entrar
+                    </button>
+                </motion.form>
+            )}
+
+            {/* ETAPA 3: DIGITAR PIN */}
+            {step === 'ENTER_PIN' && (
+                <motion.form 
+                    key="enter-pin"
+                    initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+                    onSubmit={handleEnterPin} 
+                    className="space-y-6"
+                >
+                    <div className="text-center">
+                        <h2 className="font-cinzel font-bold text-xl text-[#1a0f0f] dark:text-white">Bem-vindo de volta, {firstName}!</h2>
+                        <p className="text-xs text-gray-500 mt-1">Digite sua senha numérica.</p>
+                    </div>
+
+                    <div className="relative">
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8B0000]" />
+                        <input
+                            type="password" inputMode="numeric" maxLength={6}
+                            value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                            className="block w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-[#252525] rounded-2xl font-mono text-xl tracking-[0.5em] text-center focus:ring-2 focus:ring-[#8B0000]"
+                            placeholder="******" autoFocus
+                        />
+                    </div>
+
+                    {errorMsg && (
+                        <div className="text-center animate-shake">
+                            <p className="text-red-500 text-sm font-bold">{errorMsg}</p>
+                            <button type="button" onClick={handleForgotPassword} className="text-xs text-[#C5A059] underline mt-1 hover:text-[#8B0000]">
+                                Esqueci minha senha
+                            </button>
+                        </div>
+                    )}
+
+                    <button type="submit" disabled={pin.length < 6} className="w-full bg-[#8B0000] text-white font-bold py-4 rounded-2xl flex justify-center items-center gap-2 disabled:opacity-50">
+                        Entrar <ArrowRight />
+                    </button>
+                </motion.form>
+            )}
+
+            {/* ETAPA 4: BLOQUEADO */}
+            {step === 'BLOCKED' && (
+                <motion.div key="blocked" className="text-center py-6">
+                    <ShieldAlert className="w-20 h-20 text-red-600 mx-auto mb-4" />
+                    <h2 className="font-cinzel font-bold text-xl text-red-600">Acesso Bloqueado</h2>
+                    <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm">
+                        Sua conta foi temporariamente suspensa pelo administrador. Entre em contato com a liderança.
+                    </p>
+                    <button onClick={resetForm} className="mt-6 text-sm underline">Voltar</button>
+                </motion.div>
+            )}
+
+            {/* ETAPA 5: CONFIRMAÇÃO DE RESET */}
+            {step === 'FORGOT_PIN_SENT' && (
+                <motion.div key="forgot" className="text-center py-6">
+                    <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-4" />
+                    <h2 className="font-cinzel font-bold text-xl text-green-600">Solicitação Enviada</h2>
+                    <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm">
+                        O administrador recebeu seu pedido de reset de senha. Aguarde a aprovação e tente entrar novamente mais tarde para criar uma nova senha.
+                    </p>
+                    <button onClick={resetForm} className="mt-6 bg-gray-200 dark:bg-gray-800 px-6 py-2 rounded-full text-sm font-bold">Voltar ao Início</button>
+                </motion.div>
+            )}
+
+          </AnimatePresence>
+
         </motion.div>
       </div>
     </div>

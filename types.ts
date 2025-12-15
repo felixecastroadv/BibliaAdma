@@ -24,13 +24,16 @@ export interface ActivePlan {
 export interface UserProgress {
   user_email: string;
   user_name: string;
+  password_pin?: string; // Senha numérica de 6 dígitos
+  is_blocked?: boolean; // Se o admin bloqueou o usuário
+  reset_requested?: boolean; // Se o usuário pediu reset de senha
   chapters_read: string[];
   total_chapters: number;
   last_book: string;
   last_chapter: number;
   active_plans?: ActivePlan[];
-  ebd_read?: string[]; // Lista de chaves de estudos EBD lidos (ex: "genesis_1")
-  total_ebd_read?: number; // Total de estudos concluídos
+  ebd_read?: string[]; 
+  total_ebd_read?: number; 
   id?: string;
 }
 
@@ -115,17 +118,15 @@ export interface Announcement {
 export interface ContentReport {
   id?: string;
   type: 'commentary' | 'dictionary' | 'other';
-  reference_text: string; // Ex: "Gênesis 1:1"
+  reference_text: string; 
   report_text: string;
-  user_name?: string; // Quem reportou
+  user_name?: string; 
   date: string;
   status: 'pending' | 'resolved';
 }
 
-// --- NOVOS TIPOS PARA O BUILDER ---
-
 export interface AppConfig {
-    id: string; // Sempre 'global_config'
+    id: string; 
     theme: {
         primaryColor: string;
         secondaryColor: string;
@@ -138,7 +139,7 @@ export interface AppConfig {
         enableMessages: boolean;
     };
     auth: {
-        requirePasswordLogin: boolean; // Se true, pede senha fixa além do nome
+        requirePasswordLogin: boolean; 
         adminPassword?: string;
     };
 }
@@ -148,7 +149,7 @@ export interface DynamicModule {
     type: 'quiz' | 'page' | 'link';
     title: string;
     description: string;
-    iconName: string; // Nome do ícone Lucide
+    iconName: string; 
     accessLevel: 'public' | 'admin' | 'login';
-    data: any; // JSON flexível dependendo do tipo (perguntas do quiz, html da página, url)
+    data: any; 
 }
