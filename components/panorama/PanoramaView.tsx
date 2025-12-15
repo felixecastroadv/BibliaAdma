@@ -98,18 +98,34 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     return text.trim();
   };
 
-  // --- PAGINAÇÃO INTELIGENTE (SEM INJEÇÃO DE HTML SUJO) ---
+  // --- NOVA PAGINAÇÃO HÍBRIDA ---
+  // Garante que, mesmo que a IA não quebre a página, o frontend faça isso pelos títulos
   const processAndPaginate = (html: string) => {
     if (!html) { setPages([]); return; }
     
-    // Divide pelos HRs originais da IA (quebras lógicas)
-    const rawSegments = html.split(/<hr[^>]*>/i).map(s => cleanText(s)).filter(s => s.length > 50);
+    // 1. Tenta dividir pelos marcadores explícitos da IA
+    // O Regex agora pega <hr>, <hr class=...>, e também o __CONTINUATION_MARKER__
+    let rawSegments = html.split(/<hr[^>]*>|__CONTINUATION_MARKER__/i)
+                          .map(s => cleanText(s))
+                          .filter(s => s.length > 50);
+
+    // 2. FALLBACK INTELIGENTE: Se a IA gerou um bloco gigante único (> 4000 caracteres)
+    if (rawSegments.length === 1 && rawSegments[0].length > 4000) {
+        const bigText = rawSegments[0];
+        // Tenta quebrar pelos Títulos (### ou Numerais Romanos/Arábicos no início de linha)
+        // Usamos Lookahead (?=...) para não perder o título na quebra
+        const forcedSegments = bigText.split(/(?=\n### |^\s*[IVX]+\.|^\s*\d+\.\s+[A-Z])/gm);
+        
+        if (forcedSegments.length > 1) {
+            rawSegments = forcedSegments.map(s => cleanText(s)).filter(s => s.length > 100);
+        }
+    }
     
     const finalPages: string[] = [];
     let currentBuffer = "";
     
-    // META: ~600 palavras. Usaremos 3000 caracteres como piso mínimo.
-    const CHAR_LIMIT_MIN = 3000; 
+    // META: ~600 palavras (aprox 3500 caracteres)
+    const CHAR_LIMIT_MIN = 3500; 
 
     for (let i = 0; i < rawSegments.length; i++) {
         const segment = rawSegments[i];
@@ -117,13 +133,20 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         if (!currentBuffer) {
             currentBuffer = segment;
         } else {
-            if (currentBuffer.length < CHAR_LIMIT_MIN) {
-                // Usa um MARCADOR DE TEXTO PURO em vez de HTML complexo
-                // O renderizador vai substituir isso pelo componente visual
-                currentBuffer += "\n__CONTINUATION_MARKER__\n" + segment;
+            // Se o buffer + segmento atual ainda for "tamanho de leitura confortável"
+            if ((currentBuffer.length + segment.length) < (CHAR_LIMIT_MIN * 1.5)) {
+                // Adiciona marcador interno para renderizar a linha dourada sem quebrar a página
+                currentBuffer += "\n\n__CONTINUATION_MARKER__\n\n" + segment;
             } else {
-                finalPages.push(currentBuffer);
-                currentBuffer = segment;
+                // Se somar ficar muito grande, fecha a página atual e começa nova
+                // Mas garante que a página atual tenha o mínimo
+                if (currentBuffer.length > 2000) {
+                    finalPages.push(currentBuffer);
+                    currentBuffer = segment;
+                } else {
+                    // Se for muito curto, força a junção
+                    currentBuffer += "\n\n__CONTINUATION_MARKER__\n\n" + segment;
+                }
             }
         }
     }
@@ -136,7 +159,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
   const speakText = () => {
     if (!pages[currentPage]) return;
-    // Remove marcadores internos antes de falar
     const cleanSpeech = pages[currentPage]
         .replace('__CONTINUATION_MARKER__', '... Continuação ...')
         .replace(/#/g, '')
@@ -188,7 +210,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   };
 
   const renderFormattedText = (text: string) => {
-    // Quebra por linhas para processar cada parágrafo
     const lines = text.split('\n').filter(b => b.trim().length > 0);
     
     return (
@@ -196,7 +217,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             {lines.map((line, lineIdx) => {
                 const trimmed = line.trim();
 
-                // DETECTOR DO MARCADOR DE CONTINUAÇÃO (Substitui a poluição visual)
+                // RENDERIZADOR DO SEPARADOR VISUAL (Substitui código por UI)
                 if (trimmed === '__CONTINUATION_MARKER__') {
                     return (
                         <div key={lineIdx} className="my-12 flex items-center justify-center select-none animate-in fade-in duration-500">
@@ -307,22 +328,21 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         ATUE COMO: Professor Michel Felix.
         PERFIL: Teólogo Pentecostal Clássico, Arminiano, Erudito e Assembleiano.
 
-        --- ESTRUTURA OBRIGATÓRIA (CRUCIAL) ---
-        O estudo deve conter necessariamente estas seções, nesta ordem ou lógica:
+        --- ESTRUTURA DO ESTUDO (OBRIGATÓRIO SEGUIR) ---
         1. TÍTULO E INTRODUÇÃO (Rica e Contextualizada)
         2. TÓPICOS DO ESTUDO (I, II, III...) com exegese e aplicação.
         3. CONCLUSÃO.
         4. ### CONEXÃO COM JESUS CRISTO (TIPOLOGIA) - Obrigatório: Explique como o texto aponta para o Messias.
         5. ### CURIOSIDADES E ARQUEOLOGIA - Obrigatório: Traga dados históricos, culturais e descobertas arqueológicas relevantes.
 
-        --- BARREIRA DE SEGURANÇA TEOLÓGICA ---
+        --- BARREIRA DE SEGURANÇA TEOLÓGICA (CRÍTICO) ---
         1. PROIBIDO: NUNCA use auto-identificação ("Nós pentecostais", "Como cremos"). Use linguagem impessoal e magistral.
         2. DOUTRINA: Arminiana e Ortodoxa (AD no Brasil).
         3. APÓCRIFOS: Rejeite interpretações baseadas em Enoque. Use apenas a Bíblia.
 
-        --- ESTRUTURA E DENSIDADE ---
-        1. CADA GERAÇÃO DEVE TER ENTRE 600 A 800 PALAVRAS.
-        2. Não insira <hr class="page-break"> prematuramente. Esgote o assunto da página.
+        --- REGRAS DE PAGINAÇÃO (FUNDAMENTAL) ---
+        1. ESCREVA MUITO: Cada resposta deve ter entre 600 a 800 palavras no total.
+        2. Ao final de um tópico longo, insira: <hr class="page-break">
         3. Se for CONTINUAÇÃO, não repita a Introdução, siga para os próximos tópicos ou finalize com a Tipologia/Arqueologia.
     `;
     
@@ -370,28 +390,23 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     if (!window.confirm("Tem certeza que deseja apagar o conteúdo DESTA página?")) return;
     if (!content) return;
 
-    // 1. Identifica o texto da página atual (cru, com marcadores se houver)
     const pageText = pages[currentPage];
     
-    // 2. Remove o marcador interno se existir, para poder dar match no texto original do banco
-    const cleanPageText = pageText.replace('\n__CONTINUATION_MARKER__\n', '');
+    // Remove o marcador interno se existir para matching
+    const cleanPageText = pageText.replace('\n\n__CONTINUATION_MARKER__\n\n', '').replace('__CONTINUATION_MARKER__', '');
     
-    // 3. Pega o conteúdo total atual
     const fullContent = activeTab === 'student' ? content.student_content : content.teacher_content;
 
-    // 4. Remove o texto da página do conteúdo total
-    // Tenta remover com o marcador de quebra de página anterior, se existir
+    // Tenta remover com o marcador de quebra anterior
     let newContent = fullContent.replace('<hr class="page-break">' + cleanPageText, '');
     
-    // Se não mudou (talvez seja a primeira página ou lógica de string diferente), tenta remover só o texto
     if (newContent === fullContent) {
         newContent = fullContent.replace(cleanPageText, '');
     }
     
-    // Limpa sobras de tags vazias ou quebras duplas
+    // Limpa sobras
     newContent = newContent.replace(/<hr class="page-break">\s*$/, '').trim();
 
-    // 5. Salva no banco
     const data = {
         ...content,
         student_content: activeTab === 'student' ? newContent : content.student_content,
@@ -402,7 +417,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         if (content.id) await db.entities.PanoramaBiblico.update(content.id, data);
         await loadContent();
         onShowToast('Página apagada com sucesso.', 'success');
-        // Volta uma página se possível
         if (currentPage > 0) setCurrentPage(p => p - 1);
     } catch (e) {
         onShowToast('Erro ao apagar página.', 'error');
