@@ -108,11 +108,51 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     return text.trim();
   };
 
+  // --- NOVA LÓGICA DE PAGINAÇÃO INTELIGENTE ---
+  // Agrupa segmentos curtos para garantir páginas de ~600 palavras (aprox 3500 chars)
   const processAndPaginate = (html: string) => {
     if (!html) { setPages([]); return; }
-    const rawPages = html.split(/<hr[^>]*>/i);
-    const cleanedPages = rawPages.map(p => cleanText(p)).filter(p => p.length > 50);
-    setPages(cleanedPages.length > 0 ? cleanedPages : [cleanText(html)]);
+    
+    // 1. Divide pelos HRs originais da IA (quebras lógicas de tópico)
+    const rawSegments = html.split(/<hr[^>]*>/i).map(s => cleanText(s)).filter(s => s.length > 50);
+    
+    const finalPages: string[] = [];
+    let currentBuffer = "";
+    
+    // META: ~600 palavras. Em média 1 palavra = 6 caracteres (pt-BR).
+    // 600 palavras * 6 = 3600 caracteres. Usaremos 3000 como piso mínimo para agrupar.
+    const CHAR_LIMIT_MIN = 3000; 
+
+    for (let i = 0; i < rawSegments.length; i++) {
+        const segment = rawSegments[i];
+        
+        // Se o buffer está vazio, inicializa com o segmento atual
+        if (!currentBuffer) {
+            currentBuffer = segment;
+        } else {
+            // Se o buffer atual ainda é pequeno (< 500-600 palavras), junta com o próximo
+            if (currentBuffer.length < CHAR_LIMIT_MIN) {
+                // Adiciona um separador visual suave, já que eram tópicos diferentes
+                currentBuffer += `
+                    <div class="my-10 flex items-center justify-center select-none">
+                        <div class="h-[1px] bg-[#C5A059] w-24 opacity-30"></div>
+                        <span class="mx-4 text-[#C5A059] text-[10px] font-cinzel opacity-60 tracking-[0.2em]">CONTINUAÇÃO</span>
+                        <div class="h-[1px] bg-[#C5A059] w-24 opacity-30"></div>
+                    </div>
+                    ${segment}
+                `;
+            } else {
+                // Buffer já está grande o suficiente, salva página e começa nova
+                finalPages.push(currentBuffer);
+                currentBuffer = segment;
+            }
+        }
+    }
+    
+    // Empurra o que sobrou no buffer
+    if (currentBuffer) finalPages.push(currentBuffer);
+
+    setPages(finalPages.length > 0 ? finalPages : [cleanText(html)]);
   };
 
   const hasAccess = isAdmin || activeTab === 'student'; 
@@ -168,65 +208,81 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   };
 
   const renderFormattedText = (text: string) => {
-    const blocks = text.split('\n').filter(b => b.trim().length > 0);
+    // Separa por blocos HTML ou quebras de linha normais
+    // O regex abaixo tenta separar divs de continuação do texto normal
+    const blocks = text.split(/(<div class="my-10.*?<\/div>)/s);
+    
     return blocks.map((block, idx) => {
-        const trimmed = block.trim();
-        if (trimmed.includes('PANORÂMA BÍBLICO') || trimmed.includes('PANORAMA BÍBLICO')) {
-             return (
-                <div key={idx} className="mb-8 text-center border-b-2 border-[#8B0000] dark:border-[#ff6b6b] pb-4 pt-2">
-                    <h1 className="font-cinzel font-bold text-2xl md:text-3xl text-[#8B0000] dark:text-[#ff6b6b] uppercase tracking-widest drop-shadow-sm">
-                        {trimmed}
-                    </h1>
-                </div>
-            );
+        // Se for o nosso separador visual inserido na paginação
+        if (block.includes('class="my-10')) {
+             return <div key={idx} dangerouslySetInnerHTML={{ __html: block }} />;
         }
-        const isHeader = trimmed.startsWith('###') || /^[IVX]+\./.test(trimmed);
-        if (isHeader) {
-            const title = trimmed.replace(/###/g, '').trim();
-            return (
-                <div key={idx} className="mt-8 mb-6 flex items-center justify-center gap-4">
-                    <div className="h-[1px] bg-[#C5A059] w-8 md:w-16 opacity-60"></div>
-                    <h3 className="font-cinzel font-bold text-xl text-[#1a0f0f] dark:text-[#E0E0E0] uppercase tracking-wide text-center">
-                        {title}
-                    </h3>
-                    <div className="h-[1px] bg-[#C5A059] w-8 md:w-16 opacity-60"></div>
-                </div>
-            );
-        }
-        const isListItem = /^\d+\./.test(trimmed);
-        if (isListItem) {
-            const firstSpaceIndex = trimmed.indexOf(' ');
-            const numberPart = trimmed.substring(0, firstSpaceIndex > -1 ? firstSpaceIndex : trimmed.length);
-            const textPart = firstSpaceIndex > -1 ? trimmed.substring(firstSpaceIndex + 1) : "";
-            return (
-                <div key={idx} className="mb-6 flex gap-4 items-start group">
-                    <div className="flex-shrink-0 mt-1 w-8 text-right">
-                         <span className="font-cinzel font-bold text-xl text-[#C5A059] dark:text-[#C5A059]">
-                            {numberPart}
-                         </span>
-                    </div>
-                    <div className="flex-1">
-                        <p className="font-cormorant text-xl leading-loose text-gray-900 dark:text-gray-300 text-justify border-l-2 border-[#C5A059]/20 pl-4">
-                            {parseInlineStyles(textPart)}
-                        </p>
-                    </div>
-                </div>
-            );
-        }
-        if (trimmed.toUpperCase().includes('CURIOSIDADE') || trimmed.toUpperCase().includes('ATENÇÃO:') || trimmed.endsWith('?')) {
-            return (
-                <div key={idx} className="my-6 mx-2 font-cormorant text-lg text-[#1a0f0f] dark:text-gray-200 font-medium italic bg-[#C5A059]/10 dark:bg-[#C5A059]/10 p-6 rounded-lg border-y border-[#C5A059]/40 shadow-sm text-justify">
-                    <div className="flex justify-center mb-2">
-                        <Sparkles className="w-5 h-5 text-[#C5A059] opacity-70" />
-                    </div>
-                    <div>{parseInlineStyles(trimmed)}</div>
-                </div>
-            );
-        }
+
+        // Processamento normal de texto Markdown-like
+        const lines = block.split('\n').filter(b => b.trim().length > 0);
         return (
-            <p key={idx} className="font-cormorant text-xl leading-loose text-gray-900 dark:text-gray-300 text-justify indent-8 mb-4 tracking-wide">
-                {parseInlineStyles(trimmed)}
-            </p>
+            <div key={idx}>
+                {lines.map((line, lineIdx) => {
+                    const trimmed = line.trim();
+                    if (trimmed.includes('PANORÂMA BÍBLICO') || trimmed.includes('PANORAMA BÍBLICO')) {
+                        return (
+                            <div key={lineIdx} className="mb-8 text-center border-b-2 border-[#8B0000] dark:border-[#ff6b6b] pb-4 pt-2">
+                                <h1 className="font-cinzel font-bold text-2xl md:text-3xl text-[#8B0000] dark:text-[#ff6b6b] uppercase tracking-widest drop-shadow-sm">
+                                    {trimmed}
+                                </h1>
+                            </div>
+                        );
+                    }
+                    const isHeader = trimmed.startsWith('###') || /^[IVX]+\./.test(trimmed);
+                    if (isHeader) {
+                        const title = trimmed.replace(/###/g, '').trim();
+                        return (
+                            <div key={lineIdx} className="mt-8 mb-6 flex items-center justify-center gap-4">
+                                <div className="h-[1px] bg-[#C5A059] w-8 md:w-16 opacity-60"></div>
+                                <h3 className="font-cinzel font-bold text-xl text-[#1a0f0f] dark:text-[#E0E0E0] uppercase tracking-wide text-center">
+                                    {title}
+                                </h3>
+                                <div className="h-[1px] bg-[#C5A059] w-8 md:w-16 opacity-60"></div>
+                            </div>
+                        );
+                    }
+                    const isListItem = /^\d+\./.test(trimmed);
+                    if (isListItem) {
+                        const firstSpaceIndex = trimmed.indexOf(' ');
+                        const numberPart = trimmed.substring(0, firstSpaceIndex > -1 ? firstSpaceIndex : trimmed.length);
+                        const textPart = firstSpaceIndex > -1 ? trimmed.substring(firstSpaceIndex + 1) : "";
+                        return (
+                            <div key={lineIdx} className="mb-6 flex gap-4 items-start group">
+                                <div className="flex-shrink-0 mt-1 w-8 text-right">
+                                    <span className="font-cinzel font-bold text-xl text-[#C5A059] dark:text-[#C5A059]">
+                                        {numberPart}
+                                    </span>
+                                </div>
+                                <div className="flex-1">
+                                    <p className="font-cormorant text-xl leading-loose text-gray-900 dark:text-gray-300 text-justify border-l-2 border-[#C5A059]/20 pl-4">
+                                        {parseInlineStyles(textPart)}
+                                    </p>
+                                </div>
+                            </div>
+                        );
+                    }
+                    if (trimmed.toUpperCase().includes('CURIOSIDADE') || trimmed.toUpperCase().includes('ATENÇÃO:') || trimmed.endsWith('?')) {
+                        return (
+                            <div key={lineIdx} className="my-6 mx-2 font-cormorant text-lg text-[#1a0f0f] dark:text-gray-200 font-medium italic bg-[#C5A059]/10 dark:bg-[#C5A059]/10 p-6 rounded-lg border-y border-[#C5A059]/40 shadow-sm text-justify">
+                                <div className="flex justify-center mb-2">
+                                    <Sparkles className="w-5 h-5 text-[#C5A059] opacity-70" />
+                                </div>
+                                <div>{parseInlineStyles(trimmed)}</div>
+                            </div>
+                        );
+                    }
+                    return (
+                        <p key={lineIdx} className="font-cormorant text-xl leading-loose text-gray-900 dark:text-gray-300 text-justify indent-8 mb-4 tracking-wide">
+                            {parseInlineStyles(trimmed)}
+                        </p>
+                    );
+                })}
+            </div>
         );
     });
   };
@@ -273,20 +329,16 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         VOCÊ É O PROFESSOR MICHEL FELIX.
         
         --- DIRETRIZES DE ESTILO (RIGOROSAS) ---
-        1. PROIBIDO AUTO-IDENTIFICAÇÃO: NUNCA use frases como "Nós pentecostais", "Como cremos", "Eu acredito", "Minha visão". O texto deve ser impessoal, direto e autoritativo.
-        2. ESTRUTURA: Inicie sempre com "PANORÂMA BÍBLICO - [LIVRO] (Prof. Michel Felix)". Use "### TÍTULO" para seções e <hr class="page-break"> para quebra de página.
-        3. DIDÁTICA: Explique o original (Hebraico/Grego) entre parênteses. Conecte o evento a Jesus (Tipologia). Inclua um tópico "### CURIOSIDADES E ARQUEOLOGIA".
+        1. PROIBIDO AUTO-IDENTIFICAÇÃO: NUNCA use frases como "Nós pentecostais", "Como cremos".
+        2. ESTRUTURA: Use "### TÍTULO" para seções.
+        3. PAGINAÇÃO: O conteúdo deve ser DENSO e PROFUNDO. Escreva aproximadamente 600 a 800 palavras ANTES de inserir um <hr class="page-break">. Agrupe 3 a 4 tópicos na mesma página se forem curtos. Evite páginas com menos de 500 palavras.
 
-        --- SEGURANÇA TEOLÓGICA (CRÍTICO - LEIA COM ATENÇÃO) ---
-        1. BASE DOUTRINÁRIA: Arminiana e Pentecostal Clássica, mas EQUILIBRADA e ORTODOXA.
-        2. TRATAMENTO DE TEXTOS POLÊMICOS:
-           - Se houver múltiplas interpretações (ex: Gn 6 "Filhos de Deus"), APRESENTE as correntes, MAS CONCLUA sempre com a visão mais coerente com o Cânon Bíblico (Novo Testamento).
-           - REGRA DE OURO: Rejeite interpretações baseadas em livros apócrifos (como Enoque) ou mitologia se contradizerem Jesus ou a sã doutrina.
-           - EXEMPLO ESPECÍFICO: Para Gênesis 6, cite a visão dos anjos (apócrifa) mas refute-a com Mateus 22:30, optando pela visão da Linhagem de Sete (Filhos de Deus = Descendentes de Sete).
-           - EVITE POLÊMICAS DESNECESSÁRIAS: Busque a edificação, não a confusão. O sobrenatural aceito é o Bíblico, não o mitológico.
+        --- SEGURANÇA TEOLÓGICA (CRÍTICO) ---
+        1. BASE DOUTRINÁRIA: Arminiana e Pentecostal Clássica.
+        2. ORTODOXIA: Rejeite interpretações baseadas em livros apócrifos.
     `;
     const instructions = customInstructions ? `\nINSTRUÇÕES ADICIONAIS DO USUÁRIO: ${customInstructions}` : "";
-    const continuationInstructions = `MODO CONTINUAÇÃO (PÁGINA ${pages.length + 1}). CONTEXTO: "...${lastContext.slice(-400)}..."`;
+    const continuationInstructions = `MODO CONTINUAÇÃO. CONTEXTO ANTERIOR: "...${lastContext.slice(-400)}..."`;
 
     let specificPrompt = target === 'student' ? 
         `OBJETIVO: AULA DO ALUNO para ${book} ${chapter}. ${WRITING_STYLE} ${instructions} ${mode === 'continue' ? continuationInstructions : 'INÍCIO DO ESTUDO.'}` : 
@@ -314,7 +366,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         else await db.entities.PanoramaBiblico.create(data);
 
         await loadContent();
-        onShowToast('Conteúdo gerado no Padrão Michel Felix (Ortodoxo)!', 'success');
+        onShowToast('Conteúdo gerado no Padrão Michel Felix (Denso)!', 'success');
         if (mode === 'continue') setTimeout(() => setCurrentPage(pages.length), 500); 
 
     } catch (e: any) {
@@ -327,19 +379,9 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   const handleDeletePage = async () => {
     if (!window.confirm("Tem certeza que deseja apagar ESTA página?")) return;
     if (!content) return;
-    const newPages = [...pages];
-    newPages.splice(currentPage, 1);
-    const newHtml = newPages.join('<hr class="page-break">');
-    const target = activeTab;
-    const data = {
-        ...content,
-        student_content: target === 'student' ? newHtml : content.student_content,
-        teacher_content: target === 'teacher' ? newHtml : content.teacher_content,
-    };
-    if (content.id) await db.entities.PanoramaBiblico.update(content.id, data);
-    await loadContent();
-    setCurrentPage(Math.max(0, currentPage - 1));
-    onShowToast("Página removida.", "success");
+    // Atenção: A deleção agora é mais complexa pois 'pages' são virtuais (agrupadas).
+    // A deleção direta pode ser imprecisa. Recomenda-se editar manualmente.
+    onShowToast("Use a 'Edição Manual' para remover trechos específicos com precisão.", "info");
   };
 
   return (
