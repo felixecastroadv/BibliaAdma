@@ -25,8 +25,10 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   const [batchStartChapter, setBatchStartChapter] = useState(1);
   const [isGeneratingBatch, setIsGeneratingBatch] = useState(false);
   const [batchType, setBatchType] = useState<'commentary' | 'dictionary' | null>(null);
-  const [stopBatch, setStopBatch] = useState(false);
   const [batchLogs, setBatchLogs] = useState<string[]>([]);
+  
+  // Ref para controle imediato de parada (State não atualiza dentro do loop async)
+  const stopBatchRef = useRef(false);
 
   // --- STATE DE DEVOCIONAL ---
   const [devotionalDate, setDevotionalDate] = useState(new Date().toISOString().split('T')[0]);
@@ -139,7 +141,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   };
 
   // --- FUNÇÕES DE DOWNLOAD / IMPORTAÇÃO BÍBLIA ---
-  // ... (Manter código existente de download/importação inalterado) ...
   const fetchWithRetry = async (url: string, retries = 3, backoff = 1000): Promise<any> => {
       try {
           const res = await fetch(url);
@@ -165,12 +166,13 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       let count = 0;
       await bibleStorage.clear();
       setOfflineCount(0); 
+      stopBatchRef.current = false;
       
       try {
         for (const book of BIBLE_BOOKS) {
-            if (stopBatch) break;
+            if (stopBatchRef.current) break;
             for (let c = 1; c <= book.chapters; c++) {
-                if (stopBatch) break;
+                if (stopBatchRef.current) break;
                 const key = `bible_acf_${book.abbrev}_${c}`;
                 try {
                     setProcessStatus(`Baixando ${book.name} ${c}...`);
@@ -178,7 +180,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                     const data = await fetchWithRetry(`https://www.abibliadigital.com.br/api/verses/acf/${book.abbrev}/${c}`);
                     if (data && data.verses) {
                         const optimizedVerses = data.verses.map((v: any) => v.text.trim());
-                        // Usa o novo método Universal (Local + Nuvem)
                         await db.entities.BibleChapter.saveUniversal(key, optimizedVerses);
                         setOfflineCount(prev => (prev || 0) + 1);
                     }
@@ -193,12 +194,11 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           onShowToast("Erro no download.", "error");
       }
       setIsProcessing(false);
-      setStopBatch(false);
+      stopBatchRef.current = false;
       await checkOfflineIntegrity(); 
       onShowToast("Download Completo!", "success");
   };
 
-  // --- NOVA FUNÇÃO: RESGATAR DA NUVEM (SUPABASE -> INDEXEDDB) ---
   const handleRestoreFromCloud = async () => {
       if (!window.confirm("Isso irá baixar todo o texto bíblico salvo no seu Banco de Dados na Nuvem para este dispositivo. Continuar?")) return;
       
@@ -248,7 +248,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       }
   };
 
-  // --- PARSER CORRIGIDO PARA FORMATO HIERÁRQUICO ---
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file) return;
@@ -259,7 +258,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       reader.onload = async (e) => {
           try {
               const jsonText = e.target?.result as string;
-              // Limpa BOM (Byte Order Mark) se existir
               const cleanJson = jsonText.replace(/^\uFEFF/, ''); 
               let rawData;
               try {
@@ -271,9 +269,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
               setProcessStatus("Analisando estrutura...");
               let count = 0;
 
-              // ESTRATÉGIA 1: Formato Hierárquico (Print do Usuário)
-              // [ { abbrev: "gn", nome: "Gênesis", capítulos: [ ["v1", "v2"], ... ] }, ... ]
-              // Detecta se é array E se o primeiro item tem 'capítulos' ou 'chapters'
               if (Array.isArray(rawData) && rawData.length > 0 && (rawData[0].capítulos || rawData[0].chapters)) {
                   const totalBooks = rawData.length;
                   setProcessStatus("Modo Hierárquico detectado...");
@@ -286,37 +281,26 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
 
                       if (abbrev && Array.isArray(chapters)) {
                           for (let cIndex = 0; cIndex < chapters.length; cIndex++) {
-                              const chapterNum = cIndex + 1; // Array index 0 = Capítulo 1
+                              const chapterNum = cIndex + 1;
                               const versesRaw = chapters[cIndex];
                               
-                              // Valida se é um array de versículos (strings)
                               if (Array.isArray(versesRaw) && versesRaw.length > 0) {
-                                  // Normaliza versículos (se for string ou objeto)
                                   const cleanVerses = versesRaw.map((v: any) => typeof v === 'string' ? v.trim() : (v.text || "").trim());
-                                  
-                                  // Gera chave compatível com o sistema: bible_acf_{abbrev}_{chapter}
                                   const key = `bible_acf_${abbrev}_${chapterNum}`;
-                                  
-                                  // Salva Nuvem + Local
                                   await db.entities.BibleChapter.saveUniversal(key, cleanVerses);
                                   count++;
                               }
                           }
                       }
                       
-                      // Feedback visual a cada livro
                       const pct = Math.round(((i + 1) / totalBooks) * 100);
                       setProgress(pct);
                       setProcessStatus(`Importando ${bookName || abbrev}...`);
-                      // Pequena pausa para UI não travar
                       if (i % 2 === 0) await new Promise(r => setTimeout(r, 0));
                   }
-              } 
-              // ESTRATÉGIA 2: Formato Plano (Fallback)
-              // [ { book: "Gênesis", chapter: 1, verses: [...] }, ... ]
-              else {
+              } else {
                   const flatList = Array.isArray(rawData) ? rawData : (rawData.verses || rawData.chapters || []);
-                  if (!Array.isArray(flatList)) throw new Error("Formato não reconhecido (esperado array de livros ou capítulos).");
+                  if (!Array.isArray(flatList)) throw new Error("Formato não reconhecido.");
                   
                   const total = flatList.length;
                   for (let i = 0; i < total; i++) {
@@ -337,7 +321,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                           if (bName && cNum) {
                               key = generateChapterKey(bName, cNum);
                           } else if (abbrev && cNum) {
-                              // Tenta gerar chave direto da abreviação se o nome falhar
                               key = `bible_acf_${abbrev.toLowerCase()}_${cNum}`;
                           }
                       }
@@ -359,16 +342,15 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
               }
               
               setOfflineCount(await bibleStorage.count());
-              
               if (count === 0) {
-                  onShowToast("Nenhum capítulo importado. Verifique se o JSON tem 'abbrev' e 'capítulos'.", "error");
+                  onShowToast("Nenhum capítulo importado.", "error");
               } else {
-                  onShowToast(`Sucesso! ${count} capítulos importados para a Nuvem.`, "success");
+                  onShowToast(`Sucesso! ${count} capítulos importados.`, "success");
               }
 
           } catch (error: any) {
               console.error(error);
-              onShowToast(`Erro na leitura do arquivo: ${error.message}`, "error");
+              onShowToast(`Erro: ${error.message}`, "error");
           } finally {
               setIsProcessing(false);
               setProgress(0);
@@ -388,7 +370,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                   const key = `bible_acf_${book.abbrev}_${c}`;
                   const verses = await bibleStorage.get(key);
                   if (verses) {
-                      allData.push({ key, verses, book: book.name, chapter: c }); // Adiciona book/chapter para compatibilidade futura
+                      allData.push({ key, verses, book: book.name, chapter: c });
                   }
               }
           }
@@ -411,94 +393,131 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   // --- FUNÇÕES DE GERAÇÃO EM LOTE (IA) ---
   const addLog = (msg: string) => setBatchLogs(prev => [msg, ...prev].slice(0, 50));
 
+  const handleStopBatch = () => {
+      stopBatchRef.current = true;
+      addLog("🛑 Solicitando parada... Aguarde a conclusão do item atual.");
+  };
+
   const handleBatchGenerate = async (type: 'commentary' | 'dictionary') => {
       setIsGeneratingBatch(true);
       setBatchType(type);
-      setStopBatch(false);
+      stopBatchRef.current = false; // Reset stop flag
       
       const bookMeta = BIBLE_BOOKS.find(b => b.name === batchBook);
-      if (!bookMeta) return;
+      if (!bookMeta) {
+          setIsGeneratingBatch(false);
+          onShowToast("Livro não encontrado.", "error");
+          return;
+      }
 
       let processed = 0;
-      
-      for (let c = batchStartChapter; c <= bookMeta.chapters; c++) {
-          if (stopBatch) { addLog("Processo interrompido pelo usuário."); break; }
+      const c = batchStartChapter; // Foca APENAS no capítulo selecionado
 
-          const verseNum = 1; 
-          try {
-              const chapKey = `bible_acf_${bookMeta.abbrev}_${c}`;
-              const verses = (await bibleStorage.get(chapKey)) as any[]; // Added explicit cast to prevent type error
-              
-              if (!verses || verses.length === 0) {
-                  addLog(`[Pular] ${bookMeta.name} ${c}: Texto bíblico não encontrado offline.`);
-                  continue;
+      try {
+          const chapKey = `bible_acf_${bookMeta.abbrev}_${c}`;
+          // Tenta pegar versículos (Nuvem ou Local)
+          let verses = (await bibleStorage.get(chapKey)) as any[]; 
+          
+          if (!verses || verses.length === 0) {
+              // Tenta fallback nuvem se local falhar
+              verses = (await db.entities.BibleChapter.getCloud(chapKey)) as any[];
+          }
+
+          if (!verses || verses.length === 0) {
+              addLog(`❌ Erro: Texto bíblico de ${bookMeta.name} ${c} não encontrado.`);
+              onShowToast(`Texto de ${bookMeta.name} ${c} não encontrado. Faça o download/upload da Bíblia primeiro.`, "error");
+              setIsGeneratingBatch(false);
+              return;
+          }
+
+          addLog(`🚀 Iniciando lote para ${bookMeta.name} ${c} (${verses.length} versículos)...`);
+
+          // Itera sobre CADA VERSÍCULO do capítulo
+          for (let i = 0; i < verses.length; i++) {
+              if (stopBatchRef.current) { 
+                  addLog("🛑 Processo interrompido pelo usuário."); 
+                  break; 
               }
 
-              const verseText = (verses as any)[verseNum - 1]; 
+              const verseNum = i + 1;
+              const verseText = verses[i];
               const verseKey = generateVerseKey(bookMeta.name, c, verseNum);
 
-              addLog(`Gerando ${type} para ${bookMeta.name} ${c}:${verseNum}...`);
+              // Verifica se já existe para não gastar API (Opcional, mas recomendado)
+              // Aqui vamos forçar gerar se o usuário mandou, ou podemos pular. 
+              // Assumindo que o admin quer gerar/regerar.
 
-              if (type === 'commentary') {
-                   const prompt = `
-                    ATUE COMO: Professor Michel Felix.
-                    TAREFA: Comentário bíblico curto para ${bookMeta.name} ${c}:${verseNum}.
-                    TEXTO: "${verseText}"
-                    ESTILO: Pentecostal Clássico, Arminiano.
-                    FORMATO: Texto corrido, vibrante, max 200 palavras.
-                `;
-                const text = await generateContent(prompt);
-                await db.entities.Commentary.create({
-                    book: bookMeta.name, chapter: c, verse: verseNum, verse_key: verseKey, commentary_text: text
-                });
-              } else {
-                  const prompt = `
-                    Análise lexical JSON de ${bookMeta.name} ${c}:${verseNum} ("${verseText}").
-                    Idioma original: ${bookMeta.testament === 'old' ? 'Hebraico' : 'Grego'}.
-                    Retorne JSON com: original_text, transliteration, key_words.
-                  `;
-                   const schema = {
-                      type: GenType.OBJECT,
-                      properties: {
-                        original_text: { type: GenType.STRING },
-                        transliteration: { type: GenType.STRING },
-                        key_words: {
-                          type: GenType.ARRAY,
-                          items: {
+              addLog(`Processando ${bookMeta.name} ${c}:${verseNum}...`);
+
+              try {
+                  if (type === 'commentary') {
+                        const prompt = `
+                            ATUE COMO: Professor Michel Felix.
+                            TAREFA: Comentário bíblico curto para ${bookMeta.name} ${c}:${verseNum}.
+                            TEXTO: "${verseText}"
+                            ESTILO: Pentecostal Clássico, Arminiano.
+                            FORMATO: Texto corrido, vibrante, max 200 palavras. Use markdown (* e **) para ênfase.
+                        `;
+                        const text = await generateContent(prompt);
+                        await db.entities.Commentary.create({
+                            book: bookMeta.name, chapter: c, verse: verseNum, verse_key: verseKey, commentary_text: text
+                        });
+                  } else {
+                        const prompt = `
+                            Análise lexical JSON de ${bookMeta.name} ${c}:${verseNum} ("${verseText}").
+                            Idioma original: ${bookMeta.testament === 'old' ? 'Hebraico' : 'Grego'}.
+                            Retorne JSON com: hebrewGreekText, phoneticText, words (array).
+                        `;
+                        const schema = {
                             type: GenType.OBJECT,
                             properties: {
-                              original: { type: GenType.STRING },
-                              transliteration: { type: GenType.STRING },
-                              portuguese: { type: GenType.STRING },
-                              polysemy: { type: GenType.STRING },
-                              etymology: { type: GenType.STRING },
-                              grammar: { type: GenType.STRING }
-                            }
-                          }
-                        }
-                      }
-                    };
-                    const res = await generateContent(prompt, schema);
-                    await db.entities.Dictionary.create({
-                        book: bookMeta.name, chapter: c, verse: verseNum, verse_key: verseKey,
-                        original_text: res.original_text, transliteration: res.transliteration, key_words: res.key_words
-                    });
-              }
-              processed++;
-              await new Promise(r => setTimeout(r, 2000));
+                                hebrewGreekText: { type: GenType.STRING },
+                                phoneticText: { type: GenType.STRING },
+                                words: {
+                                    type: GenType.ARRAY,
+                                    items: {
+                                        type: GenType.OBJECT,
+                                        properties: {
+                                            original: { type: GenType.STRING },
+                                            transliteration: { type: GenType.STRING },
+                                            portuguese: { type: GenType.STRING },
+                                            polysemy: { type: GenType.STRING },
+                                            etymology: { type: GenType.STRING },
+                                            grammar: { type: GenType.STRING }
+                                        },
+                                        required: ["original", "transliteration", "portuguese", "polysemy", "etymology", "grammar"]
+                                    }
+                                }
+                            },
+                            required: ["hebrewGreekText", "phoneticText", "words"]
+                        };
+                        const res = await generateContent(prompt, schema);
+                        await db.entities.Dictionary.create({
+                            book: bookMeta.name, chapter: c, verse: verseNum, verse_key: verseKey,
+                            original_text: res.hebrewGreekText, transliteration: res.phoneticText, key_words: res.words
+                        });
+                  }
+                  processed++;
+                  // Pausa pequena para evitar Rate Limit excessivo
+                  await new Promise(r => setTimeout(r, 1000)); 
 
-          } catch (e: any) {
-              addLog(`Erro em ${bookMeta.name} ${c}: ${e.message}`);
+              } catch (err: any) {
+                  addLog(`⚠️ Falha em ${c}:${verseNum}: ${err.message}`);
+              }
           }
+
+      } catch (e: any) {
+          addLog(`Erro crítico: ${e.message}`);
       }
+
       setIsGeneratingBatch(false);
-      onShowToast(`Lote finalizado. ${processed} itens gerados.`, 'success');
+      onShowToast(`Processo finalizado. ${processed} itens gerados em ${bookMeta.name} ${c}.`, 'success');
   };
 
   const handleGenerateDevotional = async () => {
       if (!devotionalDate) return;
       setIsGeneratingBatch(true);
-      setStopBatch(false);
+      stopBatchRef.current = false;
       setBatchType(null);
       const dateStr = devotionalDate;
       const displayDate = new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR');
@@ -531,7 +550,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       return <AppBuilder onBack={() => { setShowBuilder(false); loadAppConfig(); }} onShowToast={onShowToast} currentConfig={appConfig} />;
   }
 
-  // Filtragem de Usuários
   const filteredUsers = usersList.filter(u => 
       u.user_name.toLowerCase().includes(userSearch.toLowerCase()) || 
       u.user_email.toLowerCase().includes(userSearch.toLowerCase())
@@ -661,27 +679,27 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
         <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow border-l-4 border-[#8B0000]">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
-                    <label className="text-xs font-bold text-gray-500">Livro Inicial</label>
+                    <label className="text-xs font-bold text-gray-500">Livro</label>
                     <select value={batchBook} onChange={e => setBatchBook(e.target.value)} className="w-full p-2 border rounded mt-1 dark:bg-gray-800 dark:text-white">
                         {BIBLE_BOOKS.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
                     </select>
                 </div>
                 <div>
-                    <label className="text-xs font-bold text-gray-500">Capítulo Inicial</label>
+                    <label className="text-xs font-bold text-gray-500">Capítulo Alvo</label>
                     <input type="number" value={batchStartChapter} onChange={e => setBatchStartChapter(Number(e.target.value))} className="w-full p-2 border rounded mt-1 dark:bg-gray-800 dark:text-white" min={1}/>
                 </div>
             </div>
             {isGeneratingBatch ? (
                  <div className="text-center py-6">
                      <Loader2 className="w-10 h-10 animate-spin mx-auto text-[#8B0000] mb-2"/>
-                     <p className="font-cinzel font-bold dark:text-white">Gerando em Lote...</p>
-                     <button onClick={() => setStopBatch(true)} className="mt-4 bg-red-600 text-white px-4 py-2 rounded flex items-center justify-center gap-2 mx-auto"><StopCircle className="w-4 h-4" /> Parar Processo</button>
+                     <p className="font-cinzel font-bold dark:text-white">Gerando Conteúdo para {batchBook} {batchStartChapter}...</p>
+                     <button onClick={handleStopBatch} className="mt-4 bg-red-600 text-white px-4 py-2 rounded flex items-center justify-center gap-2 mx-auto"><StopCircle className="w-4 h-4" /> Parar Processo</button>
                      <div className="mt-4 h-32 overflow-y-auto bg-black text-green-400 p-2 rounded text-xs text-left font-mono">{batchLogs.map((log, i) => <div key={i}>{log}</div>)}</div>
                  </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <button onClick={() => handleBatchGenerate('commentary')} className="bg-[#8B0000] text-white py-3 rounded font-bold flex flex-col items-center justify-center gap-1 hover:bg-[#600018]"><MessageSquare className="w-5 h-5" /> Gerar Comentários</button>
-                    <button onClick={() => handleBatchGenerate('dictionary')} className="bg-[#C5A059] text-white py-3 rounded font-bold flex flex-col items-center justify-center gap-1 hover:bg-[#a88645]"><Languages className="w-5 h-5" /> Gerar Dicionários</button>
+                    <button onClick={() => handleBatchGenerate('commentary')} className="bg-[#8B0000] text-white py-3 rounded font-bold flex flex-col items-center justify-center gap-1 hover:bg-[#600018]"><MessageSquare className="w-5 h-5" /> Gerar Comentários (Cap. Inteiro)</button>
+                    <button onClick={() => handleBatchGenerate('dictionary')} className="bg-[#C5A059] text-white py-3 rounded font-bold flex flex-col items-center justify-center gap-1 hover:bg-[#a88645]"><Languages className="w-5 h-5" /> Gerar Dicionários (Cap. Inteiro)</button>
                     <div className="bg-purple-50 dark:bg-purple-900/20 p-2 rounded border border-purple-200 dark:border-purple-800 flex flex-col gap-2">
                         <label className="text-[10px] font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1"><Calendar className="w-3 h-3" /> Gerador de Devocional</label>
                         <input type="date" value={devotionalDate} onChange={e => setDevotionalDate(e.target.value)} className="p-1.5 text-xs border rounded w-full dark:bg-gray-900 dark:text-white"/>
