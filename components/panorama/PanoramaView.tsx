@@ -98,31 +98,38 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     return text.trim();
   };
 
-  // --- PAGINAÇÃO HÍBRIDA ---
+  // --- PAGINAÇÃO HÍBRIDA (CORRIGIDA) ---
   const processAndPaginate = (html: string) => {
     if (!html) { setPages([]); return; }
     
+    const cleanContent = cleanText(html);
+
     // 1. Tenta dividir pelos marcadores explícitos da IA
-    let rawSegments = html.split(/<hr[^>]*>|__CONTINUATION_MARKER__/i)
+    let rawSegments = cleanContent.split(/<hr[^>]*>|__CONTINUATION_MARKER__/i)
                           .map(s => cleanText(s))
                           .filter(s => s.length > 50);
 
-    // 2. FALLBACK INTELIGENTE: Se a IA gerou um bloco gigante único (> 4000 caracteres)
-    if (rawSegments.length === 1 && rawSegments[0].length > 4000) {
-        const bigText = rawSegments[0];
-        // Tenta quebrar pelos Títulos (### ou Numerais Romanos/Arábicos no início de linha)
-        const forcedSegments = bigText.split(/(?=\n### |^\s*[IVX]+\.|^\s*\d+\.\s+[A-Z])/gm);
-        
-        if (forcedSegments.length > 1) {
-            rawSegments = forcedSegments.map(s => cleanText(s)).filter(s => s.length > 100);
+    // 2. FALLBACK INTELIGENTE: Se a IA gerou um bloco gigante único, quebra por seções
+    const refinedSegments: string[] = [];
+    for (const seg of rawSegments) {
+        if (seg.length > 2500) {
+            // Tenta quebrar pelos Títulos (### ou Numerais Romanos/Arábicos no início de linha)
+            const forcedSegments = seg.split(/(?=\n### |^\s*[IVX]+\.|^\s*\d+\.\s+[A-Z])/gm)
+                                      .map(s => cleanText(s))
+                                      .filter(s => s.length > 50);
+            refinedSegments.push(...forcedSegments);
+        } else {
+            refinedSegments.push(seg);
         }
     }
+    rawSegments = refinedSegments.length > 0 ? refinedSegments : rawSegments;
     
     const finalPages: string[] = [];
     let currentBuffer = "";
     
-    // META: ~600 palavras (aprox 3500 caracteres)
-    const CHAR_LIMIT_MIN = 3500; 
+    // META AJUSTADA: ~300-350 palavras por página (aprox 1600 caracteres)
+    // Isso restaura o padrão de múltiplas páginas legíveis
+    const CHAR_LIMIT_PAGE = 1600; 
 
     for (let i = 0; i < rawSegments.length; i++) {
         const segment = rawSegments[i];
@@ -130,21 +137,19 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         if (!currentBuffer) {
             currentBuffer = segment;
         } else {
-            if ((currentBuffer.length + segment.length) < (CHAR_LIMIT_MIN * 1.5)) {
+            // Se somar não estourar muito o limite (120%), junta na mesma página
+            if ((currentBuffer.length + segment.length) < (CHAR_LIMIT_PAGE * 1.2)) {
                 currentBuffer += "\n\n__CONTINUATION_MARKER__\n\n" + segment;
             } else {
-                if (currentBuffer.length > 2000) {
-                    finalPages.push(currentBuffer);
-                    currentBuffer = segment;
-                } else {
-                    currentBuffer += "\n\n__CONTINUATION_MARKER__\n\n" + segment;
-                }
+                // Senão, cria nova página
+                finalPages.push(currentBuffer);
+                currentBuffer = segment;
             }
         }
     }
     
     if (currentBuffer) finalPages.push(currentBuffer);
-    setPages(finalPages.length > 0 ? finalPages : [cleanText(html)]);
+    setPages(finalPages.length > 0 ? finalPages : [cleanContent]);
   };
 
   const hasAccess = isAdmin || activeTab === 'student'; 
@@ -330,10 +335,10 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         3. TOM: Magistral, Impessoal, Acadêmico, Vibrante e Ortodoxo.
 
         --- METODOLOGIA DE ENSINO (PROFUNDIDADE EXTREMA) ---
-        1. CHEGA DE RESUMOS: O aluno precisa entender o texto COMPLETAMENTE. Não faça explicações genéricas que cobrem 10 versículos de uma vez. A explicação atual está muito sintética e perdendo profundidade.
-        2. MICROSCOPIA BÍBLICA: Analise os versículos frase por frase ou em pequenos grupos (ex: vs 1-2, depois vs 3, depois vs 4-6). Não pule versículos difíceis.
-        3. DENSIDADE: Extraia todo o suco do texto. Se houver uma lista de nomes, explique a relevância. Se houver uma ação detalhada, explique o motivo.
-        4. O texto deve ser DENSO e EXEGÉTICO, mas respeitando o limite de tamanho (aprox. 600 palavras por resposta).
+        1. CHEGA DE RESUMOS: O aluno precisa entender o texto COMPLETAMENTE. Não faça explicações genéricas que cobrem 10 versículos de uma vez.
+        2. MICROSCOPIA BÍBLICA: Analise os versículos frase por frase ou em pequenos grupos. Não pule versículos difíceis.
+        3. DENSIDADE: Extraia todo o suco do texto. Se houver uma lista de nomes, explique a relevância.
+        4. O texto deve ser DENSO e EXEGÉTICO.
         5. PROIBIDO TRANSCREVER O TEXTO BÍBLICO: O aluno já tem a Bíblia. NÃO escreva o versículo por extenso. Cite apenas a referência (Ex: "No versículo 1...", ou "Em Gn 47:1-6...") e vá direto para a EXPLICAÇÃO.
 
         --- IDIOMAS ORIGINAIS E ETIMOLOGIA (INDISPENSÁVEL) ---
@@ -362,9 +367,9 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
            (Fatos históricos, culturais e arqueológicos relevantes).
 
         --- INSTRUÇÕES DE PAGINAÇÃO ---
-        1. Texto de TAMANHO MÉDIO (aprox. 600 palavras por geração).
-        2. Insira <hr class="page-break"> entre os tópicos principais para dividir as páginas.
-        3. Se for CONTINUAÇÃO, não repita o título nem a introdução, siga para o próximo tópico numérico ou continue a explicação detalhada do versículo onde parou.
+        1. Gere o conteúdo DETALHADO e COMPLETO para cobrir todos os pontos. Não economize no tamanho.
+        2. Insira <hr class="page-break"> entre os tópicos principais se o texto ficar muito longo.
+        3. Se for CONTINUAÇÃO, não repita o título nem a introdução, siga para o próximo tópico numérico.
     `;
     
     const instructions = customInstructions ? `\nINSTRUÇÕES EXTRAS: ${customInstructions}` : "";
@@ -412,10 +417,9 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     if (!content) return;
 
     // Cria uma nova lista de páginas removendo a atual
-    // Essa é a maneira mais segura: reconstruir o texto baseando-se no que sobrou
     const updatedPages = pages.filter((_, index) => index !== currentPage);
     
-    // Reconstrói o conteúdo total juntando as páginas restantes com o separador padrão de quebra
+    // Reconstrói o conteúdo total juntando as páginas restantes
     const newContent = updatedPages.join('<hr class="page-break">');
 
     const data = {
@@ -426,18 +430,11 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
     try {
         if (content.id) await db.entities.PanoramaBiblico.update(content.id, data);
-        
-        // Atualiza estado local imediatamente para feedback visual
         setPages(updatedPages);
-        
-        // Ajusta a página atual se estivermos na última
         if (currentPage >= updatedPages.length) {
             setCurrentPage(Math.max(0, updatedPages.length - 1));
         }
-
-        // Recarrega do banco para garantir sincronia
         await loadContent();
-        
         onShowToast('Página apagada com sucesso.', 'success');
     } catch (e) {
         onShowToast('Erro ao apagar página.', 'error');
