@@ -19,35 +19,42 @@ export default function BottomNav({ currentView, onNavigate }: BottomNavProps) {
   if (currentView === 'admin' || currentView === 'login' || currentView === 'reader') return null;
 
   return (
-    <div className="fixed bottom-0 left-0 w-full bg-white/80 dark:bg-[#1E1E1E]/80 backdrop-blur-xl border-t border-[#C5A059]/20 shadow-[0_-5px_30px_rgba(0,0,0,0.05)] z-40 pb-safe transition-all duration-300">
-      <div className="flex justify-around items-center h-16 max-w-lg mx-auto px-2">
+    <div className="fixed bottom-4 left-4 right-4 z-40">
+      <div className="bg-white/80 dark:bg-[#1E1E1E]/80 backdrop-blur-xl border border-white/40 dark:border-white/5 rounded-3xl shadow-[0_8px_32px_0_rgba(31,38,135,0.15)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] h-16 px-2 flex justify-around items-center max-w-lg mx-auto">
         {navItems.map((item) => {
           const isActive = currentView === item.id;
           return (
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
-              className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-all active:scale-90 group relative ${
-                isActive 
-                  ? 'text-[#8B0000] dark:text-[#ff6b6b]' 
-                  : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
-              }`}
+              className="relative flex flex-col items-center justify-center w-full h-full group"
             >
-              {/* Efeito de Glow no item ativo */}
-              {isActive && (
-                <div className="absolute top-1 w-8 h-8 bg-[#8B0000]/10 dark:bg-[#ff6b6b]/10 rounded-full blur-sm" />
-              )}
+              <div 
+                className={`absolute inset-0 rounded-2xl transition-all duration-300 scale-0 group-active:scale-95 ${isActive ? 'bg-[#8B0000]/5 dark:bg-[#ff6b6b]/10 scale-90' : 'group-hover:bg-gray-100/50 dark:group-hover:bg-white/5 group-hover:scale-75'}`}
+              />
               
-              <item.icon className={`w-6 h-6 relative z-10 ${isActive ? 'fill-current opacity-100 stroke-[2.5px] drop-shadow-sm' : 'stroke-2'}`} />
-              
-              <span className={`text-[10px] font-montserrat font-bold relative z-10 ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'} transition-all duration-300`}>
+              <div className={`relative transition-all duration-300 transform ${isActive ? '-translate-y-1' : ''}`}>
+                 <item.icon 
+                    className={`w-6 h-6 transition-all duration-300 ${
+                        isActive 
+                        ? 'text-[#8B0000] dark:text-[#ff6b6b] stroke-[2.5px] drop-shadow-sm' 
+                        : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300'
+                    }`} 
+                 />
+              </div>
+
+              <span 
+                className={`text-[9px] font-montserrat font-bold absolute bottom-2 transition-all duration-300 ${
+                    isActive 
+                    ? 'opacity-100 translate-y-0 text-[#8B0000] dark:text-[#ff6b6b]' 
+                    : 'opacity-0 translate-y-2 text-gray-400'
+                }`}
+              >
                 {item.label}
               </span>
               
-              {/* Indicador de Ponto */}
-              {isActive && (
-                <span className="absolute -bottom-1 w-1 h-1 bg-[#8B0000] dark:bg-[#ff6b6b] rounded-full" />
-              )}
+              {/* Active Dot Indicator */}
+              <span className={`absolute -bottom-1 w-1 h-1 bg-[#8B0000] dark:bg-[#ff6b6b] rounded-full transition-all duration-300 ${isActive ? 'opacity-0' : 'opacity-0'}`} />
             </button>
           );
         })}

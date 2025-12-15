@@ -74,15 +74,12 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
     }
 
     // TENTATIVA 2: Fallback Manual (iOS ou PC Bloqueado)
-    // Se chegou aqui, o navegador NÃO permite instalação via botão direto.
-    // Precisamos guiar o usuário.
     const ua = navigator.userAgent.toLowerCase();
     const isIOS = /iphone|ipad|ipod/.test(ua);
     
     if (isIOS) {
         setShowIOSInstructions(true);
     } else {
-        // Assume Desktop ou Android sem suporte a prompt direto
         setShowDesktopInstructions(true);
     }
   };
@@ -98,44 +95,44 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
   };
 
   const menuItems = [
-    { id: 'reader', icon: BookOpen, label: 'Bíblia', color: 'bg-[#8B0000]' },
-    { id: 'panorama', icon: GraduationCap, label: 'EBD Panorama', color: 'bg-blue-800' },
-    { id: 'devotional', icon: Calendar, label: 'Devocional', color: 'bg-purple-700' },
-    { id: 'plans', icon: ListChecks, label: 'Planos', color: 'bg-green-700' },
-    { id: 'ranking', icon: Trophy, label: 'Ranking', color: 'bg-amber-600' },
-    { id: 'messages', icon: Mail, label: 'Mensagens', color: 'bg-pink-600' },
+    { id: 'reader', icon: BookOpen, label: 'Bíblia Sagrada', desc: 'Leitura & Exegese', color: 'from-red-900 to-red-800' },
+    { id: 'panorama', icon: GraduationCap, label: 'EBD Panorama', desc: 'Estudos Profundos', color: 'from-blue-900 to-blue-800' },
+    { id: 'devotional', icon: Calendar, label: 'Devocional', desc: 'Palavra Diária', color: 'from-purple-900 to-purple-800' },
+    { id: 'plans', icon: ListChecks, label: 'Planos', desc: 'Metas de Leitura', color: 'from-green-900 to-green-800' },
+    { id: 'ranking', icon: Trophy, label: 'Ranking', desc: 'Conquistas', color: 'from-amber-700 to-amber-600' },
+    { id: 'messages', icon: Mail, label: 'Mensagens', desc: 'Mural da Igreja', color: 'from-pink-800 to-pink-700' },
   ];
 
   const progressPercent = userProgress ? Math.min(100, (userProgress.total_chapters / TOTAL_CHAPTERS) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-[#F5F5DC] dark:bg-dark-bg transition-colors duration-300">
+    <div className="min-h-screen bg-[#F5F5DC] dark:bg-dark-bg transition-colors duration-500">
         {/* MODAL DE INSTRUÇÕES IOS */}
         <AnimatePresence>
             {showIOSInstructions && (
                 <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
                     <motion.div 
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="absolute inset-0 bg-black/60 pointer-events-auto"
+                        className="absolute inset-0 bg-black/60 pointer-events-auto backdrop-blur-sm"
                         onClick={() => setShowIOSInstructions(false)}
                     />
                     <motion.div 
                         initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }}
-                        className="bg-white dark:bg-[#1E1E1E] w-full max-w-sm rounded-t-2xl sm:rounded-2xl p-6 relative z-10 pointer-events-auto pb-10 sm:pb-6"
+                        className="bg-white dark:bg-[#1E1E1E] w-full max-w-sm rounded-t-3xl sm:rounded-3xl p-8 relative z-10 pointer-events-auto pb-12 sm:pb-8 shadow-2xl"
                     >
-                        <button onClick={() => setShowIOSInstructions(false)} className="absolute top-4 right-4"><X className="w-6 h-6 text-gray-500"/></button>
+                        <button onClick={() => setShowIOSInstructions(false)} className="absolute top-4 right-4 p-2 bg-gray-100 dark:bg-gray-800 rounded-full"><X className="w-5 h-5 text-gray-500"/></button>
                         <div className="text-center">
-                            <Share className="w-12 h-12 mx-auto text-blue-500 mb-4" />
-                            <h3 className="font-cinzel font-bold text-xl mb-2 dark:text-white">Instalar no iPhone</h3>
-                            <p className="font-montserrat text-sm text-gray-600 dark:text-gray-300 mb-4">A Apple exige instalação manual:</p>
-                            <ol className="text-left text-sm space-y-3 bg-gray-50 dark:bg-black/20 p-4 rounded-xl">
-                                <li className="flex items-center gap-2 dark:text-gray-200">
-                                    <span className="bg-gray-200 dark:bg-gray-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">1</span>
-                                    Toque em <strong>Compartilhar</strong> <Share className="w-4 h-4 inline" />
+                            <Share className="w-14 h-14 mx-auto text-blue-500 mb-5" />
+                            <h3 className="font-cinzel font-bold text-2xl mb-2 dark:text-white">Instalar no iPhone</h3>
+                            <p className="font-montserrat text-sm text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">Para a melhor experiência, adicione este aplicativo à sua tela inicial:</p>
+                            <ol className="text-left text-sm space-y-4 bg-gray-50 dark:bg-black/20 p-5 rounded-2xl border border-gray-100 dark:border-gray-800">
+                                <li className="flex items-center gap-3 dark:text-gray-200">
+                                    <span className="bg-gray-200 dark:bg-gray-700 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0">1</span>
+                                    <span>Toque em <strong>Compartilhar</strong> <Share className="w-4 h-4 inline" /></span>
                                 </li>
-                                <li className="flex items-center gap-2 dark:text-gray-200">
-                                    <span className="bg-gray-200 dark:bg-gray-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">2</span>
-                                    Selecione <strong>"Adicionar à Tela de Início"</strong>.
+                                <li className="flex items-center gap-3 dark:text-gray-200">
+                                    <span className="bg-gray-200 dark:bg-gray-700 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0">2</span>
+                                    <span>Selecione <strong>"Adicionar à Tela de Início"</strong>.</span>
                                 </li>
                             </ol>
                         </div>
@@ -144,40 +141,41 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
             )}
         </AnimatePresence>
 
-        {/* MODAL DE INSTRUÇÕES DESKTOP/PC */}
+        {/* MODAL DE INSTRUÇÕES DESKTOP */}
         <AnimatePresence>
             {showDesktopInstructions && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
                     <motion.div 
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="absolute inset-0 bg-black/60 pointer-events-auto"
+                        className="absolute inset-0 bg-black/60 pointer-events-auto backdrop-blur-sm"
                         onClick={() => setShowDesktopInstructions(false)}
                     />
                     <motion.div 
-                        initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
-                        className="bg-white dark:bg-[#1E1E1E] w-full max-w-md rounded-2xl p-6 relative z-10 pointer-events-auto"
+                        initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
+                        className="bg-white dark:bg-[#1E1E1E] w-full max-w-md rounded-3xl p-8 relative z-10 pointer-events-auto shadow-2xl"
                     >
-                        <button onClick={() => setShowDesktopInstructions(false)} className="absolute top-4 right-4"><X className="w-6 h-6 text-gray-500"/></button>
+                        <button onClick={() => setShowDesktopInstructions(false)} className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition"><X className="w-5 h-5 text-gray-500"/></button>
                         <div className="text-center">
-                            <Monitor className="w-12 h-12 mx-auto text-[#8B0000] dark:text-[#ff6b6b] mb-4" />
-                            <h3 className="font-cinzel font-bold text-xl mb-2 dark:text-white">Instalar no Computador</h3>
-                            <p className="font-montserrat text-sm text-gray-600 dark:text-gray-300 mb-4">Seu navegador bloqueou a instalação automática.</p>
+                            <Monitor className="w-14 h-14 mx-auto text-[#8B0000] dark:text-[#ff6b6b] mb-5" />
+                            <h3 className="font-cinzel font-bold text-2xl mb-2 dark:text-white">Instalar App</h3>
+                            <p className="font-montserrat text-sm text-gray-600 dark:text-gray-300 mb-6">Instale para acesso rápido e offline.</p>
                             
-                            <div className="bg-gray-100 dark:bg-black/30 p-4 rounded-xl text-left border-l-4 border-[#C5A059]">
-                                <p className="text-sm font-bold mb-2 dark:text-white">Como forçar a instalação:</p>
-                                <div className="flex flex-col gap-2 text-sm text-gray-800 dark:text-gray-200">
-                                    <div className="flex items-center gap-2">
-                                        <Download className="w-4 h-4 text-[#8B0000] dark:text-[#ff6b6b]" />
-                                        <span>Procure o ícone de <strong>Download/Instalar</strong> na barra de endereço (onde digita o site).</span>
+                            <div className="bg-gray-50 dark:bg-black/30 p-5 rounded-2xl text-left border border-gray-100 dark:border-gray-800">
+                                <p className="text-sm font-bold mb-3 dark:text-white uppercase tracking-wider text-xs">Instruções:</p>
+                                <div className="flex flex-col gap-3 text-sm text-gray-700 dark:text-gray-300">
+                                    <div className="flex items-start gap-3">
+                                        <Download className="w-5 h-5 text-[#8B0000] dark:text-[#ff6b6b] shrink-0" />
+                                        <span>Busque o ícone de instalação na barra de endereços do navegador.</span>
                                     </div>
-                                    <div className="flex items-center gap-2 ml-1 opacity-80 text-xs mt-2">
-                                        <span>Ou: Menu (três pontos) &gt; Salvar e Compartilhar &gt; Instalar página como App.</span>
+                                    <div className="flex items-start gap-3">
+                                        <MoreVertical className="w-5 h-5 text-gray-400 shrink-0" />
+                                        <span>Ou: Menu &gt; Salvar e Compartilhar &gt; Instalar página como App.</span>
                                     </div>
                                 </div>
                             </div>
                             <button 
                                 onClick={() => setShowDesktopInstructions(false)}
-                                className="mt-6 w-full py-3 bg-[#8B0000] text-white rounded-lg font-bold font-cinzel hover:bg-[#600018]"
+                                className="mt-6 w-full py-4 bg-[#8B0000] text-white rounded-xl font-bold font-cinzel hover:bg-[#600018] shadow-lg shadow-red-900/20 active:scale-95 transition-all"
                             >
                                 Entendi
                             </button>
@@ -187,85 +185,119 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
             )}
         </AnimatePresence>
 
-        {/* Hero */}
-        <div className="bg-gradient-to-b from-[#8B0000] to-[#600018] text-white p-8 rounded-b-[40px] shadow-xl relative overflow-hidden pb-16">
-            <div className="absolute top-4 right-4 z-20 flex gap-2">
+        {/* HERO SECTION */}
+        <div className="relative bg-gradient-to-br from-[#600010] via-[#8B0000] to-[#500000] text-white pb-20 rounded-b-[40px] shadow-2xl overflow-hidden">
+             {/* Background Pattern */}
+             <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
+             
+             {/* Top Bar */}
+             <div className="relative z-20 px-6 pt-6 flex justify-between items-center">
                 <AnimatePresence>
                     {!isStandalone && (
                         <motion.button 
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.8 }}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
                             onClick={handleInstallClick} 
-                            className="p-2 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/30 flex items-center gap-2 px-3 transition-all border border-white/30 group"
-                            title="Instalar App"
+                            className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-3 py-1.5 rounded-full flex items-center gap-2 hover:bg-white/20 transition-all active:scale-95"
                         >
-                            <Download className="w-5 h-5 group-hover:animate-bounce" />
-                            <span className="text-xs font-bold hidden md:inline">Instalar App</span>
+                            <Download className="w-4 h-4" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider">Instalar</span>
                         </motion.button>
                     )}
                 </AnimatePresence>
-                <button onClick={toggleDarkMode} className="p-2 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-all border border-white/30">
-                    {darkMode ? <Sun className="w-5 h-5 text-yellow-300" /> : <Moon className="w-5 h-5 text-white" />}
-                </button>
-                <button onClick={onLogout} className="p-2 rounded-full bg-white/10 backdrop-blur-md hover:bg-red-500/50 transition-all border border-white/30" title="Sair / Trocar Conta">
-                    <LogOut className="w-5 h-5 text-white" />
-                </button>
+                <div className={`flex gap-2 ${isStandalone ? 'ml-auto' : ''}`}>
+                    <button onClick={toggleDarkMode} className="p-2.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20 transition-all active:scale-90">
+                        {darkMode ? <Sun className="w-5 h-5 text-[#C5A059]" /> : <Moon className="w-5 h-5 text-white" />}
+                    </button>
+                    <button onClick={onLogout} className="p-2.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 hover:bg-red-500/50 transition-all active:scale-90 text-white/80 hover:text-white">
+                        <LogOut className="w-5 h-5" />
+                    </button>
+                </div>
             </div>
-            <div className="relative z-10 text-center">
-                <h2 className="font-montserrat text-xs tracking-[0.3em] uppercase opacity-80 mb-1">{CHURCH_NAME}</h2>
-                <div className="inline-block bg-[#C5A059]/20 px-3 py-1 rounded-full mb-4 border border-[#C5A059]/30">
-                    <p className="font-cinzel text-[10px] font-bold uppercase text-[#C5A059] tracking-widest">
-                        Presidente: {PASTOR_PRESIDENT}
-                    </p>
-                </div>
-                
-                <h1 onClick={handleLogoClick} className="font-cinzel text-4xl font-bold mb-1 cursor-pointer select-none active:scale-95 transition-transform">
-                    Bíblia ADMA
-                </h1>
-                <p className="font-cormorant italic text-lg opacity-90">Prof. Michel Felix</p>
-                
-                <div className="mt-4 flex items-center justify-center gap-2">
-                    <div className="bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm">
-                        <span className="font-montserrat text-xs">Olá, {user?.user_name?.split(' ')[0] || 'Visitante'}</span>
+
+            {/* Main Hero Content */}
+            <div className="relative z-10 px-6 pt-8 text-center">
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6 }}
+                >
+                    <div className="inline-flex items-center justify-center gap-2 mb-2 opacity-80">
+                         <span className="h-[1px] w-8 bg-[#C5A059]"></span>
+                         <h2 className="font-montserrat text-[10px] tracking-[0.3em] uppercase">{CHURCH_NAME}</h2>
+                         <span className="h-[1px] w-8 bg-[#C5A059]"></span>
                     </div>
-                </div>
+
+                    <h1 onClick={handleLogoClick} className="font-cinzel text-5xl font-bold mb-2 cursor-pointer select-none drop-shadow-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-white/80">
+                        Bíblia ADMA
+                    </h1>
+                    <p className="font-cormorant italic text-xl text-[#C5A059] mb-8 font-light">Prof. Michel Felix</p>
+                    
+                    <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-lg px-4 py-2 rounded-full border border-white/10 shadow-lg">
+                        <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                        <span className="font-montserrat text-xs font-bold">Olá, {user?.user_name?.split(' ')[0] || 'Visitante'}</span>
+                    </div>
+                </motion.div>
             </div>
         </div>
 
-        {/* Status Card */}
-        <div className="px-6 -mt-10 relative z-20">
+        {/* PROGRESS CARD (Floating) */}
+        <div className="px-6 -mt-12 relative z-20 mb-8">
             <motion.div 
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white dark:bg-dark-card p-4 rounded-2xl shadow-lg border border-[#C5A059]/30 dark:border-[#C5A059]/10"
+                transition={{ delay: 0.2, duration: 0.5 }}
+                className="bg-white dark:bg-[#1E1E1E] p-6 rounded-3xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] border border-white/50 dark:border-white/5 backdrop-blur-sm"
             >
-                <div className="flex justify-between items-end mb-2">
-                    <span className="font-cinzel font-bold text-[#8B0000] dark:text-[#ff6b6b] text-sm">Progresso Geral</span>
-                    <span className="font-montserrat font-bold text-2xl dark:text-gray-200">{progressPercent.toFixed(1)}%</span>
+                <div className="flex justify-between items-end mb-4">
+                    <div className="flex flex-col">
+                        <span className="font-montserrat text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Seu Progresso</span>
+                        <span className="font-cinzel font-bold text-[#8B0000] dark:text-[#ff6b6b] text-xl flex items-center gap-2">
+                             Leitura Bíblica <Trophy className="w-4 h-4 text-[#C5A059]" />
+                        </span>
+                    </div>
+                    <span className="font-montserrat font-bold text-3xl dark:text-white leading-none">{progressPercent.toFixed(0)}<span className="text-sm align-top opacity-50">%</span></span>
                 </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                    <div className="bg-[#C5A059] h-2.5 rounded-full" style={{ width: `${progressPercent}%` }}></div>
+                
+                <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-3 mb-3 overflow-hidden">
+                    <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progressPercent}%` }}
+                        transition={{ duration: 1.5, ease: "easeOut" }}
+                        className="bg-gradient-to-r from-[#8B0000] to-[#C5A059] h-full rounded-full shadow-[0_0_10px_rgba(197,160,89,0.5)]"
+                    ></motion.div>
                 </div>
-                <p className="text-right text-xs text-gray-400 mt-1 font-montserrat">{userProgress?.total_chapters || 0} / {TOTAL_CHAPTERS} Capítulos</p>
+                <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    <span>Iniciante</span>
+                    <span>{userProgress?.total_chapters || 0} / {TOTAL_CHAPTERS} Caps</span>
+                    <span>Mestre</span>
+                </div>
             </motion.div>
         </div>
 
-        {/* Menu Grid */}
-        <div className="p-6 grid grid-cols-3 gap-4">
+        {/* MENU GRID (Bento Style) */}
+        <div className="px-6 pb-24 grid grid-cols-2 gap-4">
             {menuItems.map((item, idx) => (
                 <motion.button 
                     key={item.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: idx * 0.05 }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 + (idx * 0.05) }}
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.96 }}
                     onClick={() => onNavigate(item.id)} 
-                    className="bg-white dark:bg-dark-card p-4 rounded-2xl shadow-md flex flex-col items-center gap-3 border border-[#C5A059]/20 hover:shadow-xl transition-all active:scale-95"
+                    className={`relative overflow-hidden group bg-white dark:bg-[#1E1E1E] p-5 rounded-3xl shadow-sm hover:shadow-xl dark:shadow-none dark:hover:bg-[#252525] border border-gray-100 dark:border-white/5 transition-all duration-300 text-left h-36 flex flex-col justify-between`}
                 >
-                    <div className={`w-12 h-12 rounded-2xl ${item.color} bg-opacity-10 dark:bg-opacity-20 flex items-center justify-center`}>
-                        <item.icon className={`w-6 h-6 ${item.color.replace('bg-', 'text-')} dark:text-white`} />
+                    <div className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center shadow-lg text-white mb-2 group-hover:scale-110 transition-transform duration-300`}>
+                        <item.icon className="w-5 h-5" />
                     </div>
-                    <span className="font-cinzel font-bold text-[#1a0f0f] dark:text-gray-200 text-xs text-center">{item.label}</span>
+                    <div>
+                        <span className="font-cinzel font-bold text-[#1a0f0f] dark:text-gray-100 text-sm block leading-tight">{item.label}</span>
+                        <span className="font-montserrat text-[10px] text-gray-400 dark:text-gray-500 font-medium mt-1 block">{item.desc}</span>
+                    </div>
+                    {/* Subtle Gradient Overlay on Hover */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-transparent to-black/5 dark:to-white/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                 </motion.button>
             ))}
             
@@ -273,33 +305,36 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                 <motion.button 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => onNavigate('admin')} 
-                    className="col-span-3 bg-[#1a0f0f] dark:bg-black text-white p-4 rounded-xl shadow-lg flex items-center justify-center gap-3 mt-2 border border-[#C5A059]"
+                    className="col-span-2 bg-[#1a0f0f] dark:bg-black text-[#C5A059] p-5 rounded-3xl shadow-lg border border-[#C5A059]/30 flex items-center justify-center gap-4 group mt-2"
                 >
-                    <ShieldCheck className="w-5 h-5 text-[#C5A059]" />
-                    <span className="font-cinzel font-bold text-[#C5A059]">Painel Editor Chefe (Admin)</span>
+                    <ShieldCheck className="w-6 h-6 group-hover:rotate-12 transition-transform" />
+                    <div className="text-left">
+                        <span className="font-cinzel font-bold block text-sm">Painel Editor Chefe</span>
+                        <span className="text-[10px] opacity-60 uppercase tracking-widest">Acesso Restrito</span>
+                    </div>
                 </motion.button>
             )}
-        </div>
 
-        {/* Instagram Button */}
-        <div className="px-6 mt-2">
-            <a 
+            {/* Instagram Button */}
+            <motion.a 
                 href="https://www.instagram.com/adma.vilardosteles/" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white p-4 rounded-xl shadow-lg flex items-center justify-center gap-3 active:scale-95 transition-transform"
+                whileTap={{ scale: 0.98 }}
+                className="col-span-2 mt-2 w-full bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white p-5 rounded-3xl shadow-lg shadow-pink-500/20 flex items-center justify-center gap-3"
             >
                 <Instagram className="w-6 h-6" />
-                <span className="font-cinzel font-bold">Nos Siga no Insta</span>
-            </a>
+                <span className="font-cinzel font-bold text-sm">Siga a ADMA no Instagram</span>
+            </motion.a>
         </div>
         
-        <div className="text-center mt-4 opacity-60 pb-10 flex flex-col items-center gap-1">
-            <p className="font-cinzel text-xs flex items-center gap-1 text-green-700 dark:text-green-500 font-bold">
-                 <CheckCircle2 className="w-3 h-3"/> {APP_VERSION}
+        {/* Footer */}
+        <div className="text-center pb-24 opacity-40">
+            <p className="font-cinzel text-[10px] font-bold flex items-center justify-center gap-1.5 text-green-700 dark:text-green-500">
+                 <CheckCircle2 className="w-3 h-3"/> Sistema Conectado • {APP_VERSION}
             </p>
-            <p className="text-[10px] text-gray-400">Sistema Conectado</p>
         </div>
     </div>
   );
