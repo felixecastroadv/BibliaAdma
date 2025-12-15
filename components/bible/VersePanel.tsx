@@ -28,9 +28,9 @@ interface ChatMessage {
 const OLD_TESTAMENT_BOOKS = ['Gênesis', 'Êxodo', 'Levítico', 'Números', 'Deuteronômio', 'Josué', 'Juízes', 'Rute', '1 Samuel', '2 Samuel', '1 Reis', '2 Reis', '1 Crônicas', '2 Crônicas', 'Esdras', 'Neemias', 'Ester', 'Jó', 'Salmos', 'Provérbios', 'Eclesiastes', 'Cantares', 'Isaías', 'Jeremias', 'Lamentações', 'Ezequiel', 'Daniel', 'Oséias', 'Joel', 'Amós', 'Obadias', 'Jonas', 'Miquéias', 'Naum', 'Habacuque', 'Sofonias', 'Ageu', 'Zacarias', 'Malaquias'];
 
 // --- CONFIGURAÇÃO DE COTAS ---
-const BASE_DAILY_LIMIT = 3; // Todo mundo tem 3
-const BONUS_CHAPTER_STEP = 10; // A cada 10 caps lidos ganha +1
-const MAX_DAILY_LIMIT = 15; // Teto máximo
+const BASE_DAILY_LIMIT = 3; 
+const BONUS_CHAPTER_STEP = 10; 
+const MAX_DAILY_LIMIT = 15; 
 
 export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, chapter, isAdmin, onShowToast, userProgress }: VersePanelProps) {
   const [activeTab, setActiveTab] = useState<'professor' | 'dicionario' | 'chat'>('professor');
@@ -73,32 +73,25 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
 
   useEffect(() => {
     if (isOpen) {
-        // RESET CRÍTICO: Limpa estados anteriores para garantir que não mostre dados do versículo errado
         setCommentary(null);
         setDictionary(null);
-        
         loadContent();
-        
-        // Reset chat on open new verse
         setChatMessages([{
             role: 'model',
             text: `Olá! Sou o assistente virtual do Prof. Michel Felix. Qual sua dúvida sobre ${book} ${chapter}:${verseNumber}?`
         }]);
         checkQuota();
-        // Reset Admin states
         setIsEditingCommentary(false);
         setCustomAiInstruction('');
         setShowAiInput(false);
-        // Reset Report
         setShowReport(false);
         setReportText('');
     }
-    // Stop audio when closing
     if (!isOpen) {
         window.speechSynthesis.cancel();
         setIsPlaying(false);
     }
-  }, [isOpen, verseKey]); // Adicionado verseKey para disparar quando mudar o versículo
+  }, [isOpen, verseKey]); 
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -121,7 +114,6 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
     }
   }, [playbackRate]);
 
-  // --- LÓGICA DE COTAS ---
   const checkQuota = () => {
     const today = new Date().toISOString().split('T')[0];
     const saved = localStorage.getItem('adma_chat_usage');
@@ -132,18 +124,13 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
         if (data.date === today) {
             usage = data.count;
         } else {
-            // Reset se for outro dia
             localStorage.setItem('adma_chat_usage', JSON.stringify({ date: today, count: 0 }));
         }
     }
-
     setMsgsUsed(usage);
-
-    // Calcula limite baseado no progresso
     const chaptersRead = userProgress?.total_chapters || 0;
     const bonus = Math.floor(chaptersRead / BONUS_CHAPTER_STEP);
     const totalLimit = Math.min(MAX_DAILY_LIMIT, BASE_DAILY_LIMIT + bonus);
-    
     setDailyQuota(totalLimit);
   };
 
@@ -153,7 +140,6 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
       localStorage.setItem('adma_chat_usage', JSON.stringify({ date: today, count: newCount }));
       setMsgsUsed(newCount);
   };
-  // -----------------------
 
   const loadContent = async () => {
     setLoading(true);
@@ -163,7 +149,6 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
             db.entities.Dictionary.filter({ verse_key: verseKey })
         ]);
 
-        // Verificação extra de segurança para garantir que o dado retornado é do versículo atual
         if (commRes && commRes.length > 0 && commRes[0].verse_key === verseKey) {
             setCommentary(commRes[0]);
         } else {
@@ -214,31 +199,21 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
 
   const handleSendQuestion = async (text: string) => {
       if (!text.trim()) return;
-
-      // Verifica cota
       if (msgsUsed >= dailyQuota && !isAdmin) {
           onShowToast(`Limite diário atingido! Leia mais ${BONUS_CHAPTER_STEP} capítulos para ganhar +1 pergunta.`, 'error');
           return;
       }
-      
       const userMsg: ChatMessage = { role: 'user', text };
       setChatMessages(prev => [...prev, userMsg]);
       setChatInput('');
       setIsChatLoading(true);
-
-      // Incrementa uso ANTES de chamar a API para evitar race conditions
       if (!isAdmin) incrementUsage();
 
       const prompt = `
         CONTEXTO BÍBLICO: Livro de ${book}, Capítulo ${chapter}, Versículo ${verseNumber}.
         TEXTO: "${verse}"
-        
-        PERSONA: Você é o Prof. Michel Felix, um teólogo Pentecostal Clássico da Assembleia de Deus (Ministério Ágape).
-        ESTILO: Responda de forma curta, direta, pastoral e encorajadora. Use emojis moderados.
-        DOUTRINA: Arminiana, Ortodoxa, Bibliocêntrica. Rejeite liberalismo teológico.
-        
+        PERSONA: Você é o Prof. Michel Felix, um teólogo Pentecostal Clássico.
         PERGUNTA DO ALUNO: "${text}"
-        
         RESPOSTA:
       `;
 
@@ -257,13 +232,11 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
     onShowToast(`Analisando texto original em ${lang}...`, 'info');
 
     const prompt = `
-      Você é um HEBRAÍSTA e HELENISTA SÊNIOR com doutorado em línguas bíblicas.
+      Você é um HEBRAÍSTA e HELENISTA SÊNIOR.
       TAREFA: Análise lexical COMPLETA de ${book} ${chapter}:${verseNumber}
       Texto em português: "${verse}"
       Idioma original: ${lang.toUpperCase()}
-
-      Analise TODAS as palavras principais do versículo.
-      Preencha TODOS os campos: original, transliteration, portuguese, polysemy, etymology, grammar.
+      Analise TODAS as palavras principais.
     `;
 
     const schema = {
@@ -292,7 +265,6 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
 
     try {
       const response = await generateContent(prompt, schema);
-      
       const data: DictionaryEntry = {
         book, chapter, verse: verseNumber, verse_key: verseKey,
         original_text: response.hebrewGreekText,
@@ -303,9 +275,8 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
       setIsSaving(true);
       await db.entities.Dictionary.create(data);
       setDictionary(data);
-      onShowToast('Dicionário gerado e salvo para todos!', 'success');
+      onShowToast('Dicionário gerado e salvo!', 'success');
     } catch (e: any) {
-      console.error(e);
       onShowToast(`Erro: ${e.message}`, 'error');
     } finally {
       setLoading(false);
@@ -315,7 +286,6 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
 
   const generateCommentary = async () => {
     setLoading(true);
-
     const customPromptAddon = customAiInstruction 
         ? `\n\nATENÇÃO - INSTRUÇÃO ESPECIAL DO ADMIN: ${customAiInstruction}` 
         : "";
@@ -327,35 +297,30 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
             TEXTO BÍBLICO: "${verse}"
             ${customPromptAddon}
 
-            --- SEGURANÇA DOUTRINÁRIA (NÍVEL MÁXIMO - CRÍTICO) ---
-            1. SOLA SCRIPTURA ABSOLUTA: Interprete a Bíblia SOMENTE com a Bíblia (os 66 livros canônicos).
-            2. PROIBIÇÃO TOTAL DE FONTES APÓCRIFAS: É ESTRITAMENTE PROIBIDO usar conceitos baseados no Livro de Enoque, Lendas Judaicas, Midrashim ou Cultura Extra-Bíblica para criar doutrina.
-            3. CONTRA HERESIAS E ESPECULAÇÕES:
-               - Em textos polêmicos (ex: Gn 6, 1 Pe 3:19, Jd 6), REJEITE interpretações míticas (ex: anjos coabitando com mulheres ou "espíritos em prisão" sendo anjos de Gn 6 baseados em Enoque).
-               - Adote a interpretação Teológica Conservadora Padrão (ex: "espíritos em prisão" refere-se à desobediência humana no tempo de Noé ou a proclamação de vitória do Cristo, sem envolver anjos híbridos).
-               - Mantenha a distinção clara entre natureza angélica e humana (anjos não procriam).
-            4. VIÉS: Arminiano, Assembleiano e Bibliocêntrico.
+            --- SEGURANÇA DOUTRINÁRIA (CRÍTICO) ---
+            1. SOLA SCRIPTURA ABSOLUTA.
+            2. PROIBIÇÃO TOTAL DE FONTES APÓCRIFAS (Enoque, Lendas).
+            3. Em textos polêmicos (ex: Gn 6, 1 Pe 3:19), REJEITE interpretações míticas (anjos x mulheres). Adote a visão conservadora.
+            4. VIÉS: Arminiano, Assembleiano.
 
-            --- ESTILO DE ESCRITA ---
-            - Vibrante, Pastoral, Acessível e Doutrinário.
-            - NUNCA use frases de auto-identificação ("Eu como teólogo...", "Nós cremos...").
-            - PALAVRAS ORIGINAIS: Cite a palavra chave no original (Hebraico/Grego) APENAS se for essencial para esclarecer a doutrina e afastar heresias.
+            --- FORMATAÇÃO DE TEXTO (IMPORTANTE) ---
+            - Use asteriscos simples (*) para destacar palavras em GRÊGO/HEBRAICO ou ÊNFASES (ex: *hypomonē*).
+            - Use asteriscos duplos (**) APENAS para conceitos teológicos chave.
+            - Estruture em 3 parágrafos claros e profundos.
 
-            ESTRUTURA:
-            - 2 a 3 parágrafos fluídos.
-            - Comece contextualizando e termine com aplicação prática.
+            ESTILO: Vibrante, Pastoral, Acessível.
         `;
         const text = await generateContent(prompt);
         const data = { 
-            ...(commentary || {}), // Mantém ID se existir
+            ...(commentary || {}),
             book, chapter, verse: verseNumber, verse_key: verseKey, commentary_text: text 
         };
         
         setIsSaving(true);
         await db.entities.Commentary.create(data);
         setCommentary(data as Commentary);
-        onShowToast('Comentário gerado e salvo para todos!', 'success');
-        setShowAiInput(false); // Fecha o input após gerar
+        onShowToast('Comentário gerado e salvo!', 'success');
+        setShowAiInput(false); 
     } catch (e: any) {
         onShowToast(`Erro: ${e.message}`, 'error');
     } finally {
@@ -376,9 +341,9 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
           await db.entities.Commentary.create(data);
           setCommentary(data as Commentary);
           setIsEditingCommentary(false);
-          onShowToast('Edição manual salva com sucesso!', 'success');
+          onShowToast('Edição manual salva!', 'success');
       } catch (e) {
-          onShowToast('Erro ao salvar edição.', 'error');
+          onShowToast('Erro ao salvar.', 'error');
       } finally {
           setIsSaving(false);
       }
@@ -386,8 +351,9 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
 
   const speakText = () => {
     if (!commentary || activeTab !== 'professor') return;
-    
-    const utter = new SpeechSynthesisUtterance(commentary.commentary_text);
+    // Limpa marcadores de markdown para leitura fluida
+    const cleanText = commentary.commentary_text.replace(/\*\*/g, '').replace(/\*/g, '');
+    const utter = new SpeechSynthesisUtterance(cleanText);
     utter.lang = 'pt-BR';
     utter.rate = playbackRate;
     const voice = voices.find(v => v.name === selectedVoice);
@@ -411,6 +377,38 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
       setIsEditingCommentary(true);
   };
 
+  // --- RENDERIZADOR PREMIUM DE TEXTO ---
+  const renderFormattedCommentary = (text: string) => {
+    // 1. Divide em parágrafos para aplicar indentação
+    const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+
+    return (
+        <div className="space-y-4">
+            {paragraphs.map((para, i) => {
+                // 2. Parser de Markdown (* e **)
+                // Regex captura: (**bold**) OU (*italic*)
+                const parts = para.split(/(\*\*.*?\*\*|\*.*?\*)/g);
+
+                return (
+                    <p key={i} className="font-cormorant text-xl leading-loose text-gray-900 dark:text-gray-200 text-justify indent-8 tracking-wide">
+                        {parts.map((part, j) => {
+                            if (part.startsWith('**') && part.endsWith('**')) {
+                                // Negrito Premium (Vermelho ADMA)
+                                return <strong key={j} className="text-[#8B0000] dark:text-[#ff6b6b] font-bold">{part.slice(2, -2)}</strong>;
+                            }
+                            if (part.startsWith('*') && part.endsWith('*')) {
+                                // Itálico Premium (Dourado/Gold - Ideal para termos originais)
+                                return <span key={j} className="text-[#C5A059] font-medium italic">{part.slice(1, -1)}</span>;
+                            }
+                            return part;
+                        })}
+                    </p>
+                );
+            })}
+        </div>
+    );
+  };
+
   if (!isOpen) return null;
 
   const msgsLeft = dailyQuota - msgsUsed;
@@ -427,7 +425,6 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                     <p className="font-cormorant text-sm opacity-90 mt-1 line-clamp-2">{verse}</p>
                 </div>
                 <div className="flex gap-2">
-                    {/* Audio Controls for Commentary */}
                     {activeTab === 'professor' && commentary && !isEditingCommentary && (
                         <button onClick={() => setShowAudioSettings(!showAudioSettings)} className="p-1 hover:bg-white/20 rounded-full">
                             <Volume2 className={isPlaying ? "w-6 h-6 animate-pulse" : "w-6 h-6"} />
@@ -437,7 +434,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                 </div>
             </div>
 
-            {/* Audio Settings Panel */}
+            {/* Audio Settings */}
             {showAudioSettings && activeTab === 'professor' && (
                 <div className="bg-white dark:bg-gray-900 p-3 border-b border-[#C5A059] flex flex-col gap-2 animate-in slide-in-from-top-2 shrink-0">
                     <div className="flex items-center justify-between">
@@ -489,7 +486,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                 ) : (
                     <>
                         {activeTab === 'professor' && (
-                            <div className="p-5 space-y-4 flex-1 flex flex-col">
+                            <div className="p-6 md:p-8 space-y-4 flex-1 flex flex-col">
                                 {isEditingCommentary ? (
                                     <div className="flex-1 flex flex-col gap-2">
                                         <div className="flex justify-between items-center mb-1">
@@ -511,17 +508,20 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                                     </div>
                                 ) : commentary ? (
                                     <>
-                                        <div className="prose prose-lg font-cormorant text-gray-900 dark:text-gray-200">
-                                            <p className="whitespace-pre-line leading-relaxed text-justify">{commentary.commentary_text}</p>
+                                        {/* Decorative Header inside text */}
+                                        <div className="flex items-center justify-center mb-6">
+                                            <div className="h-[1px] w-12 bg-[#C5A059]/50"></div>
+                                            <span className="mx-3 font-cinzel text-[#C5A059] text-[10px] uppercase tracking-[0.2em]">Exegese & Aplicação</span>
+                                            <div className="h-[1px] w-12 bg-[#C5A059]/50"></div>
                                         </div>
+
+                                        {renderFormattedCommentary(commentary.commentary_text)}
                                         
                                         {isAdmin && (
-                                            <div className="mt-6 pt-4 border-t border-[#C5A059]/20 space-y-3">
+                                            <div className="mt-8 pt-6 border-t border-[#C5A059]/20 space-y-3">
                                                 <div className="flex items-center justify-between">
                                                      <h4 className="font-cinzel font-bold text-xs text-gray-500 flex items-center gap-1"><Command className="w-3 h-3"/> ADMIN CONTROLS</h4>
                                                 </div>
-                                                
-                                                {/* Botões de Ação Admin */}
                                                 <div className="flex gap-2">
                                                     <button 
                                                         onClick={startEditing} 
@@ -536,8 +536,6 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                                                         <Bot className="w-3 h-3"/> IA Personalizada
                                                     </button>
                                                 </div>
-
-                                                {/* Área de Input da IA Personalizada */}
                                                 {showAiInput && (
                                                     <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg animate-in slide-in-from-top-2">
                                                         <label className="text-xs font-bold text-gray-600 dark:text-gray-400 block mb-1">Instrução Especial para a IA:</label>
@@ -556,8 +554,6 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                                                         </button>
                                                     </div>
                                                 )}
-
-                                                {/* Botão Padrão de Regerar (se menu IA fechado) */}
                                                 {!showAiInput && (
                                                     <button onClick={generateCommentary} className="w-full py-2 border border-gray-300 text-gray-500 rounded text-xs flex items-center justify-center gap-1 hover:bg-gray-50 dark:hover:bg-gray-800">
                                                         <RefreshCw className="w-3 h-3"/> Regerar (Padrão)
@@ -640,13 +636,10 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
 
                         {activeTab === 'chat' && (
                             <div className="flex flex-col h-full bg-[#E5DDD5] dark:bg-[#0b141a]">
-                                {/* Chat Header Info */}
                                 <div className="bg-white/80 dark:bg-black/40 p-2 text-center text-xs font-bold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-800 flex justify-center items-center gap-2 backdrop-blur-sm">
                                     <Battery className={`w-4 h-4 ${isQuotaFull ? 'text-red-500' : 'text-green-500'}`} />
                                     <span>{msgsLeft} perguntas restantes hoje</span>
                                 </div>
-
-                                {/* Chat Messages */}
                                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                                     {chatMessages.map((msg, idx) => {
                                         const isModel = msg.role === 'model';
@@ -669,15 +662,11 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                                     )}
                                     <div ref={chatEndRef} />
                                 </div>
-
-                                {/* Quota Reached Warning */}
                                 {isQuotaFull && (
                                     <div className="px-4 py-3 bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 text-xs font-bold text-center border-t border-red-200">
                                         <Lock className="w-4 h-4 inline mb-1" /> Limite diário atingido! Leia mais capítulos para ganhar perguntas extras amanhã.
                                     </div>
                                 )}
-
-                                {/* Suggested Questions */}
                                 {!isQuotaFull && chatMessages.length < 2 && (
                                     <div className="px-4 py-2 flex gap-2 overflow-x-auto bg-opacity-10 bg-black/5 shrink-0">
                                         {["Como aplicar na minha vida?", "Contexto Histórico", "Significado no Original"].map(q => (
@@ -691,8 +680,6 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                                         ))}
                                     </div>
                                 )}
-
-                                {/* Input Area */}
                                 <div className="p-3 bg-white dark:bg-[#1f2c34] flex gap-2 items-center shrink-0">
                                     <input 
                                         type="text" 
