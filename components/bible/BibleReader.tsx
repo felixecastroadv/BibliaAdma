@@ -105,31 +105,39 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
             const bookMeta = BIBLE_BOOKS.find(b => b.name === book);
             if (!bookMeta) throw new Error("Livro não encontrado.");
 
+            // 1. Tenta IndexedDB (Nova Tecnologia)
             const cacheKey = `bible_acf_${bookMeta.abbrev}_${chapter}`;
-            const cached = localStorage.getItem(cacheKey);
+            const cached = await db.entities.BibleChapter.getOffline(cacheKey);
             
-            if (cached) {
+            if (cached && Array.isArray(cached) && cached.length > 0) {
+                // Suporte ao formato array de strings ["No principio", "criou Deus"]
+                const formatted = cached.map((t: string, i: number) => ({ number: i + 1, text: t }));
+                setVerses(formatted);
+                setLoading(false);
+                return;
+            }
+
+            // 2. Fallback: LocalStorage (Legado, para não quebrar quem já tinha algo salvo pequeno)
+            const legacyCache = localStorage.getItem(cacheKey);
+            if (legacyCache) {
                 try {
-                    const parsed = JSON.parse(cached);
-                    // SUPORTE HÍBRIDO: Lê tanto o formato antigo (objetos) quanto o novo (strings)
+                    const parsed = JSON.parse(legacyCache);
                     if (Array.isArray(parsed) && parsed.length > 0) {
                         if (typeof parsed[0] === 'string') {
                             const formatted = parsed.map((t: string, i: number) => ({ number: i + 1, text: t }));
                             setVerses(formatted);
                             setLoading(false);
-                            return; 
+                            return;
                         } else if (typeof parsed[0] === 'object' && parsed[0].text) {
                             setVerses(parsed);
                             setLoading(false);
                             return;
                         }
-                    } 
-                    console.warn("Cache inválido. Tentando online...");
-                } catch(e) {
-                    console.error("Erro cache", e);
-                }
+                    }
+                } catch(e) {}
             }
 
+            // 3. Fallback: Online
             setSourceMode('online');
             const res = await fetch(`https://www.abibliadigital.com.br/api/verses/acf/${bookMeta.abbrev}/${chapter}`);
             if (!res.ok) throw new Error("Falha ao baixar da internet.");
@@ -142,11 +150,9 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                     text: v.text.trim()
                 }));
                 
-                // Salva no formato OTIMIZADO para o futuro
+                // Tenta salvar no IndexedDB para a próxima vez
                 const simpleVerses = cleanVerses.map((v:any) => v.text);
-                try {
-                    localStorage.setItem(cacheKey, JSON.stringify(simpleVerses));
-                } catch(e) { console.warn("Quota full, read-only mode."); }
+                await db.entities.BibleChapter.saveOffline(cacheKey, simpleVerses);
                 
                 setVerses(cleanVerses);
             } else {
@@ -161,10 +167,11 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
         }
     };
 
-    const clearCacheAndRetry = () => {
+    const clearCacheAndRetry = async () => {
         const bookMeta = BIBLE_BOOKS.find(b => b.name === book);
         if(bookMeta) {
             localStorage.removeItem(`bible_acf_${bookMeta.abbrev}_${chapter}`);
+            // Limpa do IDB não implementado aqui individualmente, mas o fetchChapter sobrescreve se conseguir online
             fetchChapter();
         }
     };

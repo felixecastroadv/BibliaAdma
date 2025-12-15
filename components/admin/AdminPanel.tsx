@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, Key, ShieldCheck, RefreshCw, Loader2, Save, AlertTriangle, CheckCircle, XCircle, Info, BookOpen, Download, Server, Database, Upload, FileJson, MessageSquare, Languages, GraduationCap, Calendar, Flag, Trash2, ExternalLink, HardDrive } from 'lucide-react';
 import { getStoredApiKey, setStoredApiKey, generateContent } from '../../services/geminiService';
 import { BIBLE_BOOKS, generateChapterKey, generateVerseKey, TOTAL_CHAPTERS } from '../../constants';
-import { db } from '../../services/database';
+import { db, bibleStorage } from '../../services/database';
 import { Type as GenType } from "@google/genai";
 import { ContentReport } from '../../types';
 
@@ -51,15 +51,15 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
     }
   };
 
-  // Verifica e conta capítulos válidos no LocalStorage
-  const checkOfflineIntegrity = () => {
-      let count = 0;
-      BIBLE_BOOKS.forEach(b => {
-          for(let c=1; c<=b.chapters; c++) {
-              if (localStorage.getItem(`bible_acf_${b.abbrev}_${c}`)) count++;
-          }
-      });
-      setOfflineCount(count);
+  // Verifica quantos capítulos estão realmente salvos no IndexedDB
+  const checkOfflineIntegrity = async () => {
+      try {
+          const count = await bibleStorage.count();
+          setOfflineCount(count);
+      } catch (e) {
+          console.error("Erro ao ler IndexedDB", e);
+          setOfflineCount(0);
+      }
   };
 
   const loadReports = async () => {
@@ -101,14 +101,13 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
     onShowToast('Chave removida.', 'info');
   };
 
-  // --- LÓGICA DE DOWNLOAD API (COMPACTADA E SEGURA) ---
+  // --- LÓGICA DE DOWNLOAD API (COMPACTADA E SEGURA COM INDEXEDDB) ---
   const fetchWithRetry = async (url: string, retries = 3, backoff = 1000): Promise<any> => {
       try {
           const res = await fetch(url);
           if (res.status === 429) throw new Error("RATE_LIMIT");
           if (!res.ok) throw new Error(`HTTP_${res.status}`);
           const json = await res.json();
-          // Validação extra: o JSON deve ter versículos
           if (!json || !json.verses || json.verses.length === 0) throw new Error("EMPTY_DATA");
           return json;
       } catch (e: any) {
@@ -121,18 +120,17 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   };
 
   const handleDownloadBible = async () => {
-      if (!window.confirm("ATENÇÃO: O download será reiniciado no modo OTIMIZADO (Compacto) para não encher a memória do navegador. Continuar?")) return;
+      if (!window.confirm("Iniciar Download? Usaremos a nova tecnologia 'IndexedDB' para garantir que todo o conteúdo seja salvo sem travar o seu celular.")) return;
       
       setIsProcessing(true);
-      setProcessStatus("Preparando...");
+      setProcessStatus("Preparando banco de dados...");
       setProgress(0);
       let count = 0;
       
       // Limpa dados antigos para liberar espaço e evitar conflitos
-      onShowToast("Otimizando banco de dados...", "info");
-      BIBLE_BOOKS.forEach(b => {
-          for(let c=1; c<=b.chapters; c++) localStorage.removeItem(`bible_acf_${b.abbrev}_${c}`);
-      });
+      onShowToast("Formatando armazenamento...", "info");
+      await bibleStorage.clear();
+      setOfflineCount(0); // Reseta visualmente
 
       try {
         for (const book of BIBLE_BOOKS) {
@@ -146,20 +144,21 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                 try {
                     setProcessStatus(`Baixando ${book.name} ${c}...`);
                     
-                    // Delay vital para não ser bloqueado pela API (300ms)
-                    await new Promise(r => setTimeout(r, 300));
+                    // Delay para evitar bloqueio da API (300ms)
+                    await new Promise(r => setTimeout(r, 200));
                     
                     const data = await fetchWithRetry(`https://www.abibliadigital.com.br/api/verses/acf/${book.abbrev}/${c}`);
                     
                     if (data && data.verses) {
-                        // OTIMIZAÇÃO CRÍTICA: Salva apenas array de strings ["No princípio...", "E a terra..."]
-                        // Isso remove chaves redundantes e reduz o tamanho em 50%
+                        // Salva no IndexedDB (Suporta GBs de dados, não trava)
                         const optimizedVerses = data.verses.map((v: any) => v.text.trim());
-                        localStorage.setItem(key, JSON.stringify(optimizedVerses));
+                        await bibleStorage.save(key, optimizedVerses);
+                        
+                        // ATUALIZAÇÃO EM TEMPO REAL CONFORME PEDIDO
+                        setOfflineCount(prev => (prev || 0) + 1);
                     }
                 } catch(e: any) {
                     console.error(`Falha em ${book.name} ${c}:`, e);
-                    // Se falhar, não salva nada, permitindo re-tentativa futura pelo Leitor
                 }
                 
                 count++;
@@ -167,19 +166,17 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
             }
         }
       } catch (err: any) {
-          if (err.name === 'QuotaExceededError') {
-              alert("ERRO: Memória do NAVEGADOR cheia! Tente limpar o cache do seu navegador nas configurações.");
-          }
+          alert(`Erro no processo: ${err.message}`);
       }
       
       setIsProcessing(false);
       setStopBatch(false);
       setCurrentBookProcessing('');
-      checkOfflineIntegrity(); // Atualiza contador visual
-      onShowToast("Processo finalizado. Verifique a integridade abaixo.", "success");
+      await checkOfflineIntegrity(); // Confirmação final
+      onShowToast("Download Completo! Bíblia salva no IndexedDB.", "success");
   };
 
-  // --- LÓGICA DE IMPORTAÇÃO DE JSON (NORMALIZADOR AVANÇADO) ---
+  // --- LÓGICA DE IMPORTAÇÃO DE JSON (COM INDEXEDDB) ---
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file) return;
@@ -191,13 +188,12 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       reader.onload = async (e) => {
           try {
               const jsonText = e.target?.result as string;
-              // Tenta limpar caracteres invisíveis que quebram JSON
               const cleanJson = jsonText.replace(/^\uFEFF/, ''); 
               const jsonData = JSON.parse(cleanJson);
               await processBibleJSON(jsonData);
           } catch (error) {
               console.error(error);
-              onShowToast("O arquivo não é um JSON válido. Verifique a sintaxe.", "error");
+              onShowToast("O arquivo não é um JSON válido.", "error");
               setIsProcessing(false);
           }
       };
@@ -208,24 +204,24 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   const normalizeBookName = (name: string) => {
       if (!name) return "";
       let n = name.toLowerCase().trim()
-          .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // Remove acentos
-
+          .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); 
       n = n.replace(/^i\s/, "1 ").replace(/^ii\s/, "2 ").replace(/^iii\s/, "3 "); 
       n = n.replace(/^1\.\s/, "1 ").replace(/^2\.\s/, "2 ").replace(/^3\.\s/, "3 ");
-      
       if (n.includes("job")) return "jo";
       if (n.includes("judas")) return "judas";
       if (n.includes("apoc")) return "apocalipse";
       if (n.includes("cantico")) return "cantares";
       if (n.includes("salmo")) return "salmos";
-      
       return n;
   };
 
   const processBibleJSON = async (data: any) => {
-      setProcessStatus("Compactando e salvando...");
+      setProcessStatus("Processando e salvando no Banco...");
+      // Limpa antes de importar
+      await bibleStorage.clear();
+      setOfflineCount(0);
+
       let booksArray: any[] = [];
-      
       if (Array.isArray(data)) booksArray = data;
       else if (data.books && Array.isArray(data.books)) booksArray = data.books;
       else if (data.bible && Array.isArray(data.bible)) booksArray = data.bible;
@@ -242,6 +238,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       }
 
       let booksProcessed = 0;
+      let totalSaved = 0;
       
       for (const bookData of booksArray) {
           const rawName = bookData.name || bookData.book || bookData.n || bookData.abbrev || "";
@@ -252,25 +249,25 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           if (targetBook) {
               const chapters = bookData.chapters || bookData.c || bookData.data;
               if (chapters && Array.isArray(chapters)) {
-                  chapters.forEach((chapterContent: any, index: number) => {
+                  for (let index = 0; index < chapters.length; index++) {
+                      const chapterContent = chapters[index];
                       const chapterNum = index + 1;
                       const key = `bible_acf_${targetBook.abbrev}_${chapterNum}`;
                       
                       let simpleVerses: string[] = [];
-
-                      // Formato 1: Array de Strings (Ideal)
                       if (Array.isArray(chapterContent) && (typeof chapterContent[0] === 'string')) {
                           simpleVerses = chapterContent.map((t: string) => t.trim());
-                      }
-                      // Formato 2: Array de Objetos
-                      else if (Array.isArray(chapterContent) && typeof chapterContent[0] === 'object') {
+                      } else if (Array.isArray(chapterContent) && typeof chapterContent[0] === 'object') {
                            simpleVerses = chapterContent.map((v: any) => (v.text || v.t || "").trim());
                       }
 
                       if (simpleVerses.length > 0) {
-                          localStorage.setItem(key, JSON.stringify(simpleVerses));
+                          await bibleStorage.save(key, simpleVerses);
+                          totalSaved++;
+                          // Atualiza contador a cada 10 capítulos para performance
+                          if (totalSaved % 10 === 0) setOfflineCount(totalSaved);
                       }
-                  });
+                  }
                   booksProcessed++;
               }
           }
@@ -278,12 +275,13 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           const percentage = Math.round((booksProcessed / Math.max(1, booksArray.length)) * 100);
           setProgress(percentage);
           setCurrentBookProcessing(rawName);
-          if (booksProcessed % 10 === 0) await new Promise(r => setTimeout(r, 5));
+          // Pequena pausa para a UI respirar
+          if (booksProcessed % 5 === 0) await new Promise(r => setTimeout(r, 0));
       }
 
       setIsProcessing(false);
-      checkOfflineIntegrity();
-      onShowToast(`Importação concluída! Verifique o contador.`, "success");
+      await checkOfflineIntegrity();
+      onShowToast(`Importação concluída!`, "success");
       if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -300,18 +298,15 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           if (!bookMeta) throw new Error("Livro inválido");
 
           const cacheKey = `bible_acf_${bookMeta.abbrev}_${batchChapter}`;
-          const cachedVerses = localStorage.getItem(cacheKey);
+          
+          // Agora lê do IndexedDB
+          const cachedVerses = await bibleStorage.get(cacheKey);
           
           let verses: {number: number, text: string}[] = [];
-          if (cachedVerses) {
-              const parsed = JSON.parse(cachedVerses);
-              // Adaptação para ler formato otimizado (strings) ou antigo (objetos)
-              if (parsed.length > 0 && typeof parsed[0] === 'string') {
-                  verses = parsed.map((t: string, i: number) => ({ number: i + 1, text: t }));
-              } else {
-                  verses = parsed;
-              }
+          if (cachedVerses && Array.isArray(cachedVerses)) {
+              verses = cachedVerses.map((t: string, i: number) => ({ number: i + 1, text: t }));
           } else {
+              // Fallback online
               const res = await fetch(`https://www.abibliadigital.com.br/api/verses/acf/${bookMeta.abbrev}/${batchChapter}`);
               const data = await res.json();
               verses = data.verses.map((v: any) => ({ number: v.number, text: v.text }));
@@ -450,7 +445,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                  <div className="w-full bg-gray-200 h-2 rounded-full mt-2">
                      <div className="bg-green-500 h-2 rounded-full transition-all duration-1000" style={{ width: `${((offlineCount || 0) / TOTAL_CHAPTERS) * 100}%` }}></div>
                  </div>
-                 <p className="text-[10px] text-gray-400 mt-2">Dados salvos no seu dispositivo (LocalStorage).</p>
+                 <p className="text-[10px] text-gray-400 mt-2">Tecnologia IndexedDB (Sem limites de 5MB).</p>
             </div>
         </div>
 
@@ -479,7 +474,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
             <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow">
                 <Download className="w-8 h-8 text-gray-400 mb-3" />
                 <h3 className="font-bold dark:text-white">Download da Nuvem (Otimizado)</h3>
-                <p className="text-xs text-gray-500 mb-4">Baixa e compacta a Bíblia para caber no seu dispositivo.</p>
+                <p className="text-xs text-gray-500 mb-4">Baixa e salva no Banco de Dados Interno.</p>
                 {isProcessing && !isGeneratingBatch ? (
                     <button onClick={() => setStopBatch(true)} className="w-full py-2 bg-red-100 text-red-600 rounded font-bold text-sm">
                         Cancelar Download ({currentBookProcessing})

@@ -1,7 +1,69 @@
 
 const CACHE_PREFIX = 'adma_cache_v1_';
 
-// Função auxiliar para gerenciar LocalStorage com segurança
+// --- INDEXED DB HELPER (Para grandes volumes de dados - Bíblia Offline) ---
+const DB_NAME = 'ADMA_BIBLE_DB';
+const STORE_NAME = 'chapters';
+const DB_VERSION = 2; // Versão atualizada para garantir criação correta
+
+const openBibleDB = (): Promise<IDBDatabase> => {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = (event) => {
+            const db = (event.target as IDBOpenDBRequest).result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME, { keyPath: 'key' });
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+};
+
+export const bibleStorage = {
+    save: async (key: string, data: any) => {
+        const db = await openBibleDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            const store = tx.objectStore(STORE_NAME);
+            const request = store.put({ key, data }); 
+            request.onsuccess = () => resolve(true);
+            request.onerror = () => reject(request.error);
+        });
+    },
+    get: async (key: string): Promise<any> => {
+        const db = await openBibleDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const request = store.get(key);
+            request.onsuccess = () => resolve(request.result ? request.result.data : null);
+            request.onerror = () => reject(request.error);
+        });
+    },
+    count: async (): Promise<number> => {
+        const db = await openBibleDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const request = store.count();
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    },
+    clear: async () => {
+        const db = await openBibleDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            const store = tx.objectStore(STORE_NAME);
+            const request = store.clear();
+            request.onsuccess = () => resolve(true);
+            request.onerror = () => reject(request.error);
+        });
+    }
+};
+
+// --- LOCAL STORAGE HELPER (Para dados pequenos - Configs, Progresso) ---
 const storage = {
     get: (key: string) => {
         try {
@@ -18,7 +80,6 @@ const storage = {
 };
 
 const apiCall = async (action: 'list' | 'save' | 'delete', collection: string, payload: any = {}) => {
-    // 1. Tenta operação Online
     try {
         const res = await fetch('/api/storage', {
             method: 'POST',
@@ -30,46 +91,29 @@ const apiCall = async (action: 'list' | 'save' | 'delete', collection: string, p
 
         const data = await res.json();
 
-        // SUCESSO ONLINE: Atualiza o Cache Local
         if (action === 'list') {
             storage.set(collection, data);
         }
         
         return data;
-
     } catch (e) {
-        // FALHA ONLINE (OFFLINE MODE): Recorre ao Cache Local
-        console.warn(`[Offline Mode] Usando cache para: ${action} em ${collection}`);
-
         if (action === 'list') {
             const cached = storage.get(collection);
-            return cached || []; // Retorna o que tem salvo ou array vazio
+            return cached || [];
         }
-
         return null;
     }
 };
 
 export const db = {
   entities: {
-    // Nova Entidade para Texto Bíblico Persistente
+    // Entidade Especial: Texto Bíblico (Usa IndexedDB)
     BibleChapter: {
-        filter: async (query: any) => {
-            // Tenta pegar cache específico primeiro para performance
-            const cacheKey = `bible_${query.chapter_key}`;
-            const local = storage.get(cacheKey);
-            if (local) return [local];
-
-            const data = await apiCall('list', 'bible_text') || [];
-            return data.filter((item: any) => item.chapter_key === query.chapter_key);
+        getOffline: async (chapterKey: string) => {
+            return await bibleStorage.get(chapterKey);
         },
-        create: async (data: any) => {
-            const newItem = { ...data, id: data.id || Date.now().toString() };
-            // Salva no banco
-            await apiCall('save', 'bible_text', { item: newItem });
-            // Salva no cache local individual para acesso rápido
-            storage.set(`bible_${data.chapter_key}`, newItem);
-            return newItem;
+        saveOffline: async (chapterKey: string, verses: string[]) => {
+            return await bibleStorage.save(chapterKey, verses);
         }
     },
 
@@ -99,7 +143,6 @@ export const db = {
       },
       list: async (sort: 'chapters' | 'ebd', limit: number) => {
         const data = await apiCall('list', 'reading_progress') || [];
-        
         if (sort === 'ebd') {
             data.sort((a: any, b: any) => (b.total_ebd_read || 0) - (a.total_ebd_read || 0));
         } else {
