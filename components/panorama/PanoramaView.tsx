@@ -315,6 +315,11 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     // Pega contexto limpo (sem marcadores internos)
     const cleanContext = currentText.replace(/__CONTINUATION_MARKER__/g, ' ').slice(-3000);
 
+    const isFirstChapter = chapter === 1;
+    const introInstruction = isFirstChapter 
+        ? "2. INTRODUÇÃO GERAL:\n           Texto rico contextualizando O LIVRO (autor, data, propósito) e o cenário deste primeiro capítulo."
+        : `2. INTRODUÇÃO DO CAPÍTULO:\n           FOCAR EXCLUSIVAMENTE no contexto imediato do capítulo ${chapter}. NÃO repita a introdução geral do livro de ${book} (autoria, data, etc), pois já foi dado nos capítulos anteriores. Vá direto ao ponto do enredo atual.`;
+
     const WRITING_STYLE = `
         ATUE COMO: Professor Michel Felix.
         PERFIL: Teólogo Pentecostal Clássico, Arminiano, Erudito e Assembleiano.
@@ -338,8 +343,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         1. TÍTULO PRINCIPAL:
            PANORÂMA BÍBLICO - ${book.toUpperCase()} ${chapter} (PROF. MICHEL FELIX)
 
-        2. INTRODUÇÃO GERAL:
-           Texto rico contextualizando o capítulo, autor e cenário histórico. Sem tópicos aqui.
+        ${introInstruction}
 
         3. TÓPICOS DO ESTUDO (Use Numeração 1., 2., 3...):
            Exemplo:
