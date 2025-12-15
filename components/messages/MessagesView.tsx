@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Bell, Flame, Plus, Trash2, Send, Megaphone, User, Heart } from 'lucide-react';
+import { ChevronLeft, Bell, Flame, Plus, Trash2, Send, Megaphone, User, Heart, Edit } from 'lucide-react';
 import { db } from '../../services/database';
 import { Announcement, PrayerRequest } from '../../types';
 import { format } from 'date-fns';
@@ -19,6 +19,7 @@ export default function MessagesView({ onBack, isAdmin = false, user }: Messages
 
   // Form States
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null); // Novo estado para controlar edição
   const [newTitle, setNewTitle] = useState('');
   const [newMessage, setNewMessage] = useState('');
   const [prayerCategory, setPrayerCategory] = useState('saude');
@@ -45,20 +46,45 @@ export default function MessagesView({ onBack, isAdmin = false, user }: Messages
     }
   };
 
+  const resetForm = () => {
+      setShowForm(false);
+      setNewTitle('');
+      setNewMessage('');
+      setEditingId(null);
+  };
+
+  const handleEditClick = (ann: Announcement) => {
+      setNewTitle(ann.title);
+      setNewMessage(ann.message);
+      setEditingId(ann.id || null);
+      setShowForm(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
 
     try {
         if (activeTab === 'avisos' && isAdmin) {
-            const item: Announcement = {
-                title: newTitle || 'Comunicado',
-                message: newMessage,
-                date: new Date().toISOString(),
-                author: 'Secretaria ADMA',
-                priority: 'normal'
-            };
-            await db.entities.Announcements.create(item);
+            if (editingId) {
+                // Modo Edição
+                await db.entities.Announcements.update(editingId, {
+                    title: newTitle || 'Comunicado',
+                    message: newMessage,
+                    // Mantém a data original ou atualiza se preferir. 
+                    // Aqui opto por manter autor e data originais para histórico, ou pode atualizar a data.
+                });
+            } else {
+                // Modo Criação
+                const item: Announcement = {
+                    title: newTitle || 'Comunicado',
+                    message: newMessage,
+                    date: new Date().toISOString(),
+                    author: 'Secretaria ADMA',
+                    priority: 'normal'
+                };
+                await db.entities.Announcements.create(item);
+            }
         } else if (activeTab === 'oracao') {
             const item: PrayerRequest = {
                 user_name: user?.user_name || 'Anônimo',
@@ -71,9 +97,7 @@ export default function MessagesView({ onBack, isAdmin = false, user }: Messages
             await db.entities.PrayerRequests.create(item);
         }
         
-        setShowForm(false);
-        setNewTitle('');
-        setNewMessage('');
+        resetForm();
         loadData();
     } catch (e) {
         alert("Erro ao enviar.");
@@ -109,7 +133,7 @@ export default function MessagesView({ onBack, isAdmin = false, user }: Messages
             </div>
             {/* Botão de Nova Postagem */}
             {((activeTab === 'avisos' && isAdmin) || activeTab === 'oracao') && (
-                <button onClick={() => setShowForm(!showForm)} className="bg-white/20 p-2 rounded-full hover:bg-white/30 transition">
+                <button onClick={() => { resetForm(); setShowForm(!showForm); }} className="bg-white/20 p-2 rounded-full hover:bg-white/30 transition">
                     <Plus className="w-6 h-6" />
                 </button>
             )}
@@ -135,6 +159,11 @@ export default function MessagesView({ onBack, isAdmin = false, user }: Messages
         {showForm && (
             <div className="p-4 bg-white dark:bg-dark-card shadow-md animate-in slide-in-from-top-5">
                 <form onSubmit={handleSubmit} className="space-y-3">
+                    <div className="flex justify-between items-center mb-2">
+                        <h3 className="font-bold text-sm text-[#8B0000] dark:text-[#C5A059]">
+                            {editingId ? 'Editar Publicação' : 'Nova Publicação'}
+                        </h3>
+                    </div>
                     {activeTab === 'avisos' && (
                         <input 
                             type="text" 
@@ -166,9 +195,9 @@ export default function MessagesView({ onBack, isAdmin = false, user }: Messages
                         required
                     />
                     <div className="flex gap-2 justify-end">
-                        <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-gray-500">Cancelar</button>
+                        <button type="button" onClick={resetForm} className="px-4 py-2 text-gray-500">Cancelar</button>
                         <button type="submit" className="px-6 py-2 bg-[#8B0000] text-white rounded font-bold flex items-center gap-2">
-                            <Send className="w-4 h-4" /> Publicar
+                            <Send className="w-4 h-4" /> {editingId ? 'Salvar' : 'Publicar'}
                         </button>
                     </div>
                 </form>
@@ -191,7 +220,14 @@ export default function MessagesView({ onBack, isAdmin = false, user }: Messages
                             <div className="flex justify-between items-start mb-2">
                                 <h3 className="font-cinzel font-bold text-lg dark:text-white">{ann.title}</h3>
                                 {isAdmin && (
-                                    <button onClick={() => handleDelete(ann.id!)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => handleEditClick(ann)} className="text-gray-400 hover:text-[#C5A059]" title="Editar">
+                                            <Edit className="w-4 h-4" />
+                                        </button>
+                                        <button onClick={() => handleDelete(ann.id!)} className="text-gray-400 hover:text-red-500" title="Excluir">
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                             <p className="font-cormorant text-lg text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{ann.message}</p>

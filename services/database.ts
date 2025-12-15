@@ -1,352 +1,165 @@
 
-const CACHE_PREFIX = 'adma_cache_v1_';
+// --- INDEXED DB FOR BIBLE TEXT (Offline) ---
+const DB_NAME = 'adma_bible_db';
+const STORE_NAME = 'bible_verses';
+const DB_VERSION = 1;
 
-// --- INDEXED DB HELPER (Para grandes volumes de dados - Bíblia Offline & Metadados) ---
-const DB_NAME = 'ADMA_BIBLE_DB';
-const DB_VERSION = 3; 
-
-const openBibleDB = (): Promise<IDBDatabase> => {
+const openDB = (): Promise<IDBDatabase> => {
+    if (typeof window === 'undefined') return Promise.reject("No window");
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
-        request.onupgradeneeded = (event) => {
-            const db = (event.target as IDBOpenDBRequest).result;
-            // Store de Capítulos (Texto Bíblico)
-            if (!db.objectStoreNames.contains('chapters')) {
-                db.createObjectStore('chapters', { keyPath: 'key' });
-            }
-            // Store de Metadados (Títulos e Epígrafes)
-            if (!db.objectStoreNames.contains('metadata')) {
-                db.createObjectStore('metadata', { keyPath: 'key' });
+        request.onupgradeneeded = (event: any) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME);
             }
         };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
+        request.onsuccess = (event: any) => resolve(event.target.result);
+        request.onerror = (event: any) => reject(event.target.error);
     });
 };
 
-const genericStorage = (storeName: string) => ({
-    save: async (key: string, data: any) => {
-        const db = await openBibleDB();
-        return new Promise((resolve, reject) => {
-            const tx = db.transaction(storeName, 'readwrite');
-            const store = tx.objectStore(storeName);
-            const request = store.put({ key, data }); 
-            request.onsuccess = () => resolve(true);
-            request.onerror = () => reject(request.error);
-        });
-    },
-    get: async (key: string): Promise<any> => {
-        const db = await openBibleDB();
-        return new Promise((resolve, reject) => {
-            const tx = db.transaction(storeName, 'readonly');
-            const store = tx.objectStore(storeName);
-            const request = store.get(key);
-            request.onsuccess = () => resolve(request.result ? request.result.data : null);
-            request.onerror = () => reject(request.error);
-        });
-    },
-    count: async (): Promise<number> => {
-        const db = await openBibleDB();
-        return new Promise((resolve, reject) => {
-            const tx = db.transaction(storeName, 'readonly');
-            const store = tx.objectStore(storeName);
-            const request = store.count();
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
-    },
-    clear: async (): Promise<void> => {
-        const db = await openBibleDB();
-        return new Promise((resolve, reject) => {
-            const tx = db.transaction(storeName, 'readwrite');
-            const store = tx.objectStore(storeName);
-            const request = store.clear();
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        });
-    }
-});
-
-export const bibleStorage = genericStorage('chapters');
-export const metaStorage = genericStorage('metadata');
-
-// --- LOCAL STORAGE HELPER ---
-const storage = {
-    get: (key: string) => {
+export const bibleStorage = {
+    get: async (key: string) => {
         try {
-            const item = localStorage.getItem(CACHE_PREFIX + key);
-            return item ? JSON.parse(item) : null;
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.get(key);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
         } catch (e) { return null; }
     },
-    set: (key: string, data: any) => {
+    save: async (key: string, data: any) => {
         try {
-            localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(data));
-        } catch (e) { console.error("Cache Full", e); }
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.put(data, key);
+                request.onsuccess = () => resolve(true);
+                request.onerror = () => reject(request.error);
+            });
+        } catch (e) { return false; }
     },
-    remove: (key: string) => localStorage.removeItem(CACHE_PREFIX + key)
+    count: async () => {
+        try {
+            const db = await openDB();
+            return new Promise<number>((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.count();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        } catch (e) { return 0; }
+    },
+    clear: async () => {
+        try {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.clear();
+                request.onsuccess = () => resolve(true);
+                request.onerror = () => reject(request.error);
+            });
+        } catch (e) { return false; }
+    }
 };
 
-// Helper genérico para API
-const apiCall = async (action: 'list' | 'save' | 'delete' | 'get', collection: string, payload: any = {}) => {
+// --- CLOUD API (Supabase via Next.js API Route) ---
+const apiCall = async (action: string, collection: string, payload: any = {}) => {
     try {
         const res = await fetch('/api/storage', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action, collection, ...payload })
         });
-
-        if (!res.ok) throw new Error("Server Error");
-
-        const data = await res.json();
-
-        if (action === 'list') {
-            storage.set(collection, data);
+        if (!res.ok) {
+            console.warn(`API Error ${action} ${collection}:`, await res.text());
+            return null;
         }
-        
-        return data;
+        return await res.json();
     } catch (e) {
-        if (action === 'list') {
-            const cached = storage.get(collection);
-            return cached || [];
-        }
+        console.error("Network Error", e);
         return null;
     }
 };
 
-export const db = {
-  entities: {
-    AppConfig: {
-        get: async () => {
-            const data = await apiCall('get', 'app_config', { id: 'global_config' });
-            return data;
-        },
-        save: async (config: any) => {
-            const item = { ...config, id: 'global_config' };
-            return await apiCall('save', 'app_config', { item });
-        }
+const createHelpers = (col: string) => ({
+    list: async (key?: string, limit?: number) => {
+        const data = await apiCall('list', col) || [];
+        return data;
     },
-    DynamicModules: {
-        list: async () => {
-            return await apiCall('list', 'dynamic_modules') || [];
-        },
-        create: async (data: any) => {
-            const newItem = { ...data, id: data.id || Date.now().toString() };
-            await apiCall('save', 'dynamic_modules', { item: newItem });
-            return newItem;
-        },
-        delete: async (id: string) => {
-            await apiCall('delete', 'dynamic_modules', { id });
-        }
+    filter: async (criteria: any) => {
+        const all = await apiCall('list', col) || [];
+        return all.filter((item: any) => 
+            Object.keys(criteria).every(k => item[k] === criteria[k])
+        );
     },
-    BibleChapter: {
-        // Busca local (Rápido)
-        getOffline: async (chapterKey: string) => {
-            return await bibleStorage.get(chapterKey);
-        },
-        // Salva local (Rápido)
-        saveOffline: async (chapterKey: string, verses: string[]) => {
-            return await bibleStorage.save(chapterKey, verses);
-        },
-        // Busca na Nuvem (Universal)
-        getCloud: async (chapterKey: string) => {
-            const data = await apiCall('get', 'bible_chapter', { id: chapterKey });
-            if (data && data.verses) return data.verses;
-            return null;
-        },
-        // Salva na Nuvem (Universal)
-        saveCloud: async (chapterKey: string, verses: string[]) => {
-            // Estrutura do objeto para salvar no Supabase
-            const item = { id: chapterKey, verses: verses };
-            return await apiCall('save', 'bible_chapter', { item });
+    get: async (id?: string) => {
+        if (!id) {
+            const all = await apiCall('list', col) || [];
+            return all.length > 0 ? all[0] : null;
         }
+        return await apiCall('get', col, { id });
     },
-
-    ReadingProgress: {
-      filter: async (query: any) => {
-        const data = await apiCall('list', 'reading_progress');
-        if (!data) return [];
-        return data.filter((item: any) => item.user_email === query.user_email);
-      },
-      create: async (data: any) => {
+    create: async (data: any) => {
         const newItem = { ...data, id: data.id || Date.now().toString() };
-        await apiCall('save', 'reading_progress', { item: newItem });
+        await apiCall('save', col, { item: newItem });
         return newItem;
-      },
-      update: async (id: string, updates: any) => {
-        const all = await apiCall('list', 'reading_progress') || [];
-        const existing = all.find((i: any) => i.id === id);
-        
+    },
+    update: async (id: string, updates: any) => {
+        const existing = await apiCall('get', col, { id });
         if (existing) {
-             const updated = { ...existing, ...updates };
-             await apiCall('save', 'reading_progress', { item: updated });
-             const newCache = all.map((i: any) => i.id === id ? updated : i);
-             storage.set('reading_progress', newCache);
-             return updated;
+            const merged = { ...existing, ...updates };
+            await apiCall('save', col, { item: merged });
+            return merged;
         }
         return null;
-      },
-      list: async (sort: 'chapters' | 'ebd', limit: number) => {
-        const data = await apiCall('list', 'reading_progress') || [];
-        if (sort === 'ebd') {
-            data.sort((a: any, b: any) => (b.total_ebd_read || 0) - (a.total_ebd_read || 0));
-        } else {
-            data.sort((a: any, b: any) => (b.total_chapters || 0) - (a.total_chapters || 0));
-        }
-        return data.slice(0, limit);
-      }
     },
-    
-    ChapterMetadata: {
-        get: async (chapterKey: string) => {
-            return await metaStorage.get(chapterKey);
-        },
-        save: async (data: any) => {
-            // Garante que o ID seja a chave do capítulo para busca direta
-            const item = { ...data, id: data.chapter_key };
-            // Salva na Nuvem (Universal)
-            await apiCall('save', 'chapter_metadata', { item });
-            // Salva Local (Offline)
-            return await metaStorage.save(data.chapter_key, item);
-        },
-        // Nova função para buscar especificamente da nuvem pelo ID
-        getCloud: async (chapterKey: string) => {
-             const data = await apiCall('get', 'chapter_metadata', { id: chapterKey });
-             return data;
-        },
-        filter: async (query: any) => {
-            const data = await apiCall('list', 'chapter_metadata') || [];
-            return data.filter((item: any) => item.chapter_key === query.chapter_key);
-        }
+    delete: async (id: string) => {
+        await apiCall('delete', col, { id });
     },
-
-    Commentary: {
-      filter: async (query: any) => {
-        const data = await apiCall('list', 'commentary') || [];
-        return data.filter((item: any) => item.verse_key === query.verse_key);
-      },
-      create: async (data: any) => {
+    save: async (data: any) => {
         const newItem = { ...data, id: data.id || Date.now().toString() };
-        await apiCall('save', 'commentary', { item: newItem });
+        await apiCall('save', col, { item: newItem });
         return newItem;
-      },
-      delete: async (id: string) => {
-        await apiCall('delete', 'commentary', { id });
-      }
-    },
-
-    Dictionary: {
-        filter: async (query: any) => {
-          const data = await apiCall('list', 'dictionary') || [];
-          return data.filter((item: any) => item.verse_key === query.verse_key);
-        },
-        create: async (data: any) => {
-          const newItem = { ...data, id: data.id || Date.now().toString() };
-          await apiCall('save', 'dictionary', { item: newItem });
-          return newItem;
-        },
-        delete: async (id: string) => {
-           await apiCall('delete', 'dictionary', { id });
-        }
-    },
-
-    PanoramaBiblico: {
-        filter: async (query: any) => {
-            const data = await apiCall('list', 'panorama') || [];
-            return data.filter((item: any) => item.study_key === query.study_key);
-        },
-        create: async (data: any) => {
-            const newItem = { ...data, id: data.id || Date.now().toString() };
-            await apiCall('save', 'panorama', { item: newItem });
-            return newItem;
-        },
-        update: async (id: string, updates: any) => {
-             const newItem = { ...updates, id };
-             await apiCall('save', 'panorama', { item: newItem });
-             return newItem;
-        },
-        delete: async (id: string) => {
-             await apiCall('delete', 'panorama', { id });
-        }
-    },
-
-    Devotional: {
-      filter: async (query: any) => {
-        const data = await apiCall('list', 'devotional') || [];
-        return data.filter((item: any) => item.date === query.date);
-      },
-      create: async (data: any) => {
-        const newItem = { ...data, id: data.id || Date.now().toString() };
-        await apiCall('save', 'devotional', { item: newItem });
-        return newItem;
-      },
-      delete: async (id: string) => {
-         await apiCall('delete', 'devotional', { id });
-      }
-    },
-
-    PrayerRequests: {
-        list: async () => {
-            const data = await apiCall('list', 'prayer_requests') || [];
-            return data.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        },
-        create: async (data: any) => {
-            const newItem = { ...data, id: data.id || Date.now().toString() };
-            await apiCall('save', 'prayer_requests', { item: newItem });
-            return newItem;
-        },
-        update: async (id: string, updates: any) => {
-            const all = await apiCall('list', 'prayer_requests') || [];
-            const existing = all.find((i: any) => i.id === id);
-            if(existing) {
-                const updated = { ...existing, ...updates };
-                await apiCall('save', 'prayer_requests', { item: updated });
-                return updated;
-            }
-            return null;
-        },
-        delete: async (id: string) => {
-             await apiCall('delete', 'prayer_requests', { id });
-        }
-    },
-
-    Announcements: {
-        list: async () => {
-            const data = await apiCall('list', 'announcements') || [];
-            return data.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        },
-        create: async (data: any) => {
-            const newItem = { ...data, id: data.id || Date.now().toString() };
-            await apiCall('save', 'announcements', { item: newItem });
-            return newItem;
-        },
-        delete: async (id: string) => {
-             await apiCall('delete', 'announcements', { id });
-        }
-    },
-
-    ContentReports: {
-        list: async () => {
-            const data = await apiCall('list', 'content_reports') || [];
-            return data.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        },
-        create: async (data: any) => {
-            const newItem = { ...data, id: data.id || Date.now().toString() };
-            await apiCall('save', 'content_reports', { item: newItem });
-            return newItem;
-        },
-        update: async (id: string, updates: any) => {
-            const all = await apiCall('list', 'content_reports') || [];
-            const existing = all.find((i: any) => i.id === id);
-            if(existing) {
-                const updated = { ...existing, ...updates };
-                await apiCall('save', 'content_reports', { item: updated });
-                return updated;
-            }
-            return null;
-        },
-        delete: async (id: string) => {
-             await apiCall('delete', 'content_reports', { id });
-        }
     }
-  }
+});
+
+export const db = {
+    entities: {
+        ReadingProgress: createHelpers('reading_progress'),
+        AppConfig: createHelpers('app_config'),
+        DynamicModules: createHelpers('dynamic_modules'),
+        BibleChapter: {
+            ...createHelpers('bible_chapters'),
+            getOffline: async (key: string) => await bibleStorage.get(key),
+            saveOffline: async (key: string, data: any) => await bibleStorage.save(key, data),
+            getCloud: async (key: string) => {
+                const item = await apiCall('get', 'bible_chapters', { id: key });
+                return item ? item.verses : null;
+            }
+        },
+        ChapterMetadata: {
+            ...createHelpers('chapter_metadata'),
+            getCloud: async (key: string) => await apiCall('get', 'chapter_metadata', { id: key }),
+            save: async (data: any) => {
+                const item = { ...data, id: data.chapter_key };
+                await apiCall('save', 'chapter_metadata', { item });
+                return item;
+            }
+        },
+        Commentary: createHelpers('commentaries'),
+        Dictionary: createHelpers('dictionaries'),
+        PanoramaBiblico: createHelpers('panorama_biblico'),
+        Devotional: createHelpers('devotionals'),
+        Announcements: createHelpers('announcements'),
+        PrayerRequests: createHelpers('prayer_requests'),
+        ContentReports: createHelpers('content_reports'),
+    }
 };
