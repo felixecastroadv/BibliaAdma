@@ -3,7 +3,7 @@ const CACHE_PREFIX = 'adma_cache_v1_';
 
 // --- INDEXED DB HELPER (Para grandes volumes de dados - Bíblia Offline & Metadados) ---
 const DB_NAME = 'ADMA_BIBLE_DB';
-const DB_VERSION = 3; // Upgrade para v3 para incluir metadata
+const DB_VERSION = 3; 
 
 const openBibleDB = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
@@ -14,7 +14,7 @@ const openBibleDB = (): Promise<IDBDatabase> => {
             if (!db.objectStoreNames.contains('chapters')) {
                 db.createObjectStore('chapters', { keyPath: 'key' });
             }
-            // Store de Metadados (Títulos e Epígrafes) - NOVO
+            // Store de Metadados (Títulos e Epígrafes)
             if (!db.objectStoreNames.contains('metadata')) {
                 db.createObjectStore('metadata', { keyPath: 'key' });
             }
@@ -70,7 +70,7 @@ const genericStorage = (storeName: string) => ({
 export const bibleStorage = genericStorage('chapters');
 export const metaStorage = genericStorage('metadata');
 
-// --- LOCAL STORAGE HELPER (Para dados pequenos - Configs, Progresso) ---
+// --- LOCAL STORAGE HELPER ---
 const storage = {
     get: (key: string) => {
         try {
@@ -86,7 +86,8 @@ const storage = {
     remove: (key: string) => localStorage.removeItem(CACHE_PREFIX + key)
 };
 
-const apiCall = async (action: 'list' | 'save' | 'delete', collection: string, payload: any = {}) => {
+// Helper genérico para API
+const apiCall = async (action: 'list' | 'save' | 'delete' | 'get', collection: string, payload: any = {}) => {
     try {
         const res = await fetch('/api/storage', {
             method: 'POST',
@@ -115,11 +116,25 @@ const apiCall = async (action: 'list' | 'save' | 'delete', collection: string, p
 export const db = {
   entities: {
     BibleChapter: {
+        // Busca local (Rápido)
         getOffline: async (chapterKey: string) => {
             return await bibleStorage.get(chapterKey);
         },
+        // Salva local (Rápido)
         saveOffline: async (chapterKey: string, verses: string[]) => {
             return await bibleStorage.save(chapterKey, verses);
+        },
+        // Busca na Nuvem (Universal)
+        getCloud: async (chapterKey: string) => {
+            const data = await apiCall('get', 'bible_chapter', { id: chapterKey });
+            if (data && data.verses) return data.verses;
+            return null;
+        },
+        // Salva na Nuvem (Universal)
+        saveCloud: async (chapterKey: string, verses: string[]) => {
+            // Estrutura do objeto para salvar no Supabase
+            const item = { id: chapterKey, verses: verses };
+            return await apiCall('save', 'bible_chapter', { item });
         }
     },
 
@@ -159,14 +174,12 @@ export const db = {
     },
     
     ChapterMetadata: {
-        // Agora usa IndexedDB (metaStorage) preferencialmente
         get: async (chapterKey: string) => {
             return await metaStorage.get(chapterKey);
         },
         save: async (data: any) => {
             return await metaStorage.save(data.chapter_key, data);
         },
-        // Fallback antigo para manter compatibilidade se necessário
         filter: async (query: any) => {
             const data = await apiCall('list', 'chapter_metadata') || [];
             return data.filter((item: any) => item.chapter_key === query.chapter_key);

@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 
 // --- CONFIGURAÇÃO MANUAL (FALLBACK) ---
@@ -19,15 +20,10 @@ export default async function handler(request, response) {
   }
 
   try {
-    // ORDEM DE PRIORIDADE:
-    // 1. Variável de Ambiente da Vercel (SUPABASE_URL)
-    // 2. Variável Pública (NEXT_PUBLIC_SUPABASE_URL)
-    // 3. Valor Manual (Copiado do seu painel)
     const supabaseUrl = process.env.SUPABASE_URL || 
                         process.env.NEXT_PUBLIC_SUPABASE_URL || 
                         MANUAL_SUPABASE_URL;
     
-    // Mesma lógica para a chave: suporta nomes antigos e novos
     const supabaseKey = process.env.SUPABASE_ANON_KEY || 
                         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
                         process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||
@@ -44,14 +40,12 @@ export default async function handler(request, response) {
     const { method } = request;
     const body = typeof request.body === 'string' ? JSON.parse(request.body) : request.body;
 
-    // Health Check / Table Verify
+    // Health Check
     if (method === 'POST' && body.action === 'ping') {
-        // Tenta selecionar apenas uma linha para verificar conexão e existência da tabela
         const { error } = await supabase.from('adma_content').select('id').limit(1);
         
         if (error) {
              console.error("Supabase Ping Error:", error);
-             // Código 42P01 no Postgres significa "undefined table"
              if (error.message.includes('relation "adma_content" does not exist') || error.code === '42P01') {
                  return response.status(500).json({ error: 'TABELA INEXISTENTE: A conexão funcionou, mas a tabela "adma_content" não existe. Crie-a no SQL Editor do Supabase.' });
              }
@@ -60,6 +54,7 @@ export default async function handler(request, response) {
         return response.status(200).json({ status: 'ok', message: 'Conectado ao Supabase com sucesso.' });
     }
 
+    // LIST (Busca tudo de uma coleção)
     if (method === 'POST' && body.action === 'list') {
         const { collection } = body;
         const { data, error } = await supabase
@@ -67,14 +62,26 @@ export default async function handler(request, response) {
             .select('data')
             .eq('collection', collection);
 
-        if (error) {
-            console.error("List Error:", error);
-            throw error;
-        }
+        if (error) throw error;
         const cleanList = data ? data.map(row => row.data) : [];
         return response.status(200).json(cleanList);
     }
 
+    // GET (Busca um item específico por ID - NOVO)
+    if (method === 'POST' && body.action === 'get') {
+        const { collection, id } = body;
+        const { data, error } = await supabase
+            .from('adma_content')
+            .select('data')
+            .eq('collection', collection)
+            .eq('id', id.toString())
+            .maybeSingle(); // Usa maybeSingle para não estourar erro se não achar
+
+        if (error) throw error;
+        return response.status(200).json(data ? data.data : null);
+    }
+
+    // SAVE (Cria ou Atualiza)
     if (method === 'POST' && body.action === 'save') {
         const { collection, item } = body;
         if (!item.id) item.id = Date.now().toString();
@@ -87,13 +94,11 @@ export default async function handler(request, response) {
                 data: item
             });
 
-        if (error) {
-            console.error("Save Error:", error);
-            throw error;
-        }
+        if (error) throw error;
         return response.status(200).json({ success: true, item });
     }
 
+    // DELETE
     if (method === 'POST' && body.action === 'delete') {
         const { id } = body;
         const { error } = await supabase
@@ -101,10 +106,7 @@ export default async function handler(request, response) {
             .delete()
             .eq('id', id.toString());
 
-        if (error) {
-            console.error("Delete Error:", error);
-            throw error;
-        }
+        if (error) throw error;
         return response.status(200).json({ success: true });
     }
 

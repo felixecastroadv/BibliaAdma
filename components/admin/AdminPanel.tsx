@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Key, ShieldCheck, RefreshCw, Loader2, Save, AlertTriangle, CheckCircle, XCircle, Info, BookOpen, Download, Server, Database, Upload, FileJson, MessageSquare, Languages, GraduationCap, Calendar, Flag, Trash2, ExternalLink, HardDrive } from 'lucide-react';
+import { ChevronLeft, Key, ShieldCheck, RefreshCw, Loader2, Save, AlertTriangle, CheckCircle, XCircle, Info, BookOpen, Download, Server, Database, Upload, FileJson, MessageSquare, Languages, GraduationCap, Calendar, Flag, Trash2, ExternalLink, HardDrive, CloudUpload } from 'lucide-react';
 import { getStoredApiKey, setStoredApiKey, generateContent } from '../../services/geminiService';
 import { BIBLE_BOOKS, generateChapterKey, generateVerseKey, TOTAL_CHAPTERS } from '../../constants';
 import { db, bibleStorage } from '../../services/database';
@@ -127,10 +127,9 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       setProgress(0);
       let count = 0;
       
-      // Limpa dados antigos para liberar espaço e evitar conflitos
       onShowToast("Formatando armazenamento...", "info");
       await bibleStorage.clear();
-      setOfflineCount(0); // Reseta visualmente
+      setOfflineCount(0); 
 
       try {
         for (const book of BIBLE_BOOKS) {
@@ -144,17 +143,13 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                 try {
                     setProcessStatus(`Baixando ${book.name} ${c}...`);
                     
-                    // Delay para evitar bloqueio da API (300ms)
                     await new Promise(r => setTimeout(r, 200));
                     
                     const data = await fetchWithRetry(`https://www.abibliadigital.com.br/api/verses/acf/${book.abbrev}/${c}`);
                     
                     if (data && data.verses) {
-                        // Salva no IndexedDB (Suporta GBs de dados, não trava)
                         const optimizedVerses = data.verses.map((v: any) => v.text.trim());
                         await bibleStorage.save(key, optimizedVerses);
-                        
-                        // ATUALIZAÇÃO EM TEMPO REAL CONFORME PEDIDO
                         setOfflineCount(prev => (prev || 0) + 1);
                     }
                 } catch(e: any) {
@@ -172,11 +167,11 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       setIsProcessing(false);
       setStopBatch(false);
       setCurrentBookProcessing('');
-      await checkOfflineIntegrity(); // Confirmação final
+      await checkOfflineIntegrity(); 
       onShowToast("Download Completo! Bíblia salva no IndexedDB.", "success");
   };
 
-  // --- LÓGICA DE IMPORTAÇÃO DE JSON (COM INDEXEDDB) ---
+  // --- LÓGICA DE IMPORTAÇÃO DE JSON (COM INDEXEDDB + NUVEM) ---
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file) return;
@@ -216,8 +211,8 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   };
 
   const processBibleJSON = async (data: any) => {
-      setProcessStatus("Processando e salvando no Banco...");
-      // Limpa antes de importar
+      setProcessStatus("Iniciando upload Universal...");
+      // Limpa Local
       await bibleStorage.clear();
       setOfflineCount(0);
 
@@ -262,10 +257,16 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                       }
 
                       if (simpleVerses.length > 0) {
+                          // 1. Salva Local (IndexedDB) para acesso imediato neste PC
                           await bibleStorage.save(key, simpleVerses);
+                          
+                          // 2. Salva na Nuvem (Supabase) para acesso no Android/iOS
+                          // Isso pode demorar, mas garante universalidade
+                          setProcessStatus(`Enviando ${targetBook.name} ${chapterNum} para Nuvem...`);
+                          await db.entities.BibleChapter.saveCloud(key, simpleVerses);
+
                           totalSaved++;
-                          // Atualiza contador a cada 10 capítulos para performance
-                          if (totalSaved % 10 === 0) setOfflineCount(totalSaved);
+                          if (totalSaved % 5 === 0) setOfflineCount(totalSaved);
                       }
                   }
                   booksProcessed++;
@@ -275,13 +276,13 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           const percentage = Math.round((booksProcessed / Math.max(1, booksArray.length)) * 100);
           setProgress(percentage);
           setCurrentBookProcessing(rawName);
-          // Pequena pausa para a UI respirar
-          if (booksProcessed % 5 === 0) await new Promise(r => setTimeout(r, 0));
+          // Pausa curta para não travar a UI e o servidor
+          await new Promise(r => setTimeout(r, 100)); 
       }
 
       setIsProcessing(false);
       await checkOfflineIntegrity();
-      onShowToast(`Importação concluída!`, "success");
+      onShowToast(`Sucesso! Bíblia disponível em TODOS os dispositivos.`, "success");
       if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -450,16 +451,16 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
         </div>
 
         {/* === SEÇÃO 2: BÍBLIA OFFLINE === */}
-        <h2 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#ff6b6b] border-b border-[#C5A059] pb-2">1. Bíblia Offline (Texto)</h2>
+        <h2 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#ff6b6b] border-b border-[#C5A059] pb-2">1. Bíblia (Texto)</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow hover:shadow-lg transition border border-[#C5A059]">
-                <FileJson className="w-8 h-8 text-[#C5A059] mb-3" />
-                <h3 className="font-bold dark:text-white">Importar JSON</h3>
-                <p className="text-xs text-gray-500 mb-4">Carregue arquivo .json (Otimizado automaticamente).</p>
+                <CloudUpload className="w-8 h-8 text-[#C5A059] mb-3" />
+                <h3 className="font-bold dark:text-white">Importar JSON (Universal)</h3>
+                <p className="text-xs text-gray-500 mb-4">Carrega e envia para a Nuvem (Android/iOS).</p>
                 {isProcessing && !isGeneratingBatch ? (
                     <div className="w-full bg-gray-200 rounded-full h-8 overflow-hidden relative">
                          <div className="h-full bg-[#C5A059]" style={{ width: `${progress}%` }}></div>
-                         <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-[#8B0000]">{processStatus} {progress}%</span>
+                         <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-[#8B0000] drop-shadow-sm whitespace-nowrap px-2">{processStatus}</span>
                     </div>
                 ) : (
                     <div className="flex gap-2">
@@ -474,7 +475,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
             <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow">
                 <Download className="w-8 h-8 text-gray-400 mb-3" />
                 <h3 className="font-bold dark:text-white">Download da Nuvem (Otimizado)</h3>
-                <p className="text-xs text-gray-500 mb-4">Baixa e salva no Banco de Dados Interno.</p>
+                <p className="text-xs text-gray-500 mb-4">Baixa da internet se o JSON falhar.</p>
                 {isProcessing && !isGeneratingBatch ? (
                     <button onClick={() => setStopBatch(true)} className="w-full py-2 bg-red-100 text-red-600 rounded font-bold text-sm">
                         Cancelar Download ({currentBookProcessing})
@@ -487,6 +488,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
             </div>
         </div>
 
+        {/* ... Rest of the file unchanged ... */}
         {/* === SEÇÃO 3: FÁBRICA DE CONTEÚDO (IA) === */}
         <h2 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#ff6b6b] border-b border-[#C5A059] pb-2 mt-8">2. Fábrica de Conteúdo (IA)</h2>
         

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, ChevronRight, List, Book, ChevronDown, RefreshCw, WifiOff, Zap, Volume2, X, FastForward, Search, Trash2, Sparkles, Loader2, Clock, Lock } from 'lucide-react';
+import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, ChevronRight, List, Book, ChevronDown, RefreshCw, WifiOff, Zap, Volume2, X, FastForward, Search, Trash2, Sparkles, Loader2, Clock, Lock, Cloud } from 'lucide-react';
 import VersePanel from './VersePanel';
 import { db } from '../../services/database';
 import { generateChapterKey, BIBLE_BOOKS } from '../../constants';
@@ -76,7 +76,7 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
     
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState('');
-    const [sourceMode, setSourceMode] = useState<'offline' | 'online'>('offline');
+    const [sourceMode, setSourceMode] = useState<'offline' | 'online' | 'cloud'>('offline');
     
     const [showSelector, setShowSelector] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
@@ -154,8 +154,9 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
             if (!bookMeta) throw new Error("Livro não encontrado.");
 
             const cacheKey = `bible_acf_${bookMeta.abbrev}_${chapter}`;
-            const cached = await db.entities.BibleChapter.getOffline(cacheKey);
             
+            // 1. TENTA OFFLINE (IndexedDB)
+            const cached = await db.entities.BibleChapter.getOffline(cacheKey);
             if (cached && Array.isArray(cached) && cached.length > 0) {
                 const formatted = cached.map((t: string, i: number) => ({ number: i + 1, text: t }));
                 setVerses(formatted);
@@ -163,6 +164,7 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                 return;
             }
 
+            // 2. TENTA LOCAL STORAGE (LEGADO)
             const legacyCache = localStorage.getItem(cacheKey);
             if (legacyCache) {
                 try {
@@ -182,6 +184,22 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                 } catch(e) {}
             }
 
+            // 3. TENTA NUVEM (SUPABASE - UNIVERSAL)
+            // Se o admin subiu o JSON, vai estar aqui
+            const cloudData = await db.entities.BibleChapter.getCloud(cacheKey);
+            if (cloudData && Array.isArray(cloudData) && cloudData.length > 0) {
+                setSourceMode('cloud');
+                const formatted = cloudData.map((t: string, i: number) => ({ number: i + 1, text: t }));
+                setVerses(formatted);
+                
+                // Salva offline para a próxima vez ser rápido
+                await db.entities.BibleChapter.saveOffline(cacheKey, cloudData);
+                
+                setLoading(false);
+                return;
+            }
+
+            // 4. FALLBACK FINAL: API EXTERNA
             setSourceMode('online');
             const res = await fetch(`https://www.abibliadigital.com.br/api/verses/acf/${bookMeta.abbrev}/${chapter}`);
             if (!res.ok) throw new Error("Falha ao baixar da internet.");
@@ -195,6 +213,8 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                 }));
                 
                 const simpleVerses = cleanVerses.map((v:any) => v.text);
+                
+                // Salva tanto no Local quanto na Nuvem (se possível/desejado, mas por padrão salvamos local)
                 await db.entities.BibleChapter.saveOffline(cacheKey, simpleVerses);
                 
                 setVerses(cleanVerses);
@@ -213,7 +233,9 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
     const clearCacheAndRetry = async () => {
         const bookMeta = BIBLE_BOOKS.find(b => b.name === book);
         if(bookMeta) {
-            localStorage.removeItem(`bible_acf_${bookMeta.abbrev}_${chapter}`);
+            const key = `bible_acf_${bookMeta.abbrev}_${chapter}`;
+            localStorage.removeItem(key);
+            // Também limparíamos do IndexedDB se tivéssemos a ref aqui, mas o fetchChapter sobrescreve
             fetchChapter();
         }
     };
@@ -429,6 +451,15 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                                 </div>
                             ) : (
                                 <div className="h-8"></div>
+                            )}
+
+                            {/* Badge de Fonte (Cloud vs Local) */}
+                            {sourceMode === 'cloud' && (
+                                <div className="mt-4 flex justify-center">
+                                    <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                                        <Cloud className="w-3 h-3" /> Nuvem
+                                    </span>
+                                </div>
                             )}
                         </div>
                     )}
