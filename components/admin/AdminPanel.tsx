@@ -450,8 +450,13 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                         // --- PROMPT UNIFICADO (MESMO DO VERSEPANEL) ---
                         const prompt = `
                             ATUE COMO: Professor Michel Felix.
-                            TAREFA: Escrever um comentário EXEGÉTICO para alunos de Escola Dominical (EBD).
+                            TAREFA: Escrever um comentário EXEGÉTICO para um aluno estudioso da Bíblia.
                             TEXTO BÍBLICO: "${verseText}"
+
+                            --- REGRAS DE INÍCIO (SEM ENROLACÃO) ---
+                            1. ZERO SAUDAÇÕES: É PROIBIDO começar com "Olá", "Queridos alunos", "Paz do Senhor", "Que bom estarmos juntos".
+                            2. TEXTO DIRETO: Comece IMEDIATAMENTE com a explicação do versículo. Ex: "Este versículo revela..." ou "A expressão original indica...".
+                            3. ECONOMIA DE PALAVRAS: Não use frases de transição vazias ou introduções sociais ("Enfeitar o pavão"). Vá direto ao que de fato importa.
 
                             --- OBJETIVO SUPREMO: O EFEITO "AH! ENTENDI!" ---
                             1. O aluno deve terminar a leitura e pensar: "Ah! Agora tudo faz sentido!".
