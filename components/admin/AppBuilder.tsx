@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Send, Bot, Loader2, Save, Wand2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Send, Bot, Loader2, Save, Wand2, Trash2 } from 'lucide-react';
 import { generateContent } from '../../services/geminiService';
 import { db } from '../../services/database';
 import { AppConfig, DynamicModule } from '../../types';
@@ -15,9 +15,22 @@ interface AppBuilderProps {
 export default function AppBuilder({ onBack, onShowToast, currentConfig }: AppBuilderProps) {
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
+    const [existingModules, setExistingModules] = useState<DynamicModule[]>([]);
     const [messages, setMessages] = useState<{role: 'user'|'model', text: string}[]>([
-        { role: 'model', text: 'Olá! Sou o Construtor do ADMA. Posso alterar cores, ativar/desativar funções ou criar novos módulos (Quizzes, Páginas). O que deseja fazer?' }
+        { role: 'model', text: 'Olá! Sou o Construtor do ADMA. Posso alterar cores, ativar/desativar funções ou gerenciar módulos (Criar/Excluir Quizzes e Páginas). O que deseja fazer?' }
     ]);
+
+    // Carrega módulos existentes para que a IA saiba o que pode ser deletado
+    useEffect(() => {
+        loadModules();
+    }, []);
+
+    const loadModules = async () => {
+        try {
+            const list = await db.entities.DynamicModules.list();
+            setExistingModules(list);
+        } catch(e) { console.error(e); }
+    };
 
     const handleSend = async () => {
         if (!input.trim()) return;
@@ -33,6 +46,7 @@ export default function AppBuilder({ onBack, onShowToast, currentConfig }: AppBu
             properties: {
                 actionType: { type: GenType.STRING, enum: ['update_config', 'create_module', 'delete_module', 'unknown'] },
                 replyMessage: { type: GenType.STRING },
+                moduleIdToDelete: { type: GenType.STRING, description: "ID do módulo para excluir, se actionType for delete_module" },
                 configChanges: {
                     type: GenType.OBJECT,
                     properties: {
@@ -54,7 +68,6 @@ export default function AppBuilder({ onBack, onShowToast, currentConfig }: AppBu
                         description: { type: GenType.STRING },
                         iconName: { type: GenType.STRING },
                         accessLevel: { type: GenType.STRING, enum: ['public', 'admin', 'login'] },
-                        // FIX: Definindo estrutura explicita para evitar erro de objeto vazio
                         data: { 
                             type: GenType.OBJECT,
                             properties: {
@@ -74,25 +87,30 @@ export default function AppBuilder({ onBack, onShowToast, currentConfig }: AppBu
                             }
                         } 
                     }
-                },
-                moduleIdToDelete: { type: GenType.STRING }
+                }
             }
         };
 
         const prompt = `
-            ATUE COMO: Um Arquiteto de Software para o App "Bíblia ADMA".
-            CONTEXTO ATUAL DA CONFIG: ${JSON.stringify(currentConfig || {})}
+            ATUE COMO: Um Arquiteto de Software e Gerenciador do App "Bíblia ADMA".
             
-            USUÁRIO DISSE: "${userMsg}"
+            --- ESTADO ATUAL ---
+            CONFIGURAÇÃO GLOBAL: ${JSON.stringify(currentConfig || {})}
+            MÓDULOS DINÂMICOS EXISTENTES (ID e Título): ${JSON.stringify(existingModules.map(m => ({ id: m.id, title: m.title, type: m.type })))}
             
-            OBJETIVO: Interprete o pedido e gere uma alteração estruturada.
+            --- COMANDO DO USUÁRIO ---
+            "${userMsg}"
             
-            REGRAS:
-            1. Se for mudança de cor, retorne hexadecimal válido em 'configChanges'.
-            2. Se for criar Quiz, preencha 'moduleData.data.questions'.
-            3. Se for criar Página, preencha 'moduleData.data.html'.
-            4. 'iconName' deve ser um nome válido da biblioteca Lucide-React (Ex: 'Brain', 'FileText', 'Link', 'Star').
-            5. Se for ativar/desativar funcionalidade (Ranking, Devocional, Login com Senha), altere 'configChanges'.
+            --- OBJETIVO ---
+            Interprete o pedido e gere uma ação estruturada (JSON).
+            
+            --- REGRAS DE AÇÃO ---
+            1. EXCLUIR MÓDULO: Se o usuário pedir para remover/excluir/apagar uma funcionalidade que está na lista de 'MÓDULOS DINÂMICOS EXISTENTES', use 'actionType': 'delete_module' e preencha 'moduleIdToDelete' com o ID correto encontrado na lista.
+            2. DESATIVAR FUNÇÃO NATIVA: Se o usuário pedir para remover uma função nativa (Ranking, Devocional, Planos, Mensagens/Anúncios), use 'update_config' e defina a flag correspondente (ex: enableMessages: false).
+            3. CRIAR MÓDULO: Se for criar Quiz ou Página, use 'create_module' e preencha 'moduleData'.
+            4. ALTERAR CONFIG: Se for mudança de cor ou nome do app, use 'update_config'.
+            
+            Retorne JSON estritamente conforme o schema.
         `;
 
         try {
@@ -127,10 +145,17 @@ export default function AppBuilder({ onBack, onShowToast, currentConfig }: AppBu
             else if (res.actionType === 'create_module' && res.moduleData) {
                 // Cria Módulo Dinâmico
                 await db.entities.DynamicModules.create(res.moduleData);
+                await loadModules(); // Recarrega lista local
                 onShowToast(`Módulo "${res.moduleData.title}" criado!`, 'success');
             }
+            else if (res.actionType === 'delete_module' && res.moduleIdToDelete) {
+                // Exclui Módulo Dinâmico (IMPLEMENTAÇÃO CORRIGIDA)
+                await db.entities.DynamicModules.delete(res.moduleIdToDelete);
+                await loadModules(); // Recarrega lista local para a IA saber que sumiu
+                onShowToast('Funcionalidade excluída com sucesso!', 'success');
+            }
 
-            setMessages(prev => [...prev, { role: 'model', text: res.replyMessage || "Feito." }]);
+            setMessages(prev => [...prev, { role: 'model', text: res.replyMessage || "Operação realizada com sucesso." }]);
 
         } catch (e: any) {
             setMessages(prev => [...prev, { role: 'model', text: `Erro: ${e.message}` }]);
@@ -172,7 +197,7 @@ export default function AppBuilder({ onBack, onShowToast, currentConfig }: AppBu
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleSend()}
-                    placeholder='Ex: "Crie um Quiz sobre Sansão" ou "Mude a cor para Roxo"'
+                    placeholder='Ex: "Excluir Gerenciar Anúncios" ou "Mude a cor para Roxo"'
                     className="flex-1 p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-[#121212] dark:text-white focus:ring-2 focus:ring-[#C5A059] outline-none"
                     disabled={loading}
                 />
