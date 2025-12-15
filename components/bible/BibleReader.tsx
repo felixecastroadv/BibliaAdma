@@ -1,55 +1,223 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, ChevronRight, List, Book, ChevronDown, RefreshCw, WifiOff, Zap, Volume2, X, FastForward, Search, Trash2, Sparkles, Loader2, Clock, Lock } from 'lucide-react';
+import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, ChevronRight, List, Book, ChevronDown, RefreshCw, WifiOff, Zap, Volume2, X, FastForward, Search, Trash2, Sparkles, Loader2, Clock, Lock, Bookmark } from 'lucide-react';
 import VersePanel from './VersePanel';
 import { db } from '../../services/database';
 import { generateChapterKey, BIBLE_BOOKS } from '../../constants';
 import { generateContent } from '../../services/geminiService';
-// REMOVIDO IMPORT LENTO: import { Type as GenType } from "@google/genai";
 import { ChapterMetadata } from '../../types';
+import { motion, AnimatePresence } from 'framer-motion';
 
-const BookSelector = ({ isOpen, onClose, currentBook, onSelect }: any) => {
-    const [tab, setTab] = useState<'AT' | 'NT'>('AT');
-    const [selectedBook, setSelectedBook] = useState<string | null>(null);
-    const booksAT = BIBLE_BOOKS.filter(b => b.testament === 'old');
-    const booksNT = BIBLE_BOOKS.filter(b => b.testament === 'new');
-    const currentList = tab === 'AT' ? booksAT : booksNT;
-    const activeBookData = BIBLE_BOOKS.find(b => b.name === (selectedBook || currentBook));
+// --- CATEGORIZAÇÃO DIDÁTICA DA BÍBLIA ---
+const BIBLE_CATEGORIES = [
+    {
+        id: 'ot_law',
+        name: 'Pentateuco (Lei)',
+        color: 'text-blue-600 dark:text-blue-400',
+        books: ['Gênesis', 'Êxodo', 'Levítico', 'Números', 'Deuteronômio']
+    },
+    {
+        id: 'ot_history',
+        name: 'Históricos (AT)',
+        color: 'text-green-600 dark:text-green-400',
+        books: ['Josué', 'Juízes', 'Rute', '1 Samuel', '2 Samuel', '1 Reis', '2 Reis', '1 Crônicas', '2 Crônicas', 'Esdras', 'Neemias', 'Ester']
+    },
+    {
+        id: 'ot_poetry',
+        name: 'Poéticos & Sabedoria',
+        color: 'text-purple-600 dark:text-purple-400',
+        books: ['Jó', 'Salmos', 'Provérbios', 'Eclesiastes', 'Cantares']
+    },
+    {
+        id: 'ot_prophets',
+        name: 'Profetas',
+        color: 'text-orange-600 dark:text-orange-400',
+        books: ['Isaías', 'Jeremias', 'Lamentações', 'Ezequiel', 'Daniel', 'Oséias', 'Joel', 'Amós', 'Obadias', 'Jonas', 'Miquéias', 'Naum', 'Habacuque', 'Sofonias', 'Ageu', 'Zacarias', 'Malaquias']
+    },
+    {
+        id: 'nt_gospels',
+        name: 'Evangelhos & Atos',
+        color: 'text-red-600 dark:text-red-400',
+        books: ['Mateus', 'Marcos', 'Lucas', 'João', 'Atos']
+    },
+    {
+        id: 'nt_paul',
+        name: 'Cartas de Paulo',
+        color: 'text-indigo-600 dark:text-indigo-400',
+        books: ['Romanos', '1 Coríntios', '2 Coríntios', 'Gálatas', 'Efésios', 'Filipenses', 'Colossenses', '1 Tessalonicenses', '2 Tessalonicenses', '1 Timóteo', '2 Timóteo', 'Tito', 'Filemom']
+    },
+    {
+        id: 'nt_general',
+        name: 'Cartas Gerais & Revelação',
+        color: 'text-teal-600 dark:text-teal-400',
+        books: ['Hebreus', 'Tiago', '1 Pedro', '2 Pedro', '1 João', '2 João', '3 João', 'Judas', 'Apocalipse']
+    }
+];
+
+const PremiumNavigator = ({ isOpen, onClose, currentBook, onSelect }: any) => {
+    const [selectedBook, setSelectedBook] = useState<string>(currentBook);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    // Rola para o livro selecionado ao abrir
+    const bookListRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (isOpen) {
+            setSelectedBook(currentBook);
+            setSearchTerm('');
+        }
+    }, [isOpen, currentBook]);
+
+    const activeBookData = BIBLE_BOOKS.find(b => b.name === selectedBook);
+    
+    // Filtragem de busca
+    const filteredCategories = searchTerm.trim() === '' 
+        ? BIBLE_CATEGORIES 
+        : BIBLE_CATEGORIES.map(cat => ({
+            ...cat,
+            books: cat.books.filter(b => b.toLowerCase().includes(searchTerm.toLowerCase()))
+          })).filter(cat => cat.books.length > 0);
 
     if (!isOpen) return null;
+
     return (
-        <div className="fixed inset-0 z-50 bg-[#FDFBF7] dark:bg-[#121212] flex flex-col animate-in slide-in-from-bottom-5 duration-300">
-            <div className="bg-[#8B0000] text-white p-4 shadow-lg flex justify-between items-center shrink-0 safe-top">
-                <h2 className="font-cinzel font-bold text-lg tracking-wide">Navegação Bíblica</h2>
-                <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full active:scale-90 transition-transform"><X className="w-6 h-6" /></button>
-            </div>
-            <div className="flex bg-white dark:bg-[#1E1E1E] border-b border-[#C5A059]">
-                <button onClick={() => { setTab('AT'); setSelectedBook(null); }} className={`flex-1 py-4 font-cinzel font-bold text-sm transition-all duration-300 ${tab === 'AT' ? 'bg-[#C5A059]/10 text-[#8B0000] border-b-4 border-[#8B0000] dark:text-[#C5A059]' : 'text-gray-400 hover:text-gray-600'}`}>VELHO TESTAMENTO</button>
-                <button onClick={() => { setTab('NT'); setSelectedBook(null); }} className={`flex-1 py-4 font-cinzel font-bold text-sm transition-all duration-300 ${tab === 'NT' ? 'bg-[#C5A059]/10 text-[#8B0000] border-b-4 border-[#8B0000] dark:text-[#C5A059]' : 'text-gray-400 hover:text-gray-600'}`}>NOVO TESTAMENTO</button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 bg-[#F5F5DC] dark:bg-[#121212]">
-                {!selectedBook ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        {currentList.map(b => (
-                            <button key={b.name} onClick={() => setSelectedBook(b.name)} className={`p-4 rounded-2xl border text-left transition-all active:scale-95 duration-200 ${currentBook === b.name ? 'bg-[#8B0000] text-white border-[#8B0000] shadow-lg shadow-red-900/20' : 'bg-white dark:bg-[#1E1E1E] dark:text-gray-200 border-[#C5A059]/20 hover:border-[#8B0000] shadow-sm'}`}>
-                                <span className="font-cinzel font-bold block text-sm">{b.name}</span>
-                                <span className="text-[10px] opacity-70 uppercase tracking-wider font-montserrat">{b.chapters} Caps</span>
-                            </button>
-                        ))}
+        <AnimatePresence>
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                <motion.div 
+                    initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                    className="bg-[#FDFBF7] dark:bg-[#121212] w-full md:w-[90%] md:max-w-5xl h-full md:h-[85vh] md:rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-[#C5A059]/30"
+                >
+                    {/* Header Luxuoso */}
+                    <div className="bg-[#1a0f0f] text-white p-5 flex items-center justify-between shrink-0 border-b border-[#C5A059]/50 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                        <div className="relative z-10 flex flex-col">
+                            <h2 className="font-cinzel font-bold text-xl md:text-2xl tracking-widest text-[#C5A059]">NAVEGAÇÃO BÍBLICA</h2>
+                            <p className="font-montserrat text-[10px] text-gray-400 uppercase tracking-[0.3em]">Selecione Livro & Capítulo</p>
+                        </div>
+                        <button onClick={onClose} className="relative z-10 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all active:scale-95 border border-white/10">
+                            <X className="w-6 h-6" />
+                        </button>
                     </div>
-                ) : (
-                    <div className="animate-in fade-in slide-in-from-right-5 duration-300">
-                        <button onClick={() => setSelectedBook(null)} className="mb-4 text-[#8B0000] dark:text-[#ff6b6b] flex items-center gap-1 font-bold text-sm active:opacity-60 transition-opacity"><ChevronLeft className="w-4 h-4" /> Voltar para Livros</button>
-                        <h3 className="font-cinzel text-3xl font-bold text-center mb-8 text-[#1a0f0f] dark:text-white pb-2">{selectedBook}</h3>
-                        <div className="grid grid-cols-5 gap-3">
-                            {Array.from({ length: activeBookData?.chapters || 0 }, (_, i) => i + 1).map(chap => (
-                                <button key={chap} onClick={() => { onSelect(selectedBook, chap); onClose(); }} className="aspect-square flex items-center justify-center rounded-xl bg-white dark:bg-[#1E1E1E] border border-[#C5A059]/30 font-montserrat font-bold text-lg hover:bg-[#8B0000] hover:text-white hover:border-[#8B0000] active:scale-90 transition-all duration-200 dark:text-gray-200 shadow-sm">{chap}</button>
-                            ))}
+
+                    <div className="flex flex-col md:flex-row h-full overflow-hidden">
+                        {/* COLUNA ESQUERDA: LISTA DE LIVROS (Com Busca e Categorias) */}
+                        <div className="w-full md:w-1/3 border-r border-[#C5A059]/20 bg-[#F5F5DC]/50 dark:bg-black/20 flex flex-col h-[50vh] md:h-full">
+                            {/* Barra de Busca */}
+                            <div className="p-4 border-b border-[#C5A059]/10 bg-white dark:bg-[#1E1E1E]">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                    <input 
+                                        type="text" 
+                                        placeholder="Buscar livro..." 
+                                        value={searchTerm}
+                                        onChange={e => setSearchTerm(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-sm font-montserrat focus:ring-2 focus:ring-[#C5A059] focus:bg-white dark:focus:bg-gray-900 transition-all outline-none dark:text-white"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Lista Categorizada */}
+                            <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-hide" ref={bookListRef}>
+                                {filteredCategories.map((cat) => (
+                                    <div key={cat.id} className="animate-in slide-in-from-left-5 duration-500">
+                                        <h3 className={`font-cinzel font-bold text-xs uppercase tracking-widest mb-3 pl-2 border-l-2 ${cat.color.replace('text', 'border')} ${cat.color} opacity-80`}>
+                                            {cat.name}
+                                        </h3>
+                                        <div className="space-y-1">
+                                            {cat.books.map(bookName => {
+                                                const isActive = selectedBook === bookName;
+                                                return (
+                                                    <button
+                                                        key={bookName}
+                                                        onClick={() => setSelectedBook(bookName)}
+                                                        className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-300 flex items-center justify-between group ${
+                                                            isActive 
+                                                            ? 'bg-gradient-to-r from-[#C5A059] to-[#9e8045] text-white shadow-lg shadow-[#C5A059]/30 transform scale-[1.02]' 
+                                                            : 'hover:bg-white dark:hover:bg-white/5 text-gray-700 dark:text-gray-300'
+                                                        }`}
+                                                    >
+                                                        <span className={`font-montserrat font-bold text-sm ${isActive ? 'text-white' : ''}`}>
+                                                            {bookName}
+                                                        </span>
+                                                        {isActive && <ChevronRight className="w-4 h-4" />}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                                {filteredCategories.length === 0 && (
+                                    <div className="text-center py-10 text-gray-400">
+                                        <Book className="w-10 h-10 mx-auto mb-2 opacity-30"/>
+                                        <p>Livro não encontrado</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* COLUNA DIREITA: CAPÍTULOS (Visual Premium) */}
+                        <div className="w-full md:w-2/3 bg-white dark:bg-[#1E1E1E] flex flex-col h-[50vh] md:h-full relative">
+                             {/* Título do Livro Selecionado */}
+                             <div className="p-6 md:p-8 text-center border-b border-[#C5A059]/10 bg-gradient-to-b from-[#FDFBF7] to-white dark:from-[#1E1E1E] dark:to-[#151515]">
+                                <motion.div 
+                                    key={selectedBook}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="inline-block"
+                                >
+                                    <h2 className="font-cinzel text-3xl md:text-5xl font-bold text-[#8B0000] dark:text-[#ff6b6b] mb-1">
+                                        {selectedBook}
+                                    </h2>
+                                    <div className="flex items-center justify-center gap-2 opacity-60">
+                                        <div className="h-[1px] w-8 bg-[#C5A059]"></div>
+                                        <p className="font-montserrat text-xs uppercase tracking-[0.3em] text-[#C5A059]">
+                                            {activeBookData?.chapters} Capítulos
+                                        </p>
+                                        <div className="h-[1px] w-8 bg-[#C5A059]"></div>
+                                    </div>
+                                </motion.div>
+                             </div>
+
+                             {/* Grid de Capítulos */}
+                             <div className="flex-1 overflow-y-auto p-6 md:p-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed">
+                                <motion.div 
+                                    key={selectedBook + "_grid"}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    transition={{ delay: 0.1 }}
+                                    className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3 md:gap-4"
+                                >
+                                    {Array.from({ length: activeBookData?.chapters || 0 }, (_, i) => i + 1).map(chap => (
+                                        <button 
+                                            key={chap} 
+                                            onClick={() => { onSelect(selectedBook, chap); onClose(); }}
+                                            className="aspect-square rounded-2xl border border-[#C5A059]/20 bg-white dark:bg-[#2A2A2A] shadow-sm hover:shadow-md 
+                                            hover:border-[#8B0000] hover:bg-[#8B0000] hover:text-white dark:hover:bg-[#ff6b6b] dark:hover:border-[#ff6b6b]
+                                            flex items-center justify-center font-cinzel font-bold text-lg text-gray-700 dark:text-gray-200
+                                            transition-all duration-300 group active:scale-90 relative overflow-hidden"
+                                        >
+                                            <span className="relative z-10">{chap}</span>
+                                            <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                        </button>
+                                    ))}
+                                </motion.div>
+                             </div>
+
+                             {/* Botão Flutuante 'Ler Capítulo 1' se não quiser escolher */}
+                             <div className="absolute bottom-6 right-6 md:hidden">
+                                <button 
+                                    onClick={() => { onSelect(selectedBook, 1); onClose(); }}
+                                    className="bg-[#8B0000] text-white p-4 rounded-full shadow-xl flex items-center gap-2 font-bold animate-bounce"
+                                >
+                                    <Play className="w-5 h-5 fill-current" />
+                                </button>
+                             </div>
                         </div>
                     </div>
-                )}
+                </motion.div>
             </div>
-        </div>
+        </AnimatePresence>
     );
 };
 
@@ -185,16 +353,12 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
             }
 
             // 3. TENTA NUVEM (SUPABASE - UNIVERSAL)
-            // Se o admin subiu o JSON, vai estar aqui
             const cloudData = await db.entities.BibleChapter.getCloud(cacheKey);
             if (cloudData && Array.isArray(cloudData) && cloudData.length > 0) {
                 setSourceMode('cloud');
                 const formatted = cloudData.map((t: string, i: number) => ({ number: i + 1, text: t }));
                 setVerses(formatted);
-                
-                // Salva offline para a próxima vez ser rápido
                 await db.entities.BibleChapter.saveOffline(cacheKey, cloudData);
-                
                 setLoading(false);
                 return;
             }
@@ -211,12 +375,8 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                     number: v.number,
                     text: v.text.trim()
                 }));
-                
                 const simpleVerses = cleanVerses.map((v:any) => v.text);
-                
-                // Salva tanto no Local quanto na Nuvem (se possível/desejado, mas por padrão salvamos local)
                 await db.entities.BibleChapter.saveOffline(cacheKey, simpleVerses);
-                
                 setVerses(cleanVerses);
             } else {
                 throw new Error("Capítulo vazio.");
@@ -235,7 +395,6 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
         if(bookMeta) {
             const key = `bible_acf_${bookMeta.abbrev}_${chapter}`;
             localStorage.removeItem(key);
-            // Também limparíamos do IndexedDB se tivéssemos a ref aqui, mas o fetchChapter sobrescreve
             fetchChapter();
         }
     };
@@ -243,23 +402,17 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
     const loadMetadata = async () => {
         setMetadata(null);
         try {
-            // 1. Tenta Local (IndexedDB)
             let meta = await db.entities.ChapterMetadata.get(chapterKey);
-            
             if (!meta) {
-               // 2. Tenta Nuvem (Supabase - Universal)
                const cloudMeta = await db.entities.ChapterMetadata.getCloud(chapterKey);
                if (cloudMeta) {
                    meta = cloudMeta;
-                   // Salva localmente para não precisar baixar de novo
                    await db.entities.ChapterMetadata.save(meta);
                }
             }
-
             if (meta) {
                 setMetadata(meta);
             } else {
-                // 3. Se não existe nem local nem na nuvem, gera.
                 if (navigator.onLine) {
                     generateMetadata();
                 }
@@ -270,7 +423,6 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
     const generateMetadata = async () => {
         if (isGeneratingMeta) return;
         setIsGeneratingMeta(true);
-        // Prompt reforçado para Português do Brasil
         const prompt = `ATUE COMO: Teólogo Brasileiro. TAREFA: Gerar metadados para ${book} ${chapter}. IDIOMA DE RESPOSTA: PORTUGUÊS DO BRASIL (pt-BR). FORMATO JSON OBRIGATÓRIO (sem markdown): { "title": "Título Curto (Max 5 palavras)", "subtitle": "Resumo em 1 frase" }. Estilo: Clássico e Conservador.`;
         try {
             const rawText = await generateContent(prompt, null);
@@ -279,7 +431,6 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                 const res = JSON.parse(cleanJson);
                 if (res && res.title) {
                     const data = { chapter_key: chapterKey, title: res.title, subtitle: res.subtitle };
-                    // A função .save agora salva tanto no Local quanto na Nuvem (Universal)
                     await db.entities.ChapterMetadata.save(data);
                     setMetadata(data);
                     onShowToast("Epígrafe atualizada!", "success");
@@ -311,7 +462,6 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
     const toggleRead = async () => {
         if (!userProgress) return;
         
-        // Bloqueio de Segurança Anti-Fraude
         if (isLocked) {
             onShowToast(`Leia o capítulo por mais ${readingTimer} segundos para confirmar.`, "info");
             return;
@@ -358,7 +508,6 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                 <div className="flex items-center gap-2">
                     <button onClick={togglePlay} className="p-2 hover:bg-white/10 rounded-full transition-all active:scale-90">{isPlaying ? <Pause className="w-5 h-5 animate-pulse text-[#C5A059]" /> : <Play className="w-5 h-5" />}</button>
                     
-                    {/* Botão de Check no Header com Feedback Visual de Bloqueio */}
                     <button 
                         onClick={toggleRead} 
                         disabled={isLocked}
@@ -428,7 +577,7 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                 </div>
             )}
 
-            <BookSelector isOpen={showSelector} onClose={() => setShowSelector(false)} currentBook={book} onSelect={(b: string, c: number) => { setBook(b); setChapter(c); }} />
+            <PremiumNavigator isOpen={showSelector} onClose={() => setShowSelector(false)} currentBook={book} onSelect={(b: string, c: number) => { setBook(b); setChapter(c); }} />
 
             <div className="flex-1 overflow-y-auto pb-24 scroll-smooth">
                 <div className="max-w-3xl mx-auto p-6 md:p-12">

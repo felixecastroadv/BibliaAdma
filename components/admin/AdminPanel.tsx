@@ -208,8 +208,10 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           try {
               const jsonText = e.target?.result as string;
               const cleanJson = jsonText.replace(/^\uFEFF/, ''); 
-              const jsonData = JSON.parse(cleanJson);
-              if (!Array.isArray(jsonData)) throw new Error("Formato inválido. Esperado array.");
+              const rawData = JSON.parse(cleanJson);
+              if (!Array.isArray(rawData)) throw new Error("Formato inválido. Esperado array.");
+              const jsonData = rawData as any[];
+              
               setProcessStatus("Salvando no banco...");
               let count = 0;
               for (const item of jsonData) {
