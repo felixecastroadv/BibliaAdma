@@ -337,6 +337,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
             --- ESTILO DE ESCRITA ---
             - Vibrante, Pastoral e Acessível.
             - NUNCA use frases de auto-identificação ("Eu como teólogo...", "Nós cremos...").
+            - PALAVRAS ORIGINAIS: Quando ESTRITAMENTE NECESSÁRIO (principalmente em casos de polissemia), cite a palavra chave no original (Hebraico/Grego), sua tradução e seu significado para melhor interpretar o versículo, para que o leitor entenda sem dúvidas. Não use em todos os comentários, apenas quando enriquecer a exegese.
 
             ESTRUTURA:
             - 2 a 3 parágrafos fluídos.

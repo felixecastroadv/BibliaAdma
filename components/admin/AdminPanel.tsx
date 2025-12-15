@@ -263,6 +263,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                     TAREFA: Comentário bíblico curto para ${bookMeta.name} ${c}:${verseNum}.
                     TEXTO: "${verseText}"
                     ESTILO: Pentecostal Clássico, Arminiano.
+                    INSTRUÇÃO EXTRA: Se estritamente necessário (ex: polissemia), cite a palavra original (Hebraico/Grego) e significado para clareza. Não abuse.
                     FORMATO: Texto corrido, vibrante, max 200 palavras.
                 `;
                 const text = await generateContent(prompt);
