@@ -293,23 +293,24 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
     try {
         const prompt = `
             ATUE COMO: Professor Michel Felix (Teólogo Erudito, Pentecostal Clássico e Mestre em Exegese).
-            TAREFA: Escrever um comentário BÍBLICO-DEVOCIONAL sobre ${book} ${chapter}:${verseNumber}.
+            TAREFA: Escrever um comentário BÍBLICO-DEVOCIONAL CURTO sobre ${book} ${chapter}:${verseNumber}.
             TEXTO BÍBLICO: "${verse}"
             ${customPromptAddon}
 
-            --- REGRAS DE TAMANHO (CRÍTICO) ---
-            1. O comentário deve ter EXATAMENTE 3 PARÁGRAFOS bem construídos.
-            2. NÃO ultrapasse 350-400 palavras no total. Seja DENSO, mas CONCISO. Evite prolixidade.
+            --- REGRAS DE TAMANHO (CRÍTICO: MÁXIMO 200-250 PALAVRAS) ---
+            1. O comentário deve ser BREVE e DIRETO. Não enrole.
+            2. Mantenha os 3 parágrafos, mas eles devem ser curtos.
+            3. Corte excessos. Vá direto ao ponto central do versículo.
 
             --- ESTILO DE ESCRITA (PADRÃO LIVRO DE OURO) ---
-            1. Texto corrido, elegante, literário e inspirador (não use listas).
-            2. USO INTELIGENTE DOS ORIGINAIS: Cite o original (Hebraico/Grego transliterado) APENAS se trouxer uma luz essencial sobre o significado (ex: nomes, polissemia).
-            3. TOM: Solene, poético e teológico.
+            1. Texto corrido, elegante e inspirador.
+            2. USO DE ORIGINAIS: Cite hebraico/grego APENAS se for uma chave de ouro para o entendimento. Se não for essencial, não use.
+            3. TOM: Solene, mas acessível.
 
-            --- ESTRUTURA DOS 3 PARÁGRAFOS ---
-            1. CONTEXTO IMEDIATO: Explique o cenário, o significado das palavras chaves e o que está acontecendo no texto.
-            2. TEOLOGIA PROFUNDA: Aprofunde na doutrina, na visão de Deus e na conexão com o plano da salvação (Visão Arminiana).
-            3. APLICAÇÃO PODEROSA: Traga para o hoje. Como isso confronta ou consola a igreja atual?
+            --- ESTRUTURA BLINDADA (3 PARÁGRAFOS CURTOS) ---
+            1. CONTEXTO (Max 2-3 frases): O que está acontecendo aqui? Defina o cenário ou palavra-chave.
+            2. TEOLOGIA (Max 3-4 frases): A doutrina central (Visão Arminiana/Pentecostal).
+            3. APLICAÇÃO (Max 2-3 frases): O chamado para hoje.
         `;
         const text = await generateContent(prompt);
         const data = { 
