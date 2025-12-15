@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Calendar, Loader2, Volume2, VolumeX, Edit3, Settings, RefreshCw, Command, ChevronRight, Lock, AlertCircle, FastForward, Type, Trash2 } from 'lucide-react';
+import { ChevronLeft, Calendar, Loader2, Volume2, VolumeX, Edit3, Settings, RefreshCw, Command, ChevronRight, Lock, AlertCircle, FastForward, Type, Trash2, Flame } from 'lucide-react';
 import { generateContent } from '../../services/geminiService';
 import { db } from '../../services/database';
 import { Devotional } from '../../types';
@@ -345,7 +345,7 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
 
                 <div className="bg-[#1a0f0f] dark:bg-black text-white p-6 rounded-xl shadow-lg border-l-4 border-[#C5A059]">
                     <h3 className="font-cinzel font-bold mb-3 text-[#C5A059] flex items-center gap-2">
-                        <Volume2 className="w-4 h-4"/> Oração
+                        <Flame className="w-4 h-4"/> Oração
                     </h3>
                     <p className="font-cormorant italic text-lg leading-relaxed opacity-90">{cleanTextDisplay(devotional.prayer)}</p>
                 </div>
