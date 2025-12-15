@@ -1,0 +1,171 @@
+
+import React, { useState } from 'react';
+import { Send, Bot, Loader2, Save, Wand2 } from 'lucide-react';
+import { generateContent } from '../../services/geminiService';
+import { db } from '../../services/database';
+import { AppConfig, DynamicModule } from '../../types';
+import { Type as GenType } from "@google/genai";
+
+interface AppBuilderProps {
+  onBack: () => void;
+  onShowToast: (msg: string, type: 'success'|'error'|'info') => void;
+  currentConfig: AppConfig | null;
+}
+
+export default function AppBuilder({ onBack, onShowToast, currentConfig }: AppBuilderProps) {
+    const [input, setInput] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [messages, setMessages] = useState<{role: 'user'|'model', text: string}[]>([
+        { role: 'model', text: 'Olá! Sou o Construtor do ADMA. Posso alterar cores, ativar/desativar funções ou criar novos módulos (Quizzes, Páginas). O que deseja fazer?' }
+    ]);
+
+    const handleSend = async () => {
+        if (!input.trim()) return;
+        
+        const userMsg = input;
+        setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+        setInput('');
+        setLoading(true);
+
+        // Define schema para a resposta da IA
+        const schema = {
+            type: GenType.OBJECT,
+            properties: {
+                actionType: { type: GenType.STRING, enum: ['update_config', 'create_module', 'delete_module', 'unknown'] },
+                replyMessage: { type: GenType.STRING },
+                configChanges: {
+                    type: GenType.OBJECT,
+                    properties: {
+                        primaryColor: { type: GenType.STRING },
+                        secondaryColor: { type: GenType.STRING },
+                        appName: { type: GenType.STRING },
+                        enableRanking: { type: GenType.BOOLEAN },
+                        enableDevotional: { type: GenType.BOOLEAN },
+                        enablePlans: { type: GenType.BOOLEAN },
+                        enableMessages: { type: GenType.BOOLEAN },
+                        requirePasswordLogin: { type: GenType.BOOLEAN }
+                    }
+                },
+                moduleData: {
+                    type: GenType.OBJECT,
+                    properties: {
+                        type: { type: GenType.STRING, enum: ['quiz', 'page', 'link'] },
+                        title: { type: GenType.STRING },
+                        description: { type: GenType.STRING },
+                        iconName: { type: GenType.STRING },
+                        accessLevel: { type: GenType.STRING, enum: ['public', 'admin', 'login'] },
+                        data: { type: GenType.OBJECT } // Conteúdo flexível (perguntas do quiz, etc)
+                    }
+                },
+                moduleIdToDelete: { type: GenType.STRING }
+            }
+        };
+
+        const prompt = `
+            ATUE COMO: Um Arquiteto de Software para o App "Bíblia ADMA".
+            CONTEXTO ATUAL DA CONFIG: ${JSON.stringify(currentConfig || {})}
+            
+            USUÁRIO DISSE: "${userMsg}"
+            
+            OBJETIVO: Interprete o pedido e gere uma alteração estruturada.
+            
+            REGRAS:
+            1. Se for mudança de cor, retorne hexadecimal válido em 'configChanges'.
+            2. Se for criar Quiz/Página, gere 'moduleData' completo com perguntas ou HTML simples.
+            3. 'iconName' deve ser um nome válido da biblioteca Lucide-React (Ex: 'Brain', 'FileText', 'Link').
+            4. Se for ativar/desativar funcionalidade (Ranking, Devocional, Login com Senha), altere 'configChanges'.
+            5. 'requirePasswordLogin' = true significa que o usuário precisará digitar uma senha fixa definida pelo admin (não implemente Google Auth, apenas flag).
+        `;
+
+        try {
+            const res = await generateContent(prompt, schema);
+            
+            if (res.actionType === 'update_config' && res.configChanges) {
+                // Atualiza Config Global
+                const newConfig = {
+                    ...currentConfig,
+                    theme: {
+                        ...currentConfig?.theme,
+                        ...(res.configChanges.primaryColor ? { primaryColor: res.configChanges.primaryColor } : {}),
+                        ...(res.configChanges.secondaryColor ? { secondaryColor: res.configChanges.secondaryColor } : {}),
+                        ...(res.configChanges.appName ? { appName: res.configChanges.appName } : {}),
+                    },
+                    features: {
+                        ...currentConfig?.features,
+                        ...(res.configChanges.enableRanking !== undefined ? { enableRanking: res.configChanges.enableRanking } : {}),
+                        ...(res.configChanges.enableDevotional !== undefined ? { enableDevotional: res.configChanges.enableDevotional } : {}),
+                        ...(res.configChanges.enablePlans !== undefined ? { enablePlans: res.configChanges.enablePlans } : {}),
+                        ...(res.configChanges.enableMessages !== undefined ? { enableMessages: res.configChanges.enableMessages } : {}),
+                    },
+                    auth: {
+                         ...currentConfig?.auth,
+                         ...(res.configChanges.requirePasswordLogin !== undefined ? { requirePasswordLogin: res.configChanges.requirePasswordLogin } : {})
+                    }
+                };
+                
+                await db.entities.AppConfig.save(newConfig);
+                onShowToast('Configurações atualizadas! Recarregue para ver.', 'success');
+            } 
+            else if (res.actionType === 'create_module' && res.moduleData) {
+                // Cria Módulo Dinâmico
+                await db.entities.DynamicModules.create(res.moduleData);
+                onShowToast(`Módulo "${res.moduleData.title}" criado!`, 'success');
+            }
+
+            setMessages(prev => [...prev, { role: 'model', text: res.replyMessage || "Feito." }]);
+
+        } catch (e: any) {
+            setMessages(prev => [...prev, { role: 'model', text: `Erro: ${e.message}` }]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="flex flex-col h-full bg-gray-50 dark:bg-[#121212] rounded-xl overflow-hidden shadow-2xl border border-[#C5A059]">
+            <div className="bg-[#1a0f0f] text-white p-4 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                    <Wand2 className="w-5 h-5 text-[#C5A059]" />
+                    <h2 className="font-cinzel font-bold">ADMA Builder AI</h2>
+                </div>
+                <button onClick={onBack} className="text-xs underline text-gray-400 hover:text-white">Fechar</button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {messages.map((m, i) => (
+                    <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[80%] p-3 rounded-xl text-sm ${m.role === 'user' ? 'bg-[#C5A059] text-white rounded-tr-none' : 'bg-white dark:bg-[#1E1E1E] text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-tl-none'}`}>
+                            {m.role === 'model' && <Bot className="w-4 h-4 mb-1 text-[#8B0000]"/>}
+                            {m.text}
+                        </div>
+                    </div>
+                ))}
+                {loading && (
+                    <div className="flex justify-start">
+                         <div className="bg-white dark:bg-[#1E1E1E] p-3 rounded-xl rounded-tl-none border border-gray-200 dark:border-gray-700">
+                             <Loader2 className="w-5 h-5 animate-spin text-[#C5A059]" />
+                         </div>
+                    </div>
+                )}
+            </div>
+
+            <div className="p-4 bg-white dark:bg-[#1E1E1E] border-t border-gray-200 dark:border-gray-700 flex gap-2">
+                <input 
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSend()}
+                    placeholder='Ex: "Crie um Quiz sobre Sansão" ou "Mude a cor para Roxo"'
+                    className="flex-1 p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-[#121212] dark:text-white focus:ring-2 focus:ring-[#C5A059] outline-none"
+                    disabled={loading}
+                />
+                <button 
+                    onClick={handleSend}
+                    disabled={loading || !input.trim()}
+                    className="bg-[#8B0000] text-white p-3 rounded-lg hover:bg-[#600018] disabled:opacity-50"
+                >
+                    <Send className="w-5 h-5" />
+                </button>
+            </div>
+        </div>
+    );
+}

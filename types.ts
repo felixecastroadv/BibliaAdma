@@ -121,3 +121,34 @@ export interface ContentReport {
   date: string;
   status: 'pending' | 'resolved';
 }
+
+// --- NOVOS TIPOS PARA O BUILDER ---
+
+export interface AppConfig {
+    id: string; // Sempre 'global_config'
+    theme: {
+        primaryColor: string;
+        secondaryColor: string;
+        appName: string;
+    };
+    features: {
+        enableRanking: boolean;
+        enableDevotional: boolean;
+        enablePlans: boolean;
+        enableMessages: boolean;
+    };
+    auth: {
+        requirePasswordLogin: boolean; // Se true, pede senha fixa além do nome
+        adminPassword?: string;
+    };
+}
+
+export interface DynamicModule {
+    id: string;
+    type: 'quiz' | 'page' | 'link';
+    title: string;
+    description: string;
+    iconName: string; // Nome do ícone Lucide
+    accessLevel: 'public' | 'admin' | 'login';
+    data: any; // JSON flexível dependendo do tipo (perguntas do quiz, html da página, url)
+}

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import LoginScreen from './components/auth/LoginScreen';
 import DashboardHome from './components/dashboard/DashboardHome';
@@ -8,11 +9,13 @@ import DevotionalView from './components/devotional/DevotionalView';
 import PlansView from './components/plans/PlansView';
 import RankingView from './components/ranking/RankingView';
 import MessagesView from './components/messages/MessagesView';
+import DynamicModuleViewer from './components/dynamic/DynamicModuleViewer'; // Novo
 import AdminPasswordModal from './components/modals/AdminPasswordModal';
 import Toast from './components/ui/Toast';
 import BottomNav from './components/ui/BottomNav';
-import NetworkStatus from './components/ui/NetworkStatus'; // Novo Componente
+import NetworkStatus from './components/ui/NetworkStatus';
 import { db } from './services/database';
+import { AppConfig, DynamicModule } from './types';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -26,7 +29,27 @@ export default function App() {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [navParams, setNavParams] = useState<any>({});
 
+  // Config e Módulos Dinâmicos
+  const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
+  const [activeModule, setActiveModule] = useState<DynamicModule | null>(null);
+
   useEffect(() => {
+    // 1. Carrega Config Global
+    const loadConfig = async () => {
+        try {
+            const cfg = await db.entities.AppConfig.get();
+            if (cfg) {
+                setAppConfig(cfg);
+                // Aplica Cores Dinâmicas
+                if (cfg.theme) {
+                    document.documentElement.style.setProperty('--primary-color', cfg.theme.primaryColor);
+                    document.documentElement.style.setProperty('--secondary-color', cfg.theme.secondaryColor);
+                }
+            }
+        } catch(e) {}
+    };
+    loadConfig();
+
     const saved = localStorage.getItem('adma_user');
     if (saved) {
         const u = JSON.parse(saved);
@@ -35,7 +58,6 @@ export default function App() {
         loadProgress(u.user_email, u.user_name);
     }
     
-    // Check system preference
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
         setDarkMode(true);
     }
@@ -50,12 +72,9 @@ export default function App() {
   }, [darkMode]);
 
   const loadProgress = async (email: string, nameFallback?: string) => {
-    // Agora usando a versão com cache, o load é quase instantâneo mesmo offline
     const p = await db.entities.ReadingProgress.filter({ user_email: email });
     if (p.length) setUserProgress(p[0]);
     else {
-        // Se não existir, cria (mas se estiver offline, pode falhar o create real, 
-        // mas o app vai tentar seguir com objeto em memória)
         const displayName = nameFallback || user?.user_name || email;
         const newP = await db.entities.ReadingProgress.create({ 
             user_email: email, 
@@ -106,9 +125,19 @@ export default function App() {
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
   const handleNavigate = (v: string, params?: any) => {
+      // Se for navegação para módulo dinâmico
+      if (v.startsWith('module_')) {
+          const modId = v.replace('module_', '');
+          // O Dashboard passará o objeto do módulo em params, ou buscamos do estado global
+          if (params && params.module) {
+              setActiveModule(params.module);
+              setView('dynamic_module');
+          }
+          return;
+      }
+      
       setView(v);
       if(params) setNavParams(params);
-      // Scroll to top on navigation
       window.scrollTo(0, 0);
   };
 
@@ -127,6 +156,7 @@ export default function App() {
                 toggleDarkMode={toggleDarkMode}
                 onShowToast={showToast}
                 onLogout={handleLogout}
+                appConfig={appConfig} // Passa Config
             />;
         case 'reader':
             return <BibleReader 
@@ -156,6 +186,8 @@ export default function App() {
             return <RankingView onBack={() => setView('dashboard')} />;
         case 'messages':
             return <MessagesView onBack={() => setView('dashboard')} isAdmin={isAdmin} user={user} />;
+        case 'dynamic_module':
+            return activeModule ? <DynamicModuleViewer module={activeModule} onBack={() => setView('dashboard')} /> : <div>Módulo não encontrado</div>;
         default:
             return <div className="dark:text-white">Page not found</div>;
     }
@@ -163,19 +195,15 @@ export default function App() {
 
   return (
     <div className="font-sans text-gray-900 dark:text-gray-100 min-h-screen bg-background dark:bg-dark-bg transition-colors duration-300 flex flex-col">
-        {/* Main Content Area - PB-20 ensures content isn't hidden behind nav */}
         <div className={`flex-1 ${isAuthenticated ? 'pb-20' : ''}`}>
             {renderView()}
         </div>
         
-        {/* Bottom Navigation */}
-        {isAuthenticated && (
+        {isAuthenticated && view !== 'dynamic_module' && (
             <BottomNav currentView={view} onNavigate={handleNavigate} />
         )}
 
         <AdminPasswordModal isOpen={showAdminModal} onClose={() => setShowAdminModal(false)} onSuccess={handleAdminSuccess} />
-        
-        {/* Componentes Globais de UI */}
         <NetworkStatus />
         {toast.msg && <Toast message={toast.msg} type={toast.type} onClose={() => setToast({ ...toast, msg: '' })} />}
     </div>

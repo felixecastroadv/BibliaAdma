@@ -115,6 +115,29 @@ const apiCall = async (action: 'list' | 'save' | 'delete' | 'get', collection: s
 
 export const db = {
   entities: {
+    AppConfig: {
+        get: async () => {
+            const data = await apiCall('get', 'app_config', { id: 'global_config' });
+            return data;
+        },
+        save: async (config: any) => {
+            const item = { ...config, id: 'global_config' };
+            return await apiCall('save', 'app_config', { item });
+        }
+    },
+    DynamicModules: {
+        list: async () => {
+            return await apiCall('list', 'dynamic_modules') || [];
+        },
+        create: async (data: any) => {
+            const newItem = { ...data, id: data.id || Date.now().toString() };
+            await apiCall('save', 'dynamic_modules', { item: newItem });
+            return newItem;
+        },
+        delete: async (id: string) => {
+            await apiCall('delete', 'dynamic_modules', { id });
+        }
+    },
     BibleChapter: {
         // Busca local (Rápido)
         getOffline: async (chapterKey: string) => {
