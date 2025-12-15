@@ -292,34 +292,34 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
 
     try {
         const prompt = `
-            ATUE COMO: Professor Michel Felix (Teólogo Erudito, Pentecostal Clássico e Mestre em Exegese).
-            TAREFA: Escrever um comentário EXEGÉTICO PROFUNDO sobre ${book} ${chapter}:${verseNumber}.
+            ATUE COMO: Professor Michel Felix.
+            TAREFA: Escrever um comentário EXEGÉTICO para alunos de Escola Dominical (EBD).
             TEXTO BÍBLICO: "${verse}"
             ${customPromptAddon}
 
-            --- DIRETRIZ MESTRA: INTERPRETAÇÃO (85%) > APLICAÇÃO (15%) ---
-            1. O OBJETIVO É ENSINAR A INTENÇÃO DO AUTOR: O aluno deve sair entendendo o que o texto significava originalmente.
-            2. FUJA DA AUTOAJUDA: Não gaste texto com frases motivacionais vazias. Foque na riqueza da Palavra.
-            3. APLICAÇÃO SECUNDÁRIA: A aplicação prática deve vir apenas no final, como consequência lógica da interpretação.
+            --- LINGUAGEM E TOM (CRÍTICO: CLAREZA TOTAL) ---
+            1. PÚBLICO: Alunos de 16 a 76 anos, escolaridade média.
+            2. VOCABULÁRIO: Profundo, mas SIMPLES e DIDÁTICO. Se usar um termo difícil, explique o significado na hora.
+            3. SEM JARGÕES: NÃO use termos como "Arminiano", "Pentecostal Clássico", "Merisma", "Eisegese", "Hermenêutica" de forma explícita. Use a *ideia* por trás deles (ex: em vez de "visão arminiana", diga "Deus oferece a salvação a todos, mas cabe ao homem aceitar").
+            4. SEM AUTO-IDENTIFICAÇÃO: NÃO diga "Nós cremos...", "Como pentecostais...". Apenas ensine a verdade bíblica (que deve ser implicitamente alinhada à teologia pentecostal clássica).
+            5. OBJETIVO: O aluno deve ler e entender de primeira, sem precisar de dicionário.
 
-            --- USO OBRIGATÓRIO DOS ORIGINAIS ---
-            Cite palavras chaves em Hebraico/Grego (transliteradas) para explicar nuances, nomes, lugares ou polissemia. Isso é essencial para o "estilo Professor".
+            --- USO DOS ORIGINAIS ---
+            Cite palavras chaves em Hebraico/Grego (transliteradas) para explicar nuances, mas faça isso de forma natural (ex: "A palavra usada aqui no original é *termo*, que significa...").
 
             --- ESTRUTURA BLINDADA (3 PARÁGRAFOS - Max 250 Palavras) ---
             
             1. PARÁGRAFO 1 (O TEXTO E O CONTEXTO): 
-               - Explique o versículo dentro do contexto histórico e gramatical. 
-               - Traga o significado dos termos originais. O que o autor quis dizer aqui?
+               - O que o autor quis dizer originalmente? Explique o cenário, quem está falando e o sentido das palavras originais. Seja o professor que descomplica o texto.
 
-            2. PARÁGRAFO 2 (TEOLOGIA E DOUTRINA): 
-               - Aprofunde o significado teológico. Conecte com a doutrina cristã (Visão Arminiana/Pentecostal).
-               - Explique a "interpretação correta" contra possíveis erros.
+            2. PARÁGRAFO 2 (A VERDADE DOUTRINÁRIA): 
+               - Aprofunde o significado espiritual e teológico. Conecte os pontos. Ensine a doutrina correta sem usar rótulos complexos. (Foco 85% do texto junto com o parágrafo 1).
 
             3. PARÁGRAFO 3 (DESFECHO/APLICAÇÃO): 
-               - Curto e forte. Como essa verdade interpretada confronta ou consola a igreja hoje? (Max 15% do texto).
+               - Curto e forte. Como essa verdade muda a vida do aluno hoje? (Max 15% do texto).
 
             --- ESTILO VISUAL ---
-            Texto corrido, elegante ("Livro de Ouro"), culto e reverente.
+            Texto corrido, elegante, inspirador e fácil de ler.
         `;
         const text = await generateContent(prompt);
         const data = { 
