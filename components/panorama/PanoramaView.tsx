@@ -324,6 +324,14 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         2. PROIBIDO: Heresias, Apócrifos, Misticismo Cabalístico, Auto-identificação ("Eu acho", "Nós").
         3. TOM: Magistral, Impessoal, Acadêmico, Vibrante e Ortodoxo.
 
+        --- PROFUNDIDADE DE CONTEÚDO E IDIOMAS ORIGINAIS (INDISPENSÁVEL) ---
+        O EBD não é um curso de línguas, mas para um melhor ensino é OBRIGATÓRIO:
+        1. PALAVRAS-CHAVE: Cite os termos originais (Hebraico no AT / Grego no NT) transliterados e com a grafia original quando relevante.
+           Exemplo: "...criou (b'reshit - בְּרֵאשִׁית)..."
+        2. SIGNIFICADOS DE NOMES: Sempre traga o significado etimológico de nomes de pessoas e lugares citados no texto.
+           Exemplo: "...Potifar, que significa 'Aquele que Ra deu'..." ou "...Zafenate-Paneia, 'Revelador de Segredos'..."
+        3. Use esses elementos para enriquecer a exegese e a aplicação espiritual.
+
         --- ESTRUTURA VISUAL OBRIGATÓRIA (BASEADA NO MODELO ADMA) ---
         Use EXATAMENTE esta estrutura de tópicos. NÃO use cabeçalhos como "Introdução" ou "Desenvolvimento" explicitamente, apenas comece o texto ou use os números.
 
@@ -336,7 +344,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         3. TÓPICOS DO ESTUDO (Use Numeração 1., 2., 3...):
            Exemplo:
            1. TÍTULO DO TÓPICO EM MAIÚSCULO
-           Texto explicativo profundo, citando versículos e fazendo a exegese sem usar a palavra "exegese" no título.
+           Texto explicativo profundo, citando versículos e fazendo a exegese (com as palavras no original).
 
         4. SEÇÕES FINAIS OBRIGATÓRIAS (No final do estudo):
            ### TIPOLOGIA: CONEXÃO COM JESUS CRISTO
