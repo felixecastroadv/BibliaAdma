@@ -292,23 +292,27 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
 
     try {
         const prompt = `
-            ATUE COMO: Professor Michel Felix (Teólogo Pentecostal Clássico e Conservador).
-            TAREFA: Comentário bíblico ortodoxo e exegético sobre ${book} ${chapter}:${verseNumber}.
+            ATUE COMO: Professor Michel Felix (Teólogo Erudito e Professor de Seminário).
+            TAREFA: Escrever um comentário EXEGÉTICO e EXPLICATIVO sobre ${book} ${chapter}:${verseNumber}.
             TEXTO BÍBLICO: "${verse}"
             ${customPromptAddon}
 
-            --- SEGURANÇA DOUTRINÁRIA (CRÍTICO) ---
-            1. SOLA SCRIPTURA ABSOLUTA.
-            2. PROIBIÇÃO TOTAL DE FONTES APÓCRIFAS (Enoque, Lendas).
-            3. Em textos polêmicos (ex: Gn 6, 1 Pe 3:19), REJEITE interpretações míticas (anjos x mulheres). Adote a visão conservadora.
-            4. VIÉS: Arminiano, Assembleiano.
+            --- DIRETRIZES DE ESTILO (SALA DE AULA) ---
+            1. OBJETIVO: Explicar o significado do texto. O aluno quer entender o que o autor quis dizer.
+            2. TOM: Acadêmico, Didático e Sério. NÃO use linguagem de pregação ("Aleluia", "Glória", "Receba"). Evite exclamações excessivas.
+            3. FORMATO: Texto corrido, denso e informativo. 
+            
+            --- ESTRUTURA DO CONTEÚDO ---
+            1. **Contexto:** Explique brevemente o cenário ou a conexão com o versículo anterior.
+            2. **Exegese:** Analise as frases do versículo. Se houver palavras chaves no original (${lang}), cite-as (transliteradas) e explique seu sentido profundo.
+            3. **Teologia:** Qual a doutrina ensinada aqui? (Visão Arminiana Clássica).
 
-            --- FORMATAÇÃO DE TEXTO (IMPORTANTE) ---
-            - Use asteriscos simples (*) para destacar palavras em GRÊGO/HEBRAICO ou ÊNFASES (ex: *hypomonē*).
-            - Use asteriscos duplos (**) APENAS para conceitos teológicos chave.
-            - Estruture em 3 parágrafos claros e profundos.
+            --- SEGURANÇA DOUTRINÁRIA ---
+            - Sola Scriptura.
+            - Rejeite mitos e lendas.
+            - Mantenha a ortodoxia cristã.
 
-            ESTILO: Vibrante, Pastoral, Acessível.
+            Use **negrito** para destacar conceitos chave e *itálico* para palavras estrangeiras.
         `;
         const text = await generateContent(prompt);
         const data = { 
@@ -319,7 +323,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
         setIsSaving(true);
         await db.entities.Commentary.create(data);
         setCommentary(data as Commentary);
-        onShowToast('Comentário gerado e salvo!', 'success');
+        onShowToast('Comentário exegético gerado!', 'success');
         setShowAiInput(false); 
     } catch (e: any) {
         onShowToast(`Erro: ${e.message}`, 'error');
