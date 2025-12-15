@@ -207,7 +207,8 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       try {
           // 1. Busca todos os capítulos do Supabase
           // Nota: 'list' já traz tudo. Se for muita coisa, o loading pode demorar um pouco.
-          const allChapters = (await db.entities.BibleChapter.list()) as any[];
+          const result = await db.entities.BibleChapter.list();
+          const allChapters = (Array.isArray(result) ? result : []) as any[];
           
           if (!allChapters || allChapters.length === 0) {
               onShowToast("Nenhum capítulo encontrado na nuvem para resgatar.", "error");
