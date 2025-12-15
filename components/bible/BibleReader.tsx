@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, ChevronRight, List, Book, ChevronDown, RefreshCw, WifiOff, Zap, Volume2, X, FastForward, Search, Trash2, Sparkles, Loader2, Clock, Lock, Cloud } from 'lucide-react';
+import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, ChevronRight, List, Book, ChevronDown, RefreshCw, WifiOff, Zap, Volume2, X, FastForward, Search, Trash2, Sparkles, Loader2, Clock, Lock } from 'lucide-react';
 import VersePanel from './VersePanel';
 import { db } from '../../services/database';
 import { generateChapterKey, BIBLE_BOOKS } from '../../constants';
@@ -451,15 +451,6 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                                 </div>
                             ) : (
                                 <div className="h-8"></div>
-                            )}
-
-                            {/* Badge de Fonte (Cloud vs Local) */}
-                            {sourceMode === 'cloud' && (
-                                <div className="mt-4 flex justify-center">
-                                    <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                                        <Cloud className="w-3 h-3" /> Nuvem
-                                    </span>
-                                </div>
                             )}
                         </div>
                     )}
