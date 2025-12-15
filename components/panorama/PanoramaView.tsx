@@ -334,6 +334,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         2. MICROSCOPIA BÍBLICA: Analise os versículos frase por frase ou em pequenos grupos (ex: vs 1-2, depois vs 3, depois vs 4-6). Não pule versículos difíceis.
         3. DENSIDADE: Extraia todo o suco do texto. Se houver uma lista de nomes, explique a relevância. Se houver uma ação detalhada, explique o motivo.
         4. O texto deve ser DENSO e EXEGÉTICO, mas respeitando o limite de tamanho (aprox. 600 palavras por resposta).
+        5. PROIBIDO TRANSCREVER O TEXTO BÍBLICO: O aluno já tem a Bíblia. NÃO escreva o versículo por extenso. Cite apenas a referência (Ex: "No versículo 1...", ou "Em Gn 47:1-6...") e vá direto para a EXPLICAÇÃO.
 
         --- IDIOMAS ORIGINAIS E ETIMOLOGIA (INDISPENSÁVEL) ---
         O EBD não é um curso de línguas, mas para um melhor ensino é OBRIGATÓRIO:
@@ -350,8 +351,8 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
         3. TÓPICOS DO ESTUDO (Use Numeração 1., 2., 3...):
            Exemplo:
-           1. TÍTULO DO TÓPICO EM MAIÚSCULO
-           (Aqui entra a explicação detalhada, versículo por versículo, sem pressa, aplicando a metodologia de microscopia bíblica).
+           1. TÍTULO DO TÓPICO EM MAIÚSCULO (Referência: Gn X:Y-Z)
+           (Aqui entra a explicação detalhada, versículo por versículo, sem pressa, aplicando a metodologia de microscopia bíblica. NÃO COPIE O TEXTO BÍBLICO, APENAS EXPLIQUE).
 
         4. SEÇÕES FINAIS OBRIGATÓRIAS (No final do estudo):
            ### TIPOLOGIA: CONEXÃO COM JESUS CRISTO
