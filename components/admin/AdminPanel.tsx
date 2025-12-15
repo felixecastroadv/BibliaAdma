@@ -248,6 +248,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       }
   };
 
+  // --- PARSER CORRIGIDO PARA FORMATO HIERÁRQUICO ---
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file) return;
@@ -258,69 +259,116 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       reader.onload = async (e) => {
           try {
               const jsonText = e.target?.result as string;
+              // Limpa BOM (Byte Order Mark) se existir
               const cleanJson = jsonText.replace(/^\uFEFF/, ''); 
-              const rawData = JSON.parse(cleanJson);
+              let rawData;
+              try {
+                  rawData = JSON.parse(cleanJson);
+              } catch (parseError) {
+                  throw new Error("Arquivo JSON inválido/corrompido.");
+              }
               
-              const jsonData = Array.isArray(rawData) ? rawData : (rawData.verses || rawData.chapters || []);
-              
-              if (!Array.isArray(jsonData)) throw new Error("Formato inválido. O JSON deve ser um array ou conter uma lista em 'verses'/'chapters'.");
-              
-              setProcessStatus("Processando dados (UNIVERSAL)...");
+              setProcessStatus("Analisando estrutura...");
               let count = 0;
-              const total = jsonData.length;
 
-              for (let i = 0; i < total; i++) {
-                  const item = jsonData[i];
-                  let key = item.key;
-                  let verses = item.verses || item.text; // Aceita 'text' como lista de versículos
+              // ESTRATÉGIA 1: Formato Hierárquico (Print do Usuário)
+              // [ { abbrev: "gn", nome: "Gênesis", capítulos: [ ["v1", "v2"], ... ] }, ... ]
+              // Detecta se é array E se o primeiro item tem 'capítulos' ou 'chapters'
+              if (Array.isArray(rawData) && rawData.length > 0 && (rawData[0].capítulos || rawData[0].chapters)) {
+                  const totalBooks = rawData.length;
+                  setProcessStatus("Modo Hierárquico detectado...");
+                  
+                  for (let i = 0; i < totalBooks; i++) {
+                      const bookItem = rawData[i];
+                      const abbrev = (bookItem.abbrev || bookItem.abbreviation || "").toLowerCase();
+                      const chapters = bookItem.capítulos || bookItem.chapters || [];
+                      const bookName = bookItem.nome || bookItem.name;
 
-                  // --- PARSER INTELIGENTE (Correção para seus arquivos) ---
-                  if (!key) {
-                      let bName = item.book || item.book_name || item.name;
-                      const abbrev = item.abbrev || (item.book && item.book.abbrev); // Tenta achar abreviação
-                      const cNum = item.chapter || item.c || item.number;
-
-                      // Se tiver abreviação (ex: "gn"), busca o nome completo
-                      if (!bName && abbrev) {
-                          const foundBook = BIBLE_BOOKS.find(b => b.abbrev.toLowerCase() === abbrev.toLowerCase());
-                          if (foundBook) bName = foundBook.name;
+                      if (abbrev && Array.isArray(chapters)) {
+                          for (let cIndex = 0; cIndex < chapters.length; cIndex++) {
+                              const chapterNum = cIndex + 1; // Array index 0 = Capítulo 1
+                              const versesRaw = chapters[cIndex];
+                              
+                              // Valida se é um array de versículos (strings)
+                              if (Array.isArray(versesRaw) && versesRaw.length > 0) {
+                                  // Normaliza versículos (se for string ou objeto)
+                                  const cleanVerses = versesRaw.map((v: any) => typeof v === 'string' ? v.trim() : (v.text || "").trim());
+                                  
+                                  // Gera chave compatível com o sistema: bible_acf_{abbrev}_{chapter}
+                                  const key = `bible_acf_${abbrev}_${chapterNum}`;
+                                  
+                                  // Salva Nuvem + Local
+                                  await db.entities.BibleChapter.saveUniversal(key, cleanVerses);
+                                  count++;
+                              }
+                          }
                       }
-
-                      if (bName && cNum) {
-                          key = generateChapterKey(bName, cNum);
-                      }
+                      
+                      // Feedback visual a cada livro
+                      const pct = Math.round(((i + 1) / totalBooks) * 100);
+                      setProgress(pct);
+                      setProcessStatus(`Importando ${bookName || abbrev}...`);
+                      // Pequena pausa para UI não travar
+                      if (i % 2 === 0) await new Promise(r => setTimeout(r, 0));
                   }
+              } 
+              // ESTRATÉGIA 2: Formato Plano (Fallback)
+              // [ { book: "Gênesis", chapter: 1, verses: [...] }, ... ]
+              else {
+                  const flatList = Array.isArray(rawData) ? rawData : (rawData.verses || rawData.chapters || []);
+                  if (!Array.isArray(flatList)) throw new Error("Formato não reconhecido (esperado array de livros ou capítulos).");
+                  
+                  const total = flatList.length;
+                  for (let i = 0; i < total; i++) {
+                      const item = flatList[i];
+                      let key = item.key;
+                      let verses = item.verses || item.text;
 
-                  if (key && verses && Array.isArray(verses)) {
-                      // Se os versículos forem objetos { number: 1, text: "..." }, extrai só o texto
-                      if (typeof verses[0] === 'object' && verses[0].text) {
-                          verses = verses.map((v: any) => v.text);
+                      if (!key) {
+                          let bName = item.book || item.book_name || item.name;
+                          const abbrev = item.abbrev || (item.book && item.book.abbrev);
+                          const cNum = item.chapter || item.c || item.number;
+
+                          if (!bName && abbrev) {
+                              const foundBook = BIBLE_BOOKS.find(b => b.abbrev.toLowerCase() === abbrev.toLowerCase());
+                              if (foundBook) bName = foundBook.name;
+                          }
+
+                          if (bName && cNum) {
+                              key = generateChapterKey(bName, cNum);
+                          } else if (abbrev && cNum) {
+                              // Tenta gerar chave direto da abreviação se o nome falhar
+                              key = `bible_acf_${abbrev.toLowerCase()}_${cNum}`;
+                          }
                       }
 
-                      // SALVAMENTO UNIVERSAL (Nuvem + Local)
-                      // Nota: Isso pode demorar para arquivos grandes, mas garante a Nuvem.
-                      await db.entities.BibleChapter.saveUniversal(key, verses);
-                      count++;
-                  }
+                      if (key && verses && Array.isArray(verses)) {
+                          if (typeof verses[0] === 'object' && verses[0].text) {
+                              verses = verses.map((v: any) => v.text);
+                          }
+                          await db.entities.BibleChapter.saveUniversal(key, verses);
+                          count++;
+                      }
 
-                  if (i % 20 === 0) {
-                      setProgress(Math.round((i / total) * 100));
-                      setProcessStatus(`Salvando na Nuvem: ${i}/${total}`);
-                      await new Promise(r => setTimeout(r, 0)); // Respiro para UI
+                      if (i % 20 === 0) {
+                          setProgress(Math.round((i / total) * 100));
+                          setProcessStatus(`Importando: ${i}/${total}`);
+                          await new Promise(r => setTimeout(r, 0));
+                      }
                   }
               }
               
               setOfflineCount(await bibleStorage.count());
               
               if (count === 0) {
-                  onShowToast("Nenhum capítulo reconhecido. Verifique se o JSON tem 'book'/'abbrev', 'chapter' e 'verses'.", "error");
+                  onShowToast("Nenhum capítulo importado. Verifique se o JSON tem 'abbrev' e 'capítulos'.", "error");
               } else {
-                  onShowToast(`${count} capítulos salvos na NUVEM e LOCALMENTE!`, "success");
+                  onShowToast(`Sucesso! ${count} capítulos importados para a Nuvem.`, "success");
               }
 
           } catch (error: any) {
               console.error(error);
-              onShowToast(`Erro ao ler JSON: ${error.message}`, "error");
+              onShowToast(`Erro na leitura do arquivo: ${error.message}`, "error");
           } finally {
               setIsProcessing(false);
               setProgress(0);
