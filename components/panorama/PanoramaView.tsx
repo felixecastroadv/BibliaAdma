@@ -329,13 +329,16 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         2. PROIBIDO: Heresias, Apócrifos, Misticismo Cabalístico, Auto-identificação ("Eu acho", "Nós").
         3. TOM: Magistral, Impessoal, Acadêmico, Vibrante e Ortodoxo.
 
-        --- PROFUNDIDADE DE CONTEÚDO E IDIOMAS ORIGINAIS (INDISPENSÁVEL) ---
+        --- METODOLOGIA DE ENSINO (PROFUNDIDADE EXTREMA) ---
+        1. CHEGA DE RESUMOS: O aluno precisa entender o texto COMPLETAMENTE. Não faça explicações genéricas que cobrem 10 versículos de uma vez. A explicação atual está muito sintética e perdendo profundidade.
+        2. MICROSCOPIA BÍBLICA: Analise os versículos frase por frase ou em pequenos grupos (ex: vs 1-2, depois vs 3, depois vs 4-6). Não pule versículos difíceis.
+        3. DENSIDADE: Extraia todo o suco do texto. Se houver uma lista de nomes, explique a relevância. Se houver uma ação detalhada, explique o motivo.
+        4. O texto deve ser LONGO e DETALHADO. Não tenha pressa em acabar o capítulo.
+
+        --- IDIOMAS ORIGINAIS E ETIMOLOGIA (INDISPENSÁVEL) ---
         O EBD não é um curso de línguas, mas para um melhor ensino é OBRIGATÓRIO:
-        1. PALAVRAS-CHAVE: Cite os termos originais (Hebraico no AT / Grego no NT) transliterados e com a grafia original quando relevante.
-           Exemplo: "...criou (b'reshit - בְּרֵאשִׁית)..."
-        2. SIGNIFICADOS DE NOMES: Sempre traga o significado etimológico de nomes de pessoas e lugares citados no texto.
-           Exemplo: "...Potifar, que significa 'Aquele que Ra deu'..." ou "...Zafenate-Paneia, 'Revelador de Segredos'..."
-        3. Use esses elementos para enriquecer a exegese e a aplicação espiritual.
+        1. PALAVRAS-CHAVE: Cite os termos originais (Hebraico no AT / Grego no NT) transliterados e com a grafia original quando relevante para explicar o sentido profundo.
+        2. SIGNIFICADOS DE NOMES: Sempre traga o significado etimológico de nomes de pessoas e lugares.
 
         --- ESTRUTURA VISUAL OBRIGATÓRIA (BASEADA NO MODELO ADMA) ---
         Use EXATAMENTE esta estrutura de tópicos. NÃO use cabeçalhos como "Introdução" ou "Desenvolvimento" explicitamente, apenas comece o texto ou use os números.
@@ -348,7 +351,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         3. TÓPICOS DO ESTUDO (Use Numeração 1., 2., 3...):
            Exemplo:
            1. TÍTULO DO TÓPICO EM MAIÚSCULO
-           Texto explicativo profundo, citando versículos e fazendo a exegese (com as palavras no original).
+           (Aqui entra a explicação detalhada, versículo por versículo, sem pressa, aplicando a metodologia de microscopia bíblica).
 
         4. SEÇÕES FINAIS OBRIGATÓRIAS (No final do estudo):
            ### TIPOLOGIA: CONEXÃO COM JESUS CRISTO
@@ -358,13 +361,13 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
            (Fatos históricos, culturais e arqueológicos relevantes).
 
         --- INSTRUÇÕES DE PAGINAÇÃO ---
-        1. Texto LONGO (600-800 palavras por geração).
+        1. Texto LONGO (800-1200 palavras por geração para garantir profundidade).
         2. Insira <hr class="page-break"> entre os tópicos principais para dividir as páginas.
-        3. Se for CONTINUAÇÃO, não repita o título nem a introdução, siga para o próximo tópico numérico ou para as Seções Finais.
+        3. Se for CONTINUAÇÃO, não repita o título nem a introdução, siga para o próximo tópico numérico ou continue a explicação detalhada do versículo onde parou.
     `;
     
     const instructions = customInstructions ? `\nINSTRUÇÕES EXTRAS: ${customInstructions}` : "";
-    const continuationInstructions = `MODO CONTINUAÇÃO. O texto anterior terminou assim: "...${cleanContext.slice(-400)}...". Continue o raciocínio no próximo tópico numérico. Se já cobriu todo o texto bíblico, GERE AS SEÇÕES FINAIS (Tipologia e Arqueologia).`;
+    const continuationInstructions = `MODO CONTINUAÇÃO. O texto anterior terminou assim: "...${cleanContext.slice(-400)}...". Continue o raciocínio detalhado. Se já cobriu todo o texto bíblico (até o último versículo), GERE AS SEÇÕES FINAIS (Tipologia e Arqueologia).`;
 
     let specificPrompt = target === 'student' ? 
         `OBJETIVO: AULA DO ALUNO para ${book} ${chapter}. ${WRITING_STYLE} ${instructions} ${mode === 'continue' ? continuationInstructions : 'INÍCIO DO ESTUDO COMPLETO.'}` : 
