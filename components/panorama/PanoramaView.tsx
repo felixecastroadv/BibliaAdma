@@ -18,7 +18,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   const [customInstructions, setCustomInstructions] = useState('');
   const [showInstructions, setShowInstructions] = useState(false);
 
-  // --- NOVOS ESTADOS PARA EDIÇÃO MANUAL ---
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
 
@@ -34,7 +33,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const minSwipeDistance = 50;
 
-  // Status de Leitura
   const studyKey = generateChapterKey(book, chapter);
   const isRead = userProgress?.ebd_read?.includes(studyKey);
 
@@ -48,10 +46,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     };
     loadVoices();
     window.speechSynthesis.onvoiceschanged = loadVoices;
-    
-    return () => {
-        window.speechSynthesis.cancel();
-    }
+    return () => { window.speechSynthesis.cancel(); }
   }, []);
 
   useEffect(() => {
@@ -73,12 +68,8 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     const isLeftSwipe = distance > minSwipeDistance;
     const isRightSwipe = distance < -minSwipeDistance;
 
-    if (isLeftSwipe && currentPage < pages.length - 1) {
-        setCurrentPage(p => p + 1);
-    }
-    if (isRightSwipe && currentPage > 0) {
-        setCurrentPage(p => p - 1);
-    }
+    if (isLeftSwipe && currentPage < pages.length - 1) setCurrentPage(p => p + 1);
+    if (isRightSwipe && currentPage > 0) setCurrentPage(p => p - 1);
   };
 
   const loadContent = async () => {
@@ -96,7 +87,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         const text = activeTab === 'student' ? content.student_content : content.teacher_content;
         processAndPaginate(text);
         setCurrentPage(0);
-        // Sempre sai do modo de edição ao trocar de aba ou capítulo para evitar sobrescrita acidental
         setIsEditing(false);
     } else {
         setPages([]);
@@ -108,50 +98,37 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     return text.trim();
   };
 
-  // --- NOVA LÓGICA DE PAGINAÇÃO INTELIGENTE ---
-  // Agrupa segmentos curtos para garantir páginas de ~600 palavras (aprox 3500 chars)
+  // --- PAGINAÇÃO INTELIGENTE (SEM INJEÇÃO DE HTML SUJO) ---
   const processAndPaginate = (html: string) => {
     if (!html) { setPages([]); return; }
     
-    // 1. Divide pelos HRs originais da IA (quebras lógicas de tópico)
+    // Divide pelos HRs originais da IA (quebras lógicas)
     const rawSegments = html.split(/<hr[^>]*>/i).map(s => cleanText(s)).filter(s => s.length > 50);
     
     const finalPages: string[] = [];
     let currentBuffer = "";
     
-    // META: ~600 palavras. Em média 1 palavra = 6 caracteres (pt-BR).
-    // 600 palavras * 6 = 3600 caracteres. Usaremos 3000 como piso mínimo para agrupar.
+    // META: ~600 palavras. Usaremos 3000 caracteres como piso mínimo.
     const CHAR_LIMIT_MIN = 3000; 
 
     for (let i = 0; i < rawSegments.length; i++) {
         const segment = rawSegments[i];
         
-        // Se o buffer está vazio, inicializa com o segmento atual
         if (!currentBuffer) {
             currentBuffer = segment;
         } else {
-            // Se o buffer atual ainda é pequeno (< 500-600 palavras), junta com o próximo
             if (currentBuffer.length < CHAR_LIMIT_MIN) {
-                // Adiciona um separador visual suave, já que eram tópicos diferentes
-                currentBuffer += `
-                    <div class="my-10 flex items-center justify-center select-none">
-                        <div class="h-[1px] bg-[#C5A059] w-24 opacity-30"></div>
-                        <span class="mx-4 text-[#C5A059] text-[10px] font-cinzel opacity-60 tracking-[0.2em]">CONTINUAÇÃO</span>
-                        <div class="h-[1px] bg-[#C5A059] w-24 opacity-30"></div>
-                    </div>
-                    ${segment}
-                `;
+                // Usa um MARCADOR DE TEXTO PURO em vez de HTML complexo
+                // O renderizador vai substituir isso pelo componente visual
+                currentBuffer += "\n__CONTINUATION_MARKER__\n" + segment;
             } else {
-                // Buffer já está grande o suficiente, salva página e começa nova
                 finalPages.push(currentBuffer);
                 currentBuffer = segment;
             }
         }
     }
     
-    // Empurra o que sobrou no buffer
     if (currentBuffer) finalPages.push(currentBuffer);
-
     setPages(finalPages.length > 0 ? finalPages : [cleanText(html)]);
   };
 
@@ -159,7 +136,13 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
   const speakText = () => {
     if (!pages[currentPage]) return;
-    const cleanSpeech = pages[currentPage].replace(/#/g, '').replace(/\*/g, '').replace(/<[^>]*>/g, '');
+    // Remove marcadores internos antes de falar
+    const cleanSpeech = pages[currentPage]
+        .replace('__CONTINUATION_MARKER__', '... Continuação ...')
+        .replace(/#/g, '')
+        .replace(/\*/g, '')
+        .replace(/<[^>]*>/g, '');
+        
     const utter = new SpeechSynthesisUtterance(cleanSpeech);
     utter.lang = 'pt-BR';
     utter.rate = playbackRate;
@@ -181,15 +164,12 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
   const handleMarkAsRead = async () => {
       if (!userProgress || isRead) return;
-
       const newReadList = [...(userProgress.ebd_read || []), studyKey];
       const newTotal = (userProgress.total_ebd_read || 0) + 1;
-
       const updated = await db.entities.ReadingProgress.update(userProgress.id, {
           ebd_read: newReadList,
           total_ebd_read: newTotal
       });
-
       if (onProgressUpdate) onProgressUpdate(updated);
       onShowToast('Estudo EBD concluído! Adicionado ao Ranking.', 'success');
   };
@@ -208,88 +188,89 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   };
 
   const renderFormattedText = (text: string) => {
-    // Separa por blocos HTML ou quebras de linha normais
-    // O regex abaixo tenta separar divs de continuação do texto normal
-    const blocks = text.split(/(<div class="my-10.*?<\/div>)/s);
+    // Quebra por linhas para processar cada parágrafo
+    const lines = text.split('\n').filter(b => b.trim().length > 0);
     
-    return blocks.map((block, idx) => {
-        // Se for o nosso separador visual inserido na paginação
-        if (block.includes('class="my-10')) {
-             return <div key={idx} dangerouslySetInnerHTML={{ __html: block }} />;
-        }
+    return (
+        <div>
+            {lines.map((line, lineIdx) => {
+                const trimmed = line.trim();
 
-        // Processamento normal de texto Markdown-like
-        const lines = block.split('\n').filter(b => b.trim().length > 0);
-        return (
-            <div key={idx}>
-                {lines.map((line, lineIdx) => {
-                    const trimmed = line.trim();
-                    if (trimmed.includes('PANORÂMA BÍBLICO') || trimmed.includes('PANORAMA BÍBLICO')) {
-                        return (
-                            <div key={lineIdx} className="mb-8 text-center border-b-2 border-[#8B0000] dark:border-[#ff6b6b] pb-4 pt-2">
-                                <h1 className="font-cinzel font-bold text-2xl md:text-3xl text-[#8B0000] dark:text-[#ff6b6b] uppercase tracking-widest drop-shadow-sm">
-                                    {trimmed}
-                                </h1>
-                            </div>
-                        );
-                    }
-                    const isHeader = trimmed.startsWith('###') || /^[IVX]+\./.test(trimmed);
-                    if (isHeader) {
-                        const title = trimmed.replace(/###/g, '').trim();
-                        return (
-                            <div key={lineIdx} className="mt-8 mb-6 flex items-center justify-center gap-4">
-                                <div className="h-[1px] bg-[#C5A059] w-8 md:w-16 opacity-60"></div>
-                                <h3 className="font-cinzel font-bold text-xl text-[#1a0f0f] dark:text-[#E0E0E0] uppercase tracking-wide text-center">
-                                    {title}
-                                </h3>
-                                <div className="h-[1px] bg-[#C5A059] w-8 md:w-16 opacity-60"></div>
-                            </div>
-                        );
-                    }
-                    const isListItem = /^\d+\./.test(trimmed);
-                    if (isListItem) {
-                        const firstSpaceIndex = trimmed.indexOf(' ');
-                        const numberPart = trimmed.substring(0, firstSpaceIndex > -1 ? firstSpaceIndex : trimmed.length);
-                        const textPart = firstSpaceIndex > -1 ? trimmed.substring(firstSpaceIndex + 1) : "";
-                        return (
-                            <div key={lineIdx} className="mb-6 flex gap-4 items-start group">
-                                <div className="flex-shrink-0 mt-1 w-8 text-right">
-                                    <span className="font-cinzel font-bold text-xl text-[#C5A059] dark:text-[#C5A059]">
-                                        {numberPart}
-                                    </span>
-                                </div>
-                                <div className="flex-1">
-                                    <p className="font-cormorant text-xl leading-loose text-gray-900 dark:text-gray-300 text-justify border-l-2 border-[#C5A059]/20 pl-4">
-                                        {parseInlineStyles(textPart)}
-                                    </p>
-                                </div>
-                            </div>
-                        );
-                    }
-                    if (trimmed.toUpperCase().includes('CURIOSIDADE') || trimmed.toUpperCase().includes('ATENÇÃO:') || trimmed.endsWith('?')) {
-                        return (
-                            <div key={lineIdx} className="my-6 mx-2 font-cormorant text-lg text-[#1a0f0f] dark:text-gray-200 font-medium italic bg-[#C5A059]/10 dark:bg-[#C5A059]/10 p-6 rounded-lg border-y border-[#C5A059]/40 shadow-sm text-justify">
-                                <div className="flex justify-center mb-2">
-                                    <Sparkles className="w-5 h-5 text-[#C5A059] opacity-70" />
-                                </div>
-                                <div>{parseInlineStyles(trimmed)}</div>
-                            </div>
-                        );
-                    }
+                // DETECTOR DO MARCADOR DE CONTINUAÇÃO (Substitui a poluição visual)
+                if (trimmed === '__CONTINUATION_MARKER__') {
                     return (
-                        <p key={lineIdx} className="font-cormorant text-xl leading-loose text-gray-900 dark:text-gray-300 text-justify indent-8 mb-4 tracking-wide">
-                            {parseInlineStyles(trimmed)}
-                        </p>
+                        <div key={lineIdx} className="my-12 flex items-center justify-center select-none animate-in fade-in duration-500">
+                            <div className="h-[1px] bg-gradient-to-r from-transparent via-[#C5A059] to-transparent w-full max-w-xs opacity-50"></div>
+                            <span className="mx-4 text-[#C5A059] text-[10px] font-cinzel opacity-80 tracking-[0.3em] uppercase bg-[#FDFBF7] dark:bg-dark-card px-2">Continuação</span>
+                            <div className="h-[1px] bg-gradient-to-r from-transparent via-[#C5A059] to-transparent w-full max-w-xs opacity-50"></div>
+                        </div>
                     );
-                })}
-            </div>
-        );
-    });
+                }
+
+                if (trimmed.includes('PANORÂMA BÍBLICO') || trimmed.includes('PANORAMA BÍBLICO')) {
+                    return (
+                        <div key={lineIdx} className="mb-10 text-center border-b-2 border-[#8B0000] dark:border-[#ff6b6b] pb-6 pt-2">
+                            <h1 className="font-cinzel font-bold text-2xl md:text-4xl text-[#8B0000] dark:text-[#ff6b6b] uppercase tracking-widest drop-shadow-sm leading-tight">
+                                {trimmed}
+                            </h1>
+                        </div>
+                    );
+                }
+                const isHeader = trimmed.startsWith('###') || /^[IVX]+\./.test(trimmed);
+                if (isHeader) {
+                    const title = trimmed.replace(/###/g, '').trim();
+                    return (
+                        <div key={lineIdx} className="mt-10 mb-6 flex flex-col items-center justify-center gap-2">
+                            <h3 className="font-cinzel font-bold text-xl md:text-2xl text-[#1a0f0f] dark:text-[#E0E0E0] uppercase tracking-wide text-center leading-snug">
+                                {title}
+                            </h3>
+                            <div className="h-[2px] bg-[#C5A059] w-12 rounded-full"></div>
+                        </div>
+                    );
+                }
+                const isListItem = /^\d+\./.test(trimmed);
+                if (isListItem) {
+                    const firstSpaceIndex = trimmed.indexOf(' ');
+                    const numberPart = trimmed.substring(0, firstSpaceIndex > -1 ? firstSpaceIndex : trimmed.length);
+                    const textPart = firstSpaceIndex > -1 ? trimmed.substring(firstSpaceIndex + 1) : "";
+                    return (
+                        <div key={lineIdx} className="mb-6 flex gap-4 items-start group pl-2">
+                            <div className="flex-shrink-0 mt-1 min-w-[2rem] text-right">
+                                <span className="font-cinzel font-bold text-xl text-[#C5A059] dark:text-[#C5A059]">
+                                    {numberPart}
+                                </span>
+                            </div>
+                            <div className="flex-1">
+                                <p className="font-cormorant text-xl leading-loose text-gray-900 dark:text-gray-300 text-justify border-l-2 border-[#C5A059]/20 pl-4">
+                                    {parseInlineStyles(textPart)}
+                                </p>
+                            </div>
+                        </div>
+                    );
+                }
+                if (trimmed.toUpperCase().includes('CURIOSIDADE') || trimmed.toUpperCase().includes('ATENÇÃO:') || trimmed.endsWith('?')) {
+                    return (
+                        <div key={lineIdx} className="my-8 mx-2 font-cormorant text-lg text-[#1a0f0f] dark:text-gray-200 font-medium italic bg-[#C5A059]/10 dark:bg-[#C5A059]/5 p-6 rounded-xl border border-[#C5A059]/30 shadow-sm text-justify relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-1 h-full bg-[#C5A059]"></div>
+                            <div className="flex items-center gap-2 mb-3 text-[#C5A059]">
+                                <Sparkles className="w-5 h-5" />
+                                <span className="text-xs font-bold uppercase tracking-wider font-montserrat">Destaque</span>
+                            </div>
+                            <div>{parseInlineStyles(trimmed)}</div>
+                        </div>
+                    );
+                }
+                return (
+                    <p key={lineIdx} className="font-cormorant text-xl leading-loose text-gray-900 dark:text-gray-300 text-justify indent-8 mb-6 tracking-wide">
+                        {parseInlineStyles(trimmed)}
+                    </p>
+                );
+            })}
+        </div>
+    );
   };
 
-  // --- FUNÇÕES DE EDIÇÃO MANUAL ---
   const handleStartEditing = () => {
-    // Carrega o conteúdo da aba ativa para o editor
     const text = activeTab === 'student' ? content?.student_content : content?.teacher_content;
     setEditValue(text || '');
     setIsEditing(true);
@@ -297,21 +278,17 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
   const handleSaveManualEdit = async () => {
     if (!content) return;
-    
-    // Atualiza apenas o conteúdo da aba que estava sendo editada
     const data = {
         ...content,
         student_content: activeTab === 'student' ? editValue : content.student_content,
         teacher_content: activeTab === 'teacher' ? editValue : content.teacher_content,
     };
-
     try {
         if (content.id) await db.entities.PanoramaBiblico.update(content.id, data);
-        await loadContent(); // Recarrega do banco para confirmar
+        await loadContent();
         setIsEditing(false);
         onShowToast('Texto atualizado manualmente com sucesso!', 'success');
     } catch (e) {
-        console.error(e);
         onShowToast('Erro ao salvar edição.', 'error');
     }
   };
@@ -323,33 +300,29 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     const existing = (await db.entities.PanoramaBiblico.filter({ study_key: studyKey }))[0] || {};
     const currentText = target === 'student' ? (existing.student_content || '') : (existing.teacher_content || '');
     
-    const lastContext = currentText.slice(-3000); 
+    // Pega contexto limpo (sem marcadores internos)
+    const cleanContext = currentText.replace(/__CONTINUATION_MARKER__/g, ' ').slice(-3000);
 
     const WRITING_STYLE = `
-        ATUE COMO: PROFESSOR MICHEL FELIX.
+        ATUE COMO: Professor Michel Felix.
         PERFIL: Teólogo Pentecostal Clássico, Arminiano, Erudito e Assembleiano.
 
-        --- ESTRUTURA DIDÁTICA (PADRÃO DE EXCELÊNCIA) ---
-        1. O conteúdo deve ser estruturado em Tópicos (I, II, III) e Subtópicos com profundidade acadêmica.
-        2. Inclua EXEGESE das palavras originais (Hebraico/Grego) quando relevante para enriquecer o estudo.
-        3. Traga CONTEXTO HISTÓRICO, CULTURAL e GEOGRÁFICO detalhado.
-        4. APLICAÇÃO PRÁTICA: Conecte o texto antigo à vida moderna da igreja, com fervor pentecostal.
+        --- BARREIRA DE SEGURANÇA TEOLÓGICA (CRÍTICO) ---
+        1. PROIBIDO: NUNCA use auto-identificação ("Nós pentecostais", "Como cremos", "Eu acho"). Use linguagem impessoal e magistral.
+        2. DOUTRINA: Arminiana e Ortodoxa. 
+        3. CORRENTES INTERPRETATIVAS: Pode citar divergências, mas SEMPRE conclua com a visão mais segura, bíblica e ortodoxa (alinhada à AD no Brasil).
+        4. APÓCRIFOS: Rejeite interpretações baseadas em Enoque ou outros apócrifos (ex: anjos coabitando com mulheres). Mantenha a interpretação teológica segura (ex: linhagem de Sete).
+        5. POLEMICA: Evite polêmicas desnecessárias. Foque na edificação.
 
-        --- REGRAS DE CONTEÚDO ---
-        1. DOUTRINA: Totalmente alinhada com as Assembleias de Deus no Brasil e o Credo Arminiano.
-        2. ESTILO: Linguagem culta, solene, porém acessível e cheia de unção.
-        3. PROIBIÇÕES: Não use auto-referência ("Eu acho", "Nós cremos"). Fale com autoridade magistral e impessoal.
-        4. NÃO use livros apócrifos como base doutrinária.
-
-        --- REGRA DE PAGINAÇÃO E DENSIDADE (MUITO IMPORTANTE) ---
-        Para manter o padrão de leitura aprofundada exigido:
-        1. ESCREVA BLOCOS DENSOS DE TEXTO. Cada "seção" entre quebras deve ter entre 600 a 800 palavras.
-        2. Agrupe Introdução e o Primeiro Tópico na mesma página se necessário para atingir essa densidade.
-        3. Insira o código <hr class="page-break"> APENAS após ter escrito um volume substancial de conteúdo (Mínimo 600 palavras).
-        4. Não faça páginas curtas ou superficiais. Aprofunde o argumento exaustivamente antes de mudar de página.
+        --- ESTRUTURA E DENSIDADE (IMPORTANTÍSSIMO) ---
+        1. ESCREVA MUITO: Cada bloco de resposta deve ter entre 600 a 800 palavras.
+        2. APROFUNDE: Use Exegese (Hebraico/Grego), Contexto Histórico, Arqueologia e Tipologia.
+        3. Só insira o código <hr class="page-break"> DEPOIS de esgotar um tópico longo (mínimo 600 palavras).
+        4. Agrupe Introdução e Tópico I na mesma seção se necessário para atingir o volume de texto.
     `;
-    const instructions = customInstructions ? `\nINSTRUÇÕES ADICIONAIS DO USUÁRIO: ${customInstructions}` : "";
-    const continuationInstructions = `MODO CONTINUAÇÃO. CONTEXTO ANTERIOR: "...${lastContext.slice(-400)}..."`;
+    
+    const instructions = customInstructions ? `\nINSTRUÇÕES EXTRAS: ${customInstructions}` : "";
+    const continuationInstructions = `MODO CONTINUAÇÃO. Siga o fio da meada do contexto anterior: "...${cleanContext.slice(-400)}..."`;
 
     let specificPrompt = target === 'student' ? 
         `OBJETIVO: AULA DO ALUNO para ${book} ${chapter}. ${WRITING_STYLE} ${instructions} ${mode === 'continue' ? continuationInstructions : 'INÍCIO DO ESTUDO.'}` : 
@@ -387,12 +360,48 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     }
   };
 
+  // --- CORREÇÃO DO BOTÃO APAGAR ---
   const handleDeletePage = async () => {
-    if (!window.confirm("Tem certeza que deseja apagar ESTA página?")) return;
+    if (!window.confirm("Tem certeza que deseja apagar o conteúdo DESTA página?")) return;
     if (!content) return;
-    // Atenção: A deleção agora é mais complexa pois 'pages' são virtuais (agrupadas).
-    // A deleção direta pode ser imprecisa. Recomenda-se editar manualmente.
-    onShowToast("Use a 'Edição Manual' para remover trechos específicos com precisão.", "info");
+
+    // 1. Identifica o texto da página atual (cru, com marcadores se houver)
+    const pageText = pages[currentPage];
+    
+    // 2. Remove o marcador interno se existir, para poder dar match no texto original do banco
+    const cleanPageText = pageText.replace('\n__CONTINUATION_MARKER__\n', '');
+    
+    // 3. Pega o conteúdo total atual
+    const fullContent = activeTab === 'student' ? content.student_content : content.teacher_content;
+
+    // 4. Remove o texto da página do conteúdo total
+    // Tenta remover com o marcador de quebra de página anterior, se existir
+    let newContent = fullContent.replace('<hr class="page-break">' + cleanPageText, '');
+    
+    // Se não mudou (talvez seja a primeira página ou lógica de string diferente), tenta remover só o texto
+    if (newContent === fullContent) {
+        newContent = fullContent.replace(cleanPageText, '');
+    }
+    
+    // Limpa sobras de tags vazias ou quebras duplas
+    newContent = newContent.replace(/<hr class="page-break">\s*$/, '').trim();
+
+    // 5. Salva no banco
+    const data = {
+        ...content,
+        student_content: activeTab === 'student' ? newContent : content.student_content,
+        teacher_content: activeTab === 'teacher' ? newContent : content.teacher_content,
+    };
+
+    try {
+        if (content.id) await db.entities.PanoramaBiblico.update(content.id, data);
+        await loadContent();
+        onShowToast('Página apagada com sucesso.', 'success');
+        // Volta uma página se possível
+        if (currentPage > 0) setCurrentPage(p => p - 1);
+    } catch (e) {
+        onShowToast('Erro ao apagar página.', 'error');
+    }
   };
 
   return (
@@ -406,13 +415,11 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             <button onClick={onBack}><ChevronLeft /></button>
             <h2 className="font-cinzel font-bold">Panorama EBD</h2>
             <div className="flex gap-2">
-                {/* BOTÃO DE EDIÇÃO MANUAL (Apenas Admin) */}
                 {isAdmin && !isEditing && content && (
                     <button onClick={handleStartEditing} title="Editar Texto Manualmente" className="p-2 hover:bg-white/10 rounded-full">
                         <Edit className="w-5 h-5 text-[#C5A059]" />
                     </button>
                 )}
-                {/* Audio Button triggers settings popover */}
                 <button onClick={() => setShowAudioSettings(!showAudioSettings)} title="Opções de Áudio">
                     <Volume2 className={isPlaying ? "text-green-400 animate-pulse" : ""} />
                 </button>
@@ -482,7 +489,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
         {isAdmin && !isEditing && (
             <div className="bg-[#1a0f0f] text-[#C5A059] p-4 shadow-inner sticky top-[130px] z-20 border-b-4 border-[#8B0000]">
-                {/* Admin controls hidden for brevity, same as before */}
                 <div className="flex items-center justify-between mb-2">
                     <span className="font-cinzel text-xs flex items-center gap-2 font-bold"><Sparkles className="w-4 h-4" /> EDITOR CHEFE ({activeTab.toUpperCase()})</span>
                     <button onClick={() => setShowInstructions(!showInstructions)} className="text-xs underline hover:text-white">
@@ -500,7 +506,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                         {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'CONTINUAR (+ Conteúdo)'}
                     </button>
                     {pages.length > 0 && (
-                        <button onClick={handleDeletePage} className="px-3 py-2 bg-red-900 text-white rounded hover:bg-red-700 transition"><Trash2 className="w-4 h-4" /></button>
+                        <button onClick={handleDeletePage} className="px-3 py-2 bg-red-900 text-white rounded hover:bg-red-700 transition" title="Apagar esta página"><Trash2 className="w-4 h-4" /></button>
                     )}
                 </div>
             </div>
@@ -528,7 +534,8 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                         </div>
                      </div>
                      <p className="text-xs text-gray-500 mb-2 font-montserrat">
-                        Edite o conteúdo bruto abaixo. Use <code>&lt;hr class="page-break"&gt;</code> para criar novas páginas.
+                        Use <code>__CONTINUATION_MARKER__</code> (em uma nova linha) para criar separadores visuais sem quebrar a página.
+                        Use <code>&lt;hr class="page-break"&gt;</code> para forçar nova página.
                      </p>
                      <textarea 
                         value={editValue} 
@@ -550,12 +557,10 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                         {renderFormattedText(pages[currentPage])}
                      </div>
                      
-                     {/* Paginação */}
                      <div className="absolute bottom-4 right-8 text-[#C5A059] font-cinzel text-sm">
                         {currentPage + 1} / {pages.length}
                      </div>
 
-                     {/* Botão de Conclusão na Última Página */}
                      {currentPage === pages.length - 1 && userProgress && (
                          <div className="mt-12 text-center">
                              <button
