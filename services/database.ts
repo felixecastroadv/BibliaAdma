@@ -1,18 +1,22 @@
 
 const CACHE_PREFIX = 'adma_cache_v1_';
 
-// --- INDEXED DB HELPER (Para grandes volumes de dados - Bíblia Offline) ---
+// --- INDEXED DB HELPER (Para grandes volumes de dados - Bíblia Offline & Metadados) ---
 const DB_NAME = 'ADMA_BIBLE_DB';
-const STORE_NAME = 'chapters';
-const DB_VERSION = 2; // Versão atualizada para garantir criação correta
+const DB_VERSION = 3; // Upgrade para v3 para incluir metadata
 
 const openBibleDB = (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
         request.onupgradeneeded = (event) => {
             const db = (event.target as IDBOpenDBRequest).result;
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                db.createObjectStore(STORE_NAME, { keyPath: 'key' });
+            // Store de Capítulos (Texto Bíblico)
+            if (!db.objectStoreNames.contains('chapters')) {
+                db.createObjectStore('chapters', { keyPath: 'key' });
+            }
+            // Store de Metadados (Títulos e Epígrafes) - NOVO
+            if (!db.objectStoreNames.contains('metadata')) {
+                db.createObjectStore('metadata', { keyPath: 'key' });
             }
         };
         request.onsuccess = () => resolve(request.result);
@@ -20,12 +24,12 @@ const openBibleDB = (): Promise<IDBDatabase> => {
     });
 };
 
-export const bibleStorage = {
+const genericStorage = (storeName: string) => ({
     save: async (key: string, data: any) => {
         const db = await openBibleDB();
         return new Promise((resolve, reject) => {
-            const tx = db.transaction(STORE_NAME, 'readwrite');
-            const store = tx.objectStore(STORE_NAME);
+            const tx = db.transaction(storeName, 'readwrite');
+            const store = tx.objectStore(storeName);
             const request = store.put({ key, data }); 
             request.onsuccess = () => resolve(true);
             request.onerror = () => reject(request.error);
@@ -34,8 +38,8 @@ export const bibleStorage = {
     get: async (key: string): Promise<any> => {
         const db = await openBibleDB();
         return new Promise((resolve, reject) => {
-            const tx = db.transaction(STORE_NAME, 'readonly');
-            const store = tx.objectStore(STORE_NAME);
+            const tx = db.transaction(storeName, 'readonly');
+            const store = tx.objectStore(storeName);
             const request = store.get(key);
             request.onsuccess = () => resolve(request.result ? request.result.data : null);
             request.onerror = () => reject(request.error);
@@ -44,24 +48,27 @@ export const bibleStorage = {
     count: async (): Promise<number> => {
         const db = await openBibleDB();
         return new Promise((resolve, reject) => {
-            const tx = db.transaction(STORE_NAME, 'readonly');
-            const store = tx.objectStore(STORE_NAME);
+            const tx = db.transaction(storeName, 'readonly');
+            const store = tx.objectStore(storeName);
             const request = store.count();
             request.onsuccess = () => resolve(request.result);
             request.onerror = () => reject(request.error);
         });
     },
-    clear: async () => {
+    clear: async (): Promise<void> => {
         const db = await openBibleDB();
         return new Promise((resolve, reject) => {
-            const tx = db.transaction(STORE_NAME, 'readwrite');
-            const store = tx.objectStore(STORE_NAME);
+            const tx = db.transaction(storeName, 'readwrite');
+            const store = tx.objectStore(storeName);
             const request = store.clear();
-            request.onsuccess = () => resolve(true);
+            request.onsuccess = () => resolve();
             request.onerror = () => reject(request.error);
         });
     }
-};
+});
+
+export const bibleStorage = genericStorage('chapters');
+export const metaStorage = genericStorage('metadata');
 
 // --- LOCAL STORAGE HELPER (Para dados pequenos - Configs, Progresso) ---
 const storage = {
@@ -107,7 +114,6 @@ const apiCall = async (action: 'list' | 'save' | 'delete', collection: string, p
 
 export const db = {
   entities: {
-    // Entidade Especial: Texto Bíblico (Usa IndexedDB)
     BibleChapter: {
         getOffline: async (chapterKey: string) => {
             return await bibleStorage.get(chapterKey);
@@ -153,14 +159,17 @@ export const db = {
     },
     
     ChapterMetadata: {
+        // Agora usa IndexedDB (metaStorage) preferencialmente
+        get: async (chapterKey: string) => {
+            return await metaStorage.get(chapterKey);
+        },
+        save: async (data: any) => {
+            return await metaStorage.save(data.chapter_key, data);
+        },
+        // Fallback antigo para manter compatibilidade se necessário
         filter: async (query: any) => {
             const data = await apiCall('list', 'chapter_metadata') || [];
             return data.filter((item: any) => item.chapter_key === query.chapter_key);
-        },
-        create: async (data: any) => {
-            const newItem = { ...data, id: data.id || Date.now().toString() };
-            await apiCall('save', 'chapter_metadata', { item: newItem });
-            return newItem;
         }
     },
 

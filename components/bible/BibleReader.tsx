@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, ChevronRight, List, Book, ChevronDown, RefreshCw, WifiOff, Zap, Volume2, X, FastForward, Search, Trash2 } from 'lucide-react';
+import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, ChevronRight, List, Book, ChevronDown, RefreshCw, WifiOff, Zap, Volume2, X, FastForward, Search, Trash2, Sparkles, Loader2 } from 'lucide-react';
 import VersePanel from './VersePanel';
 import { db } from '../../services/database';
 import { generateChapterKey, BIBLE_BOOKS } from '../../constants';
@@ -117,7 +117,7 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                 return;
             }
 
-            // 2. Fallback: LocalStorage (Legado, para não quebrar quem já tinha algo salvo pequeno)
+            // 2. Fallback: LocalStorage (Legado)
             const legacyCache = localStorage.getItem(cacheKey);
             if (legacyCache) {
                 try {
@@ -171,7 +171,6 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
         const bookMeta = BIBLE_BOOKS.find(b => b.name === book);
         if(bookMeta) {
             localStorage.removeItem(`bible_acf_${bookMeta.abbrev}_${chapter}`);
-            // Limpa do IDB não implementado aqui individualmente, mas o fetchChapter sobrescreve se conseguir online
             fetchChapter();
         }
     };
@@ -179,10 +178,23 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
     const loadMetadata = async () => {
         setMetadata(null);
         try {
-            const metas = await db.entities.ChapterMetadata.filter({ chapter_key: chapterKey });
-            if (metas && metas.length > 0) setMetadata(metas[0]);
-            else generateMetadata();
-        } catch (e) { console.error(e); }
+            // Tenta carregar do IndexedDB primeiro (Novo método)
+            let meta = await db.entities.ChapterMetadata.get(chapterKey);
+            
+            // Fallback para API antiga se não achar no IDB
+            if (!meta) {
+               const apiMetas = await db.entities.ChapterMetadata.filter({ chapter_key: chapterKey });
+               if (apiMetas && apiMetas.length > 0) meta = apiMetas[0];
+            }
+
+            if (meta) {
+                setMetadata(meta);
+            } else {
+                if (navigator.onLine) {
+                    generateMetadata();
+                }
+            }
+        } catch (e) { console.error("Metadata Error", e); }
     };
 
     const generateMetadata = async () => {
@@ -194,10 +206,13 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
             const res = await generateContent(prompt, schema);
             if (res && res.title) {
                 const data = { chapter_key: chapterKey, title: res.title, subtitle: res.subtitle };
-                await db.entities.ChapterMetadata.create(data);
+                // Salva no IndexedDB (Garante persistência)
+                await db.entities.ChapterMetadata.save(data);
                 setMetadata(data);
             }
-        } catch (e) {} finally { setIsGeneratingMeta(false); }
+        } catch (e) {
+            console.error("Failed to generate metadata", e);
+        } finally { setIsGeneratingMeta(false); }
     };
 
     const togglePlay = () => {
@@ -284,9 +299,20 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                              <div className="h-3 w-1/3 bg-gray-200 dark:bg-gray-800 rounded"></div>
                         </div>
                     ) : (
-                        <div className="text-center mb-10 mt-4">
-                            <h2 className="font-cinzel text-xl md:text-2xl font-bold text-[#8B0000] dark:text-[#ff6b6b] uppercase tracking-widest mb-2">{metadata?.title || `${book} ${chapter}`}</h2>
-                            {metadata?.subtitle && <p className="font-cormorant text-lg italic text-gray-600 dark:text-gray-400">{metadata.subtitle}</p>}
+                        <div className="text-center mb-10 mt-4 cursor-pointer" onClick={() => generateMetadata()} title="Regerar Título">
+                            {isGeneratingMeta ? (
+                                <div className="flex flex-col items-center text-[#C5A059] animate-pulse">
+                                    <Sparkles className="w-6 h-6 mb-1" />
+                                    <p className="font-cinzel text-xs font-bold uppercase tracking-widest">Gerando tema teológico...</p>
+                                </div>
+                            ) : (
+                                <>
+                                    <h2 className="font-cinzel text-xl md:text-2xl font-bold text-[#8B0000] dark:text-[#ff6b6b] uppercase tracking-widest mb-2">
+                                        {metadata?.title || `${book} ${chapter}`}
+                                    </h2>
+                                    {metadata?.subtitle && <p className="font-cormorant text-lg italic text-gray-600 dark:text-gray-400">{metadata.subtitle}</p>}
+                                </>
+                            )}
                         </div>
                     )}
 
