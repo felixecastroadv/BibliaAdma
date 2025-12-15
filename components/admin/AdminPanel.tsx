@@ -450,24 +450,22 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                         // --- PROMPT UNIFICADO (MESMO DO VERSEPANEL) ---
                         const prompt = `
                             ATUE COMO: Professor Michel Felix (Teólogo Erudito, Pentecostal Clássico e Mestre em Exegese).
-                            TAREFA: Escrever um comentário BÍBLICO-DEVOCIONAL PROFUNDO sobre ${bookMeta.name} ${c}:${verseNum}.
+                            TAREFA: Escrever um comentário BÍBLICO-DEVOCIONAL sobre ${bookMeta.name} ${c}:${verseNum}.
                             TEXTO BÍBLICO: "${verseText}"
 
+                            --- REGRAS DE TAMANHO (CRÍTICO) ---
+                            1. O comentário deve ter EXATAMENTE 3 PARÁGRAFOS bem construídos.
+                            2. NÃO ultrapasse 350-400 palavras no total. Seja DENSO, mas CONCISO. Evite prolixidade.
+
                             --- ESTILO DE ESCRITA (PADRÃO LIVRO DE OURO) ---
-                            1. NÃO PAREÇA UMA AULA: O texto não deve ser esquemático nem cheio de tópicos. Deve ser um texto corrido, literário, fluído e inspirador, como se estivesse lendo um livro clássico.
-                            2. USO DOS ORIGINAIS (COM MODERAÇÃO E INTELIGÊNCIA): 
-                               - NÃO cite grego/hebraico em toda frase. Isso cansa o leitor.
-                               - USE APENAS quando houver uma palavra chave, um nome de lugar, pessoa ou uma palavra polissêmica que enriqueça a interpretação.
-                               - Exemplo de bom uso: "Espiritualmente, ser morno (*chliaros* em grego) não significa..."
-                            3. TOM: Solene, poético, mas profundamente teológico e aplicável.
-                            4. FORMATAÇÃO: Use parágrafos claros. Use itálico (*) para palavras estrangeiras ou ênfases suaves.
+                            1. Texto corrido, elegante, literário e inspirador (não use listas).
+                            2. USO INTELIGENTE DOS ORIGINAIS: Cite o original (Hebraico/Grego transliterado) APENAS se trouxer uma luz essencial sobre o significado (ex: nomes, polissemia).
+                            3. TOM: Solene, poético e teológico.
 
-                            --- ESTRUTURA DO CONTEÚDO ---
-                            Comece explicando o contexto histórico ou o significado imediato do versículo com riqueza de detalhes (nomes, geografia, cultura).
-                            Em seguida, aprofunde na teologia do texto, trazendo a visão arminiana e a soberania de Deus.
-                            Termine com uma aplicação poderosa e consoladora para a igreja hoje.
-
-                            Evite: "Neste versículo vemos...", "A palavra grega é...". Seja mais direto e elegante. Ex: "A advertência divina ecoa..."
+                            --- ESTRUTURA DOS 3 PARÁGRAFOS ---
+                            1. CONTEXTO IMEDIATO: Explique o cenário, o significado das palavras chaves e o que está acontecendo no texto.
+                            2. TEOLOGIA PROFUNDA: Aprofunde na doutrina, na visão de Deus e na conexão com o plano da salvação (Visão Arminiana).
+                            3. APLICAÇÃO PODEROSA: Traga para o hoje. Como isso confronta ou consola a igreja atual?
                         `;
                         const text = await generateContent(prompt);
                         await db.entities.Commentary.create({
