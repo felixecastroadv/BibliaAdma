@@ -410,22 +410,12 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     if (!window.confirm("Tem certeza que deseja apagar o conteúdo DESTA página?")) return;
     if (!content) return;
 
-    const pageText = pages[currentPage];
+    // Cria uma nova lista de páginas removendo a atual
+    // Essa é a maneira mais segura: reconstruir o texto baseando-se no que sobrou
+    const updatedPages = pages.filter((_, index) => index !== currentPage);
     
-    // Remove o marcador interno se existir para matching
-    const cleanPageText = pageText.replace('\n\n__CONTINUATION_MARKER__\n\n', '').replace('__CONTINUATION_MARKER__', '');
-    
-    const fullContent = activeTab === 'student' ? content.student_content : content.teacher_content;
-
-    // Tenta remover com o marcador de quebra anterior
-    let newContent = fullContent.replace('<hr class="page-break">' + cleanPageText, '');
-    
-    if (newContent === fullContent) {
-        newContent = fullContent.replace(cleanPageText, '');
-    }
-    
-    // Limpa sobras
-    newContent = newContent.replace(/<hr class="page-break">\s*$/, '').trim();
+    // Reconstrói o conteúdo total juntando as páginas restantes com o separador padrão de quebra
+    const newContent = updatedPages.join('<hr class="page-break">');
 
     const data = {
         ...content,
@@ -435,9 +425,19 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
     try {
         if (content.id) await db.entities.PanoramaBiblico.update(content.id, data);
+        
+        // Atualiza estado local imediatamente para feedback visual
+        setPages(updatedPages);
+        
+        // Ajusta a página atual se estivermos na última
+        if (currentPage >= updatedPages.length) {
+            setCurrentPage(Math.max(0, updatedPages.length - 1));
+        }
+
+        // Recarrega do banco para garantir sincronia
         await loadContent();
+        
         onShowToast('Página apagada com sucesso.', 'success');
-        if (currentPage > 0) setCurrentPage(p => p - 1);
     } catch (e) {
         onShowToast('Erro ao apagar página.', 'error');
     }
