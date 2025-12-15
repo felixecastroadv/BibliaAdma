@@ -282,10 +282,12 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                     // A função .save agora salva tanto no Local quanto na Nuvem (Universal)
                     await db.entities.ChapterMetadata.save(data);
                     setMetadata(data);
+                    onShowToast("Epígrafe atualizada!", "success");
                 }
             }
         } catch (e) {
             console.error("Failed to generate metadata", e);
+            onShowToast("Erro ao regenerar epígrafe.", "error");
         } finally { 
             setIsGeneratingMeta(false); 
         }
@@ -450,9 +452,18 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                                     <p className="font-cinzel text-[10px] font-bold uppercase tracking-[0.3em]">Contextualizando...</p>
                                 </div>
                             ) : metadata ? (
-                                <div className="max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
-                                    <h2 className="font-cinzel text-xs md:text-sm font-bold text-[#C5A059] uppercase tracking-[0.3em] mb-2">
+                                <div className="max-w-xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 relative group">
+                                    <h2 className="font-cinzel text-xs md:text-sm font-bold text-[#C5A059] uppercase tracking-[0.3em] mb-2 flex items-center justify-center gap-2">
                                         {metadata.title}
+                                        {isAdmin && (
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); generateMetadata(); }}
+                                                className="text-gray-300 hover:text-[#8B0000] transition-colors p-1"
+                                                title="Regerar Epígrafe (Admin)"
+                                            >
+                                                <RefreshCw className="w-3 h-3" />
+                                            </button>
+                                        )}
                                     </h2>
                                     <p className="font-cormorant text-xl text-gray-600 dark:text-gray-400 italic leading-relaxed px-4">
                                         "{metadata.subtitle}"
@@ -460,7 +471,13 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                                     <div className="w-16 h-[1px] bg-gradient-to-r from-transparent via-[#C5A059] to-transparent mx-auto mt-6 opacity-60"></div>
                                 </div>
                             ) : (
-                                <div className="h-8"></div>
+                                <div className="h-8 flex justify-center">
+                                    {isAdmin && (
+                                        <button onClick={generateMetadata} className="text-xs text-[#C5A059] underline hover:text-[#8B0000]">
+                                            Gerar Epígrafe
+                                        </button>
+                                    )}
+                                </div>
                             )}
                         </div>
                     )}
