@@ -156,9 +156,6 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
   // -----------------------
 
   const loadContent = async () => {
-    // REMOVIDO: A verificação "if (commentary && dictionary) return;" causava o bug.
-    // Agora sempre buscamos do banco (que é rápido por ser IndexedDB/Cache) para garantir dados corretos.
-
     setLoading(true);
     try {
         const [commRes, dictRes] = await Promise.all([
@@ -325,19 +322,24 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
 
     try {
         const prompt = `
-            ATUE COMO: Professor Michel Felix (Teólogo Conservador).
-            TAREFA: Comentário bíblico ortodoxo e vibrante sobre ${book} ${chapter}:${verseNumber}.
+            ATUE COMO: Professor Michel Felix (Teólogo Pentecostal Clássico e Conservador).
+            TAREFA: Comentário bíblico ortodoxo e exegético sobre ${book} ${chapter}:${verseNumber}.
             TEXTO BÍBLICO: "${verse}"
             ${customPromptAddon}
 
-            --- SEGURANÇA DOUTRINÁRIA (CRÍTICO) ---
-            1. ORTODOXIA ESTRITA: Interprete a Bíblia com a Bíblia. Rejeite interpretações baseadas em livros apócrifos.
-            2. VIÉS: Arminiano e Pentecostal Clássico.
+            --- SEGURANÇA DOUTRINÁRIA (NÍVEL MÁXIMO - CRÍTICO) ---
+            1. SOLA SCRIPTURA ABSOLUTA: Interprete a Bíblia SOMENTE com a Bíblia (os 66 livros canônicos).
+            2. PROIBIÇÃO TOTAL DE FONTES APÓCRIFAS: É ESTRITAMENTE PROIBIDO usar conceitos baseados no Livro de Enoque, Lendas Judaicas, Midrashim ou Cultura Extra-Bíblica para criar doutrina.
+            3. CONTRA HERESIAS E ESPECULAÇÕES:
+               - Em textos polêmicos (ex: Gn 6, 1 Pe 3:19, Jd 6), REJEITE interpretações míticas (ex: anjos coabitando com mulheres ou "espíritos em prisão" sendo anjos de Gn 6 baseados em Enoque).
+               - Adote a interpretação Teológica Conservadora Padrão (ex: "espíritos em prisão" refere-se à desobediência humana no tempo de Noé ou a proclamação de vitória do Cristo, sem envolver anjos híbridos).
+               - Mantenha a distinção clara entre natureza angélica e humana (anjos não procriam).
+            4. VIÉS: Arminiano, Assembleiano e Bibliocêntrico.
 
             --- ESTILO DE ESCRITA ---
-            - Vibrante, Pastoral e Acessível.
+            - Vibrante, Pastoral, Acessível e Doutrinário.
             - NUNCA use frases de auto-identificação ("Eu como teólogo...", "Nós cremos...").
-            - PALAVRAS ORIGINAIS: Quando ESTRITAMENTE NECESSÁRIO (principalmente em casos de polissemia), cite a palavra chave no original (Hebraico/Grego), sua tradução e seu significado para melhor interpretar o versículo, para que o leitor entenda sem dúvidas. Não use em todos os comentários, apenas quando enriquecer a exegese.
+            - PALAVRAS ORIGINAIS: Cite a palavra chave no original (Hebraico/Grego) APENAS se for essencial para esclarecer a doutrina e afastar heresias.
 
             ESTRUTURA:
             - 2 a 3 parágrafos fluídos.
