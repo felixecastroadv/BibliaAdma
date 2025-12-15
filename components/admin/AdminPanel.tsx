@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ShieldCheck, RefreshCw, Loader2, Upload, Download, Server, HardDrive, Flag, CheckCircle, XCircle, MessageSquare, Languages, GraduationCap, Calendar, CloudUpload, Wand2, Play, StopCircle, Trash2, AlertTriangle, FileJson, Save, Users, Lock, Unlock, KeyRound, Search } from 'lucide-react';
+import { ChevronLeft, ShieldCheck, RefreshCw, Loader2, Upload, Download, Server, HardDrive, Flag, CheckCircle, XCircle, MessageSquare, Languages, GraduationCap, Calendar, CloudUpload, Wand2, Play, StopCircle, Trash2, AlertTriangle, FileJson, Save, Users, Lock, Unlock, KeyRound, Search, Cloud, CloudOff } from 'lucide-react';
 import { generateContent } from '../../services/geminiService';
 import { BIBLE_BOOKS, generateChapterKey, generateVerseKey, TOTAL_CHAPTERS } from '../../constants';
 import { db, bibleStorage } from '../../services/database';
@@ -197,6 +196,62 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       onShowToast("Download Completo!", "success");
   };
 
+  // --- NOVA FUNÇÃO: RESGATAR DA NUVEM (SUPABASE -> INDEXEDDB) ---
+  const handleRestoreFromCloud = async () => {
+      if (!window.confirm("Isso irá baixar todo o texto bíblico salvo no seu Banco de Dados na Nuvem para este dispositivo. Continuar?")) return;
+      
+      setIsProcessing(true);
+      setProcessStatus("Conectando à Nuvem...");
+      setProgress(0);
+
+      try {
+          // 1. Busca todos os capítulos do Supabase
+          // Nota: 'list' já traz tudo. Se for muita coisa, o loading pode demorar um pouco.
+          const allChapters = (await db.entities.BibleChapter.list()) as any[];
+          
+          if (!allChapters || allChapters.length === 0) {
+              onShowToast("Nenhum capítulo encontrado na nuvem para resgatar.", "error");
+              setIsProcessing(false);
+              return;
+          }
+
+          setProcessStatus(`Sincronizando ${allChapters.length} arquivos...`);
+          
+          // 2. Salva localmente em paralelo/lote
+          let count = 0;
+          const total = allChapters.length;
+
+          // Limpa banco local para evitar conflitos
+          await bibleStorage.clear();
+
+          for (const item of allChapters) {
+              if (item.id && item.verses) {
+                  // O ID no Supabase é a 'key' (ex: bible_acf_gn_1)
+                  await bibleStorage.save(item.id, item.verses);
+                  count++;
+                  
+                  // Atualiza barra a cada 20 itens para performance
+                  if (count % 20 === 0) {
+                      setProgress(Math.round((count / total) * 100));
+                      setProcessStatus(`Restaurando: ${Math.round((count / total) * 100)}%`);
+                      // Pequena pausa para a UI respirar
+                      await new Promise(r => setTimeout(r, 0)); 
+                  }
+              }
+          }
+
+          setOfflineCount(count);
+          onShowToast(`Sucesso! ${count} capítulos recuperados da nuvem.`, "success");
+
+      } catch (e) {
+          console.error(e);
+          onShowToast("Erro ao resgatar da nuvem. Verifique a conexão.", "error");
+      } finally {
+          setIsProcessing(false);
+          setProgress(0);
+      }
+  };
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file) return;
@@ -207,27 +262,64 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       reader.onload = async (e) => {
           try {
               const jsonText = e.target?.result as string;
+              // Remove BOM se existir
               const cleanJson = jsonText.replace(/^\uFEFF/, ''); 
               const rawData = JSON.parse(cleanJson);
-              if (!Array.isArray(rawData)) throw new Error("Formato inválido. Esperado array.");
+              
+              if (!Array.isArray(rawData)) throw new Error("Formato inválido. O arquivo deve conter uma lista (array).");
+              
               const jsonData = rawData as any[];
               
-              setProcessStatus("Salvando no banco...");
+              setProcessStatus("Processando dados...");
               let count = 0;
-              for (const item of jsonData) {
-                  if (item.key && item.verses) {
-                      await bibleStorage.save(item.key, item.verses);
+              const total = jsonData.length;
+
+              // Limpa armazenamento atual para importação limpa (opcional, mas recomendado para evitar lixo)
+              // await bibleStorage.clear(); 
+
+              for (let i = 0; i < total; i++) {
+                  const item = jsonData[i];
+                  let key = item.key;
+                  let verses = item.verses;
+
+                  // --- CORREÇÃO DE FORMATO ---
+                  // Se não tiver 'key', tenta gerar baseada em 'book' e 'chapter' ou 'book_name'
+                  if (!key) {
+                      const bName = item.book || item.book_name || item.name;
+                      const cNum = item.chapter || item.c;
+                      if (bName && cNum) {
+                          key = generateChapterKey(bName, cNum);
+                      }
+                  }
+
+                  if (key && verses && Array.isArray(verses)) {
+                      await bibleStorage.save(key, verses);
                       count++;
-                      if (count % 50 === 0) setProgress(Math.round((count / jsonData.length) * 100));
+                  }
+
+                  if (i % 50 === 0) {
+                      setProgress(Math.round((i / total) * 100));
+                      setProcessStatus(`Importando ${i}/${total}...`);
+                      await new Promise(r => setTimeout(r, 0));
                   }
               }
-              setOfflineCount(count);
-              onShowToast(`${count} capítulos importados!`, "success");
+              
+              setOfflineCount(await bibleStorage.count());
+              
+              if (count === 0) {
+                  onShowToast("Nenhum capítulo válido encontrado. Verifique o formato do JSON (precisa de 'key' ou 'book'/'chapter' e 'verses').", "error");
+              } else {
+                  onShowToast(`${count} capítulos importados com sucesso!`, "success");
+              }
+
           } catch (error) {
-              onShowToast("Erro ao processar JSON.", "error");
+              console.error(error);
+              onShowToast("Erro ao ler JSON. O arquivo pode estar corrompido.", "error");
           } finally {
               setIsProcessing(false);
               setProgress(0);
+              // Limpa o input para permitir re-upload do mesmo arquivo se falhar
+              if (fileInputRef.current) fileInputRef.current.value = '';
           }
       };
       reader.readAsText(file);
@@ -243,7 +335,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                   const key = `bible_acf_${book.abbrev}_${c}`;
                   const verses = await bibleStorage.get(key);
                   if (verses) {
-                      allData.push({ key, verses });
+                      allData.push({ key, verses, book: book.name, chapter: c }); // Adiciona book/chapter para compatibilidade futura
                   }
               }
           }
@@ -400,7 +492,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <div className="absolute inset-0 bg-black/60" onClick={() => setShowReportsModal(false)} />
               <div className="bg-white dark:bg-[#1E1E1E] w-full max-w-2xl max-h-[80vh] rounded-2xl p-6 relative z-10 overflow-hidden flex flex-col shadow-2xl animate-in zoom-in">
-                  {/* ... conteúdo modal relatórios ... */}
                   <div className="flex justify-between items-center mb-4 border-b pb-2 dark:border-gray-700">
                       <h3 className="font-cinzel font-bold text-xl dark:text-white flex items-center gap-2">
                           <Flag className="w-5 h-5 text-red-500"/> Relatórios de Erro ({reports.length})
@@ -473,25 +564,42 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
 
         {/* SEÇÃO 2: BÍBLIA OFFLINE */}
         <h2 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#ff6b6b] border-b border-[#C5A059] pb-2">1. Gestão da Bíblia (JSON)</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        
+        {/* NOVO: Botão de Resgate + Upload Corrigido */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
              <button onClick={handleDownloadBible} disabled={isProcessing} className="bg-white dark:bg-dark-card p-4 rounded-xl shadow border border-[#C5A059]/30 flex flex-col items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
                  {isProcessing ? <Loader2 className="w-8 h-8 animate-spin text-[#C5A059]" /> : <CloudUpload className="w-8 h-8 text-[#C5A059]" />}
-                 <span className="font-bold text-sm text-center dark:text-white">Baixar da Nuvem</span>
+                 <span className="font-bold text-xs text-center dark:text-white">Baixar da Web</span>
              </button>
-             <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow border border-[#C5A059]/30 flex flex-col items-center justify-center gap-2 relative overflow-hidden group">
+             
+             {/* BOTÃO RESGATAR DA NUVEM */}
+             <button onClick={handleRestoreFromCloud} disabled={isProcessing} className="bg-[#8B0000] text-white p-4 rounded-xl shadow border border-[#C5A059]/30 flex flex-col items-center justify-center gap-2 hover:bg-[#600018] transition animate-pulse">
+                 {isProcessing ? <Loader2 className="w-8 h-8 animate-spin text-white" /> : <Cloud className="w-8 h-8 text-white" />}
+                 <span className="font-bold text-xs text-center">Resgatar da Nuvem</span>
+             </button>
+
+             <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow border border-[#C5A059]/30 flex flex-col items-center justify-center gap-2 relative overflow-hidden group hover:bg-gray-50 cursor-pointer">
                  <Upload className="w-8 h-8 text-blue-500" />
-                 <span className="font-bold text-sm text-center dark:text-white">Upload JSON</span>
+                 <span className="font-bold text-xs text-center dark:text-white">Upload JSON (4MB)</span>
                  <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".json" className="absolute inset-0 opacity-0 cursor-pointer" disabled={isProcessing} />
              </div>
+             
              <button onClick={handleExportJson} disabled={isProcessing} className="bg-white dark:bg-dark-card p-4 rounded-xl shadow border border-[#C5A059]/30 flex flex-col items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
                  <Download className="w-8 h-8 text-green-500" />
-                 <span className="font-bold text-sm text-center dark:text-white">Backup</span>
+                 <span className="font-bold text-xs text-center dark:text-white">Backup Local</span>
              </button>
         </div>
+        
+        {/* Barra de Progresso Visual */}
         {isProcessing && (
-            <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-xl">
-                <div className="flex justify-between text-xs mb-1 font-bold dark:text-white"><span>{processStatus}</span><span>{progress}%</span></div>
-                <div className="w-full bg-gray-300 dark:bg-gray-600 rounded-full h-2"><div className="bg-[#8B0000] h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div></div>
+            <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-xl border border-[#C5A059]/30 mt-4">
+                <div className="flex justify-between text-xs mb-1 font-bold dark:text-white">
+                    <span className="flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin"/> {processStatus}</span>
+                    <span>{progress}%</span>
+                </div>
+                <div className="w-full bg-gray-300 dark:bg-gray-600 rounded-full h-3 overflow-hidden border border-gray-400 dark:border-gray-500">
+                    <div className="bg-gradient-to-r from-[#C5A059] to-[#8B0000] h-3 rounded-full transition-all duration-300 shadow-[0_0_10px_#C5A059]" style={{ width: `${progress}%` }}></div>
+                </div>
             </div>
         )}
 
