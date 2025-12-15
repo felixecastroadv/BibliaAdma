@@ -5,7 +5,7 @@ import VersePanel from './VersePanel';
 import { db } from '../../services/database';
 import { generateChapterKey, BIBLE_BOOKS } from '../../constants';
 import { generateContent } from '../../services/geminiService';
-import { Type as GenType } from "@google/genai";
+// REMOVIDO IMPORT LENTO: import { Type as GenType } from "@google/genai";
 import { ChapterMetadata } from '../../types';
 
 const BookSelector = ({ isOpen, onClose, currentBook, onSelect }: any) => {
@@ -80,7 +80,7 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
     
     const [showSelector, setShowSelector] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
-    const [fontSize, setFontSize] = useState(20); // Aumentado o padrão para mais conforto
+    const [fontSize, setFontSize] = useState(20); 
     const [selectedVerse, setSelectedVerse] = useState<{text: string, number: number} | null>(null);
 
     const [metadata, setMetadata] = useState<ChapterMetadata | null>(null);
@@ -218,23 +218,31 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
     const generateMetadata = async () => {
         if (isGeneratingMeta) return;
         setIsGeneratingMeta(true);
-        const prompt = `Gere uma EPÍGRAFE CLÁSSICA (Estilo Almeida/Sociedade Bíblica) para ${book} ${chapter}. 
-        JSON: { 
-            "title": "Título Curto (Máximo 5 palavras, ex: A Torre de Babel)", 
-            "subtitle": "Resumo teológico do capítulo em uma frase simples e curta." 
-        }`;
         
-        const schema = { type: GenType.OBJECT, properties: { title: { type: GenType.STRING }, subtitle: { type: GenType.STRING } } };
+        // PROMPT ULTRA-RÁPIDO (Sem validação de Schema no servidor)
+        // Pedimos um JSON string direto. Isso evita o overhead de processamento do Schema do Gemini.
+        const prompt = `Para o capítulo bíblico de ${book} ${chapter}, responda APENAS um objeto JSON (sem markdown) neste formato: { "title": "Título Curto (Max 5 palavras)", "subtitle": "Resumo em 1 frase" }. Seja clássico e conservador.`;
+        
         try {
-            const res = await generateContent(prompt, schema);
-            if (res && res.title) {
-                const data = { chapter_key: chapterKey, title: res.title, subtitle: res.subtitle };
-                await db.entities.ChapterMetadata.save(data);
-                setMetadata(data);
+            // Passamos 'null' no schema para ativar o modo "Texto Livre" que é mais rápido
+            const rawText = await generateContent(prompt, null);
+            
+            if (rawText) {
+                // Limpeza manual rápida
+                const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+                const res = JSON.parse(cleanJson);
+                
+                if (res && res.title) {
+                    const data = { chapter_key: chapterKey, title: res.title, subtitle: res.subtitle };
+                    await db.entities.ChapterMetadata.save(data);
+                    setMetadata(data);
+                }
             }
         } catch (e) {
             console.error("Failed to generate metadata", e);
-        } finally { setIsGeneratingMeta(false); }
+        } finally { 
+            setIsGeneratingMeta(false); 
+        }
     };
 
     const togglePlay = () => {

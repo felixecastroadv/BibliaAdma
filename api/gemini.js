@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 // Configuração para Vercel Serverless Functions
@@ -27,12 +28,9 @@ export default async function handler(request, response) {
     // --- 1. COLETA MASSIVA DE CHAVES (POOL) ---
     const allKeys = [];
 
-    // Adiciona chaves nomeadas específicas que você já usa
     if (process.env.API_KEY) allKeys.push(process.env.API_KEY);
     if (process.env.Biblia_ADMA_API) allKeys.push(process.env.Biblia_ADMA_API);
 
-    // Adiciona chaves numeradas automaticamente de 1 até 50
-    // Isso permite que você adicione API_KEY_15, API_KEY_20 na Vercel sem mexer no código
     for (let i = 1; i <= 50; i++) {
         const keyName = `API_KEY_${i}`;
         const val = process.env[keyName];
@@ -41,7 +39,6 @@ export default async function handler(request, response) {
         }
     }
 
-    // Remove duplicatas e chaves inválidas
     const validKeys = [...new Set(allKeys)].filter(k => k && !k.startsWith('vck_'));
 
     if (validKeys.length === 0) {
@@ -63,26 +60,22 @@ export default async function handler(request, response) {
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
     // --- 3. LOOP DE ROTAÇÃO DE CHAVES (FAILOVER INTELIGENTE) ---
-    // Embaralha as chaves para distribuir a carga (Load Balancing)
     const shuffledKeys = validKeys.sort(() => 0.5 - Math.random());
     
     let lastError = null;
     let successResponse = null;
     let attempts = 0;
 
-    console.log(`🔄 [Gemini Pool] Iniciando com ${validKeys.length} chaves disponíveis.`);
-
     for (const apiKey of shuffledKeys) {
         attempts++;
         try {
-            // Configura o cliente com a chave atual do loop
             const ai = new GoogleGenAI({ apiKey });
             
-            // Modelo Flash é mais rápido e econômico
             const modelId = "gemini-2.5-flash"; 
 
+            // Configuração otimizada para velocidade
             const aiConfig = {
-                temperature: 0.7, // Levemente criativo, mas focado
+                temperature: 0.4, // Mais baixo = Mais rápido e determinístico
                 topP: 0.95,
                 topK: 40,
                 safetySettings: [
@@ -98,7 +91,6 @@ export default async function handler(request, response) {
                 aiConfig.responseSchema = schema;
             }
 
-            // Tenta gerar
             const aiResponse = await ai.models.generateContent({
                 model: modelId,
                 contents: [{ parts: [{ text: prompt }] }],
@@ -106,29 +98,22 @@ export default async function handler(request, response) {
             });
 
             if (!aiResponse.text) {
-                // Se a resposta for vazia mas sem erro explícito, forçamos um erro para trocar a chave
                 throw new Error(aiResponse.candidates?.[0]?.finishReason || "EMPTY_RESPONSE_RETRY");
             }
 
-            // SUCESSO!
             successResponse = aiResponse.text;
-            // console.log(`✅ Sucesso na tentativa ${attempts}`);
-            break; // Sai do loop imediatamente
+            break; 
 
         } catch (error) {
             lastError = error;
             const msg = error.message || '';
             
-            // Lista de erros que indicam que devemos tentar a PRÓXIMA chave
             const isQuotaError = msg.includes('429') || msg.includes('Quota') || msg.includes('Too Many Requests') || msg.includes('Exhausted');
             const isServerError = msg.includes('503') || msg.includes('500') || msg.includes('Overloaded') || msg.includes('EMPTY_RESPONSE');
 
             if (isQuotaError || isServerError) {
-                console.warn(`⚠️ Chave ${attempts} falhou (${isQuotaError ? 'Cota' : 'Erro'}). Trocando para próxima...`);
-                continue; // Pula para a próxima iteração do loop (próxima chave)
+                continue; 
             } else {
-                // Se for um erro do usuário (ex: Prompt inválido), paramos para não gastar todas as chaves à toa
-                console.error(`❌ Erro fatal (não é cota): ${msg}`);
                 break; 
             }
         }
@@ -138,9 +123,6 @@ export default async function handler(request, response) {
     if (successResponse) {
         return response.status(200).json({ text: successResponse });
     } else {
-        // Se chegou aqui, TODAS as chaves do array falharam
-        console.error("❌ FALHA TOTAL: Todas as chaves do pool foram testadas e falharam.");
-        
         const errorMsg = lastError?.message || 'Erro desconhecido.';
         
         if (errorMsg.includes('429') || errorMsg.includes('Quota')) {
@@ -153,7 +135,6 @@ export default async function handler(request, response) {
     }
 
   } catch (error) {
-    console.error("Gemini Critical Server Error:", error);
     return response.status(500).json({ error: 'Erro interno crítico no servidor.' });
   }
 }

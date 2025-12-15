@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 const STORAGE_KEY_API = 'adma_temp_api_key';
@@ -114,7 +115,8 @@ export const generateContent = async (
 
         // Se for erro de Cota ou Timeout, espera e tenta de novo (Backoff Exponencial)
         if (isQuota || isTimeout) {
-            const waitTime = attempt * 2500; // Espera 2.5s, depois 5s...
+            // REDUZIDO PARA 1s para ser mais ágil na troca de chaves
+            const waitTime = attempt * 1000; 
             console.log(`⚠️ Tentativa ${attempt} falhou (${error.message}). Retentando em ${waitTime}ms...`);
             await delay(waitTime);
             continue; // Volta para o início do loop e tenta de novo (provavelmente pegará outra chave no servidor)
