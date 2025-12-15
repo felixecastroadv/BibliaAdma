@@ -237,6 +237,19 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                         </div>
                     </div>
 
+                    {/* APP LOGO MINIATURE */}
+                    <motion.div 
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.3, type: "spring" }}
+                        className="mb-6 mt-4 relative inline-block group"
+                    >
+                        <div className="absolute inset-0 bg-[#C5A059] blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-700"></div>
+                        <div className="relative w-20 h-20 bg-gradient-to-b from-white/10 to-transparent rounded-2xl border border-[#C5A059]/30 shadow-2xl flex items-center justify-center backdrop-blur-sm p-4">
+                             <img src="/icon.svg" alt="ADMA Logo" className="w-full h-full object-contain drop-shadow-lg" />
+                        </div>
+                    </motion.div>
+
                     <h1 onClick={handleLogoClick} className="font-cinzel text-5xl font-bold mb-2 cursor-pointer select-none drop-shadow-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-white/80">
                         Bíblia ADMA
                     </h1>
