@@ -72,8 +72,13 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
   const lang = isOT ? 'hebraico' : 'grego';
 
   useEffect(() => {
-    if (isOpen && verse) {
+    if (isOpen) {
+        // RESET CRÍTICO: Limpa estados anteriores para garantir que não mostre dados do versículo errado
+        setCommentary(null);
+        setDictionary(null);
+        
         loadContent();
+        
         // Reset chat on open new verse
         setChatMessages([{
             role: 'model',
@@ -93,7 +98,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
         window.speechSynthesis.cancel();
         setIsPlaying(false);
     }
-  }, [isOpen, verse]);
+  }, [isOpen, verseKey]); // Adicionado verseKey para disparar quando mudar o versículo
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -151,7 +156,8 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
   // -----------------------
 
   const loadContent = async () => {
-    if (commentary && dictionary) return;
+    // REMOVIDO: A verificação "if (commentary && dictionary) return;" causava o bug.
+    // Agora sempre buscamos do banco (que é rápido por ser IndexedDB/Cache) para garantir dados corretos.
 
     setLoading(true);
     try {
@@ -160,14 +166,23 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
             db.entities.Dictionary.filter({ verse_key: verseKey })
         ]);
 
-        if (commRes && commRes.length > 0) setCommentary(commRes[0]);
-        else setCommentary(null);
+        // Verificação extra de segurança para garantir que o dado retornado é do versículo atual
+        if (commRes && commRes.length > 0 && commRes[0].verse_key === verseKey) {
+            setCommentary(commRes[0]);
+        } else {
+            setCommentary(null);
+        }
 
-        if (dictRes && dictRes.length > 0) setDictionary(dictRes[0]);
-        else setDictionary(null);
+        if (dictRes && dictRes.length > 0 && dictRes[0].verse_key === verseKey) {
+            setDictionary(dictRes[0]);
+        } else {
+            setDictionary(null);
+        }
 
     } catch (e) {
         console.error("Erro ao carregar", e);
+        setCommentary(null);
+        setDictionary(null);
     } finally {
         setLoading(false);
     }
