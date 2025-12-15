@@ -292,27 +292,26 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
 
     try {
         const prompt = `
-            ATUE COMO: Professor Michel Felix (Teólogo Erudito e Professor de Seminário).
-            TAREFA: Escrever um comentário EXEGÉTICO e EXPLICATIVO sobre ${book} ${chapter}:${verseNumber}.
+            ATUE COMO: Professor Michel Felix (Teólogo Erudito, Pentecostal Clássico e Mestre em Exegese).
+            TAREFA: Escrever um comentário BÍBLICO-DEVOCIONAL PROFUNDO sobre ${book} ${chapter}:${verseNumber}.
             TEXTO BÍBLICO: "${verse}"
             ${customPromptAddon}
 
-            --- DIRETRIZES DE ESTILO (SALA DE AULA) ---
-            1. OBJETIVO: Explicar o significado do texto. O aluno quer entender o que o autor quis dizer.
-            2. TOM: Acadêmico, Didático e Sério. NÃO use linguagem de pregação ("Aleluia", "Glória", "Receba"). Evite exclamações excessivas.
-            3. FORMATO: Texto corrido, denso e informativo. 
-            
+            --- ESTILO DE ESCRITA (PADRÃO LIVRO DE OURO) ---
+            1. NÃO PAREÇA UMA AULA: O texto não deve ser esquemático nem cheio de tópicos. Deve ser um texto corrido, literário, fluído e inspirador, como se estivesse lendo um livro clássico.
+            2. USO DOS ORIGINAIS (COM MODERAÇÃO E INTELIGÊNCIA): 
+               - NÃO cite grego/hebraico em toda frase. Isso cansa o leitor.
+               - USE APENAS quando houver uma palavra chave, um nome de lugar, pessoa ou uma palavra polissêmica que enriqueça a interpretação.
+               - Exemplo de bom uso: "Espiritualmente, ser morno (*chliaros* em grego) não significa..."
+            3. TOM: Solene, poético, mas profundamente teológico e aplicável.
+            4. FORMATAÇÃO: Use parágrafos claros. Use itálico (*) para palavras estrangeiras ou ênfases suaves.
+
             --- ESTRUTURA DO CONTEÚDO ---
-            1. **Contexto:** Explique brevemente o cenário ou a conexão com o versículo anterior.
-            2. **Exegese:** Analise as frases do versículo. Se houver palavras chaves no original (${lang}), cite-as (transliteradas) e explique seu sentido profundo.
-            3. **Teologia:** Qual a doutrina ensinada aqui? (Visão Arminiana Clássica).
+            Comece explicando o contexto histórico ou o significado imediato do versículo com riqueza de detalhes (nomes, geografia, cultura).
+            Em seguida, aprofunde na teologia do texto, trazendo a visão arminiana e a soberania de Deus.
+            Termine com uma aplicação poderosa e consoladora para a igreja hoje.
 
-            --- SEGURANÇA DOUTRINÁRIA ---
-            - Sola Scriptura.
-            - Rejeite mitos e lendas.
-            - Mantenha a ortodoxia cristã.
-
-            Use **negrito** para destacar conceitos chave e *itálico* para palavras estrangeiras.
+            Evite: "Neste versículo vemos...", "A palavra grega é...". Seja mais direto e elegante. Ex: "A advertência divina ecoa..."
         `;
         const text = await generateContent(prompt);
         const data = { 
@@ -381,23 +380,23 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
       setIsEditingCommentary(true);
   };
 
-  // --- RENDERIZADOR PREMIUM DE TEXTO ---
+  // --- RENDERIZADOR PREMIUM DE TEXTO (AJUSTADO PARA OS PRINTS) ---
   const renderFormattedCommentary = (text: string) => {
     // 1. Divide em parágrafos para aplicar indentação
     const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim().length > 0);
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-6">
             {paragraphs.map((para, i) => {
                 // 2. Parser de Markdown (* e **)
                 // Regex captura: (**bold**) OU (*italic*)
                 const parts = para.split(/(\*\*.*?\*\*|\*.*?\*)/g);
 
                 return (
-                    <p key={i} className="font-cormorant text-xl leading-loose text-gray-900 dark:text-gray-200 text-justify indent-8 tracking-wide">
+                    <p key={i} className="font-cormorant text-xl leading-loose text-[#1a0f0f] dark:text-gray-200 text-justify indent-8 tracking-wide">
                         {parts.map((part, j) => {
                             if (part.startsWith('**') && part.endsWith('**')) {
-                                // Negrito Premium (Vermelho ADMA)
+                                // Negrito Premium (Vermelho ADMA) - Se houver
                                 return <strong key={j} className="text-[#8B0000] dark:text-[#ff6b6b] font-bold">{part.slice(2, -2)}</strong>;
                             }
                             if (part.startsWith('*') && part.endsWith('*')) {

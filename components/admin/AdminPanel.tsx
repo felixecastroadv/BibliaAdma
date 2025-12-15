@@ -443,20 +443,31 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
               const verseText = verses[i];
               const verseKey = generateVerseKey(bookMeta.name, c, verseNum);
 
-              // Verifica se já existe para não gastar API (Opcional, mas recomendado)
-              // Aqui vamos forçar gerar se o usuário mandou, ou podemos pular. 
-              // Assumindo que o admin quer gerar/regerar.
-
               addLog(`Processando ${bookMeta.name} ${c}:${verseNum}...`);
 
               try {
                   if (type === 'commentary') {
+                        // --- PROMPT UNIFICADO (MESMO DO VERSEPANEL) ---
                         const prompt = `
-                            ATUE COMO: Professor Michel Felix.
-                            TAREFA: Comentário bíblico curto para ${bookMeta.name} ${c}:${verseNum}.
-                            TEXTO: "${verseText}"
-                            ESTILO: Pentecostal Clássico, Arminiano.
-                            FORMATO: Texto corrido, vibrante, max 200 palavras. Use markdown (* e **) para ênfase.
+                            ATUE COMO: Professor Michel Felix (Teólogo Erudito, Pentecostal Clássico e Mestre em Exegese).
+                            TAREFA: Escrever um comentário BÍBLICO-DEVOCIONAL PROFUNDO sobre ${bookMeta.name} ${c}:${verseNum}.
+                            TEXTO BÍBLICO: "${verseText}"
+
+                            --- ESTILO DE ESCRITA (PADRÃO LIVRO DE OURO) ---
+                            1. NÃO PAREÇA UMA AULA: O texto não deve ser esquemático nem cheio de tópicos. Deve ser um texto corrido, literário, fluído e inspirador, como se estivesse lendo um livro clássico.
+                            2. USO DOS ORIGINAIS (COM MODERAÇÃO E INTELIGÊNCIA): 
+                               - NÃO cite grego/hebraico em toda frase. Isso cansa o leitor.
+                               - USE APENAS quando houver uma palavra chave, um nome de lugar, pessoa ou uma palavra polissêmica que enriqueça a interpretação.
+                               - Exemplo de bom uso: "Espiritualmente, ser morno (*chliaros* em grego) não significa..."
+                            3. TOM: Solene, poético, mas profundamente teológico e aplicável.
+                            4. FORMATAÇÃO: Use parágrafos claros. Use itálico (*) para palavras estrangeiras ou ênfases suaves.
+
+                            --- ESTRUTURA DO CONTEÚDO ---
+                            Comece explicando o contexto histórico ou o significado imediato do versículo com riqueza de detalhes (nomes, geografia, cultura).
+                            Em seguida, aprofunde na teologia do texto, trazendo a visão arminiana e a soberania de Deus.
+                            Termine com uma aplicação poderosa e consoladora para a igreja hoje.
+
+                            Evite: "Neste versículo vemos...", "A palavra grega é...". Seja mais direto e elegante. Ex: "A advertência divina ecoa..."
                         `;
                         const text = await generateContent(prompt);
                         await db.entities.Commentary.create({
