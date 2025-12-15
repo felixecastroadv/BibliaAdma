@@ -135,9 +135,8 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] dark:bg-dark-bg transition-colors duration-500 font-sans">
-        {/* Modais de Instalação (IOS/Desktop) Mantidos... */}
-        {/* (Código dos modais igual ao original, omitido para brevidade, mas está aqui) */}
-
+        {/* Modais de Instalação omitidos para brevidade (mantém lógica original) */}
+        
         {/* HERO SECTION */}
         <div className="relative bg-[#0F0505] text-white pb-24 rounded-b-[50px] shadow-2xl overflow-hidden isolate" style={{ backgroundColor: '#0F0505' }}> {/* Fundo base fixo escuro */}
              
@@ -177,9 +176,27 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                 </motion.div>
 
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                    <h1 className="font-cinzel text-4xl md:text-5xl font-bold text-white mb-1 drop-shadow-lg tracking-tight">{appName}</h1>
-                    <p className="font-cormorant text-lg text-[#C5A059] italic opacity-80 font-light">Prof. Michel Felix</p>
+                    <h1 className="font-cinzel text-4xl md:text-5xl font-bold text-white mb-2 drop-shadow-lg tracking-tight">{appName}</h1>
+                    <div className="space-y-1">
+                        <p className="font-cormorant text-lg text-[#C5A059] italic opacity-80 font-light">Prof. Michel Felix</p>
+                        <div className="flex items-center justify-center gap-2 opacity-60">
+                            <div className="h-[1px] w-4 bg-[#C5A059]"></div>
+                            <p className="font-cinzel text-[10px] uppercase tracking-widest text-[#C5A059]">Presidente: {PASTOR_PRESIDENT}</p>
+                            <div className="h-[1px] w-4 bg-[#C5A059]"></div>
+                        </div>
+                    </div>
                 </motion.div>
+
+                <motion.a 
+                    href="https://www.instagram.com/adma_ministerioagape/" 
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }}
+                    className="flex items-center gap-2 px-6 py-2 rounded-full bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] text-white font-bold text-xs shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+                >
+                    <Instagram className="w-4 h-4" />
+                    <span>Siga no Instagram</span>
+                </motion.a>
             </div>
         </div>
 

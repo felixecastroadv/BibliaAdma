@@ -54,7 +54,25 @@ export default function AppBuilder({ onBack, onShowToast, currentConfig }: AppBu
                         description: { type: GenType.STRING },
                         iconName: { type: GenType.STRING },
                         accessLevel: { type: GenType.STRING, enum: ['public', 'admin', 'login'] },
-                        data: { type: GenType.OBJECT } // Conteúdo flexível (perguntas do quiz, etc)
+                        // FIX: Definindo estrutura explicita para evitar erro de objeto vazio
+                        data: { 
+                            type: GenType.OBJECT,
+                            properties: {
+                                html: { type: GenType.STRING, description: "HTML content for pages" },
+                                url: { type: GenType.STRING, description: "URL for links" },
+                                questions: {
+                                    type: GenType.ARRAY,
+                                    items: {
+                                        type: GenType.OBJECT,
+                                        properties: {
+                                            text: { type: GenType.STRING },
+                                            options: { type: GenType.ARRAY, items: { type: GenType.STRING } },
+                                            correctIndex: { type: GenType.INTEGER }
+                                        }
+                                    }
+                                }
+                            }
+                        } 
                     }
                 },
                 moduleIdToDelete: { type: GenType.STRING }
@@ -71,10 +89,10 @@ export default function AppBuilder({ onBack, onShowToast, currentConfig }: AppBu
             
             REGRAS:
             1. Se for mudança de cor, retorne hexadecimal válido em 'configChanges'.
-            2. Se for criar Quiz/Página, gere 'moduleData' completo com perguntas ou HTML simples.
-            3. 'iconName' deve ser um nome válido da biblioteca Lucide-React (Ex: 'Brain', 'FileText', 'Link').
-            4. Se for ativar/desativar funcionalidade (Ranking, Devocional, Login com Senha), altere 'configChanges'.
-            5. 'requirePasswordLogin' = true significa que o usuário precisará digitar uma senha fixa definida pelo admin (não implemente Google Auth, apenas flag).
+            2. Se for criar Quiz, preencha 'moduleData.data.questions'.
+            3. Se for criar Página, preencha 'moduleData.data.html'.
+            4. 'iconName' deve ser um nome válido da biblioteca Lucide-React (Ex: 'Brain', 'FileText', 'Link', 'Star').
+            5. Se for ativar/desativar funcionalidade (Ranking, Devocional, Login com Senha), altere 'configChanges'.
         `;
 
         try {
