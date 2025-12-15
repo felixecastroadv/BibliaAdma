@@ -453,26 +453,30 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                             TAREFA: Escrever um comentário EXEGÉTICO para alunos de Escola Dominical (EBD).
                             TEXTO BÍBLICO: "${verseText}"
 
-                            --- LINGUAGEM E TOM (CRÍTICO: CLAREZA TOTAL) ---
+                            --- PROTOCOLO DE SEGURANÇA HERMENÊUTICA (PRIORIDADE TOTAL) ---
+                            1. A BÍBLIA EXPLICA A BÍBLIA: Antes de formular o comentário, verifique mentalmente versículos conexos. A interpretação NÃO pode contradizer o restante das Escrituras.
+                            2. ZERO POLÊMICAS/ESPECULAÇÕES: Rejeite interpretações baseadas em livros apócrifos, mitologia (ex: anjos coabitando com humanos) ou cultura judaica extra-bíblica. 
+                            3. ORTODOXIA: Em textos difíceis (ex: Gn 6:2), opte SEMPRE pela linha teológica mais conservadora e segura (ex: Linhagem de Sete x Caim), evitando sensacionalismo.
+                            4. FOCO NA INTENÇÃO ORIGINAL: O que o autor sagrado quis ensinar sobre Deus e o homem? Fique nisso.
+
+                            --- LINGUAGEM E TOM ---
                             1. PÚBLICO: Alunos de 16 a 76 anos, escolaridade média.
-                            2. VOCABULÁRIO: Profundo, mas SIMPLES e DIDÁTICO. Se usar um termo difícil, explique o significado na hora.
-                            3. SEM JARGÕES: NÃO use termos como "Arminiano", "Pentecostal Clássico", "Merisma", "Eisegese", "Hermenêutica" de forma explícita. Use a *ideia* por trás deles (ex: em vez de "visão arminiana", diga "Deus oferece a salvação a todos, mas cabe ao homem aceitar").
-                            4. SEM AUTO-IDENTIFICAÇÃO: NÃO diga "Nós cremos...", "Como pentecostais...". Apenas ensine a verdade bíblica (que deve ser implicitamente alinhada à teologia pentecostal clássica).
-                            5. OBJETIVO: O aluno deve ler e entender de primeira, sem precisar de dicionário.
+                            2. CLAREZA: Profundo, mas simples e didático. Sem "teologês" desnecessário.
+                            3. IMPLICITAMENTE PENTECOSTAL: Ensine a doutrina correta sem usar rótulos ("Arminiano", "Dispensacionalista"). Deixe a teologia fluir naturalmente no texto.
 
                             --- USO DOS ORIGINAIS ---
-                            Cite palavras chaves em Hebraico/Grego (transliteradas) para explicar nuances, mas faça isso de forma natural (ex: "A palavra usada aqui no original é *termo*, que significa...").
+                            Cite palavras chaves em Hebraico/Grego (transliteradas) apenas quando iluminarem o sentido, de forma natural (ex: "A palavra usada aqui no original é *termo*, que significa...").
 
                             --- ESTRUTURA BLINDADA (3 PARÁGRAFOS - Max 250 Palavras) ---
                             
-                            1. PARÁGRAFO 1 (O TEXTO E O CONTEXTO): 
-                               - O que o autor quis dizer originalmente? Explique o cenário, quem está falando e o sentido das palavras originais. Seja o professor que descomplica o texto.
+                            1. PARÁGRAFO 1 (EXEGESE): 
+                               - Explique o texto dentro do contexto imediato. O que está acontecendo? Qual o sentido original das palavras? Descomplique.
 
-                            2. PARÁGRAFO 2 (A VERDADE DOUTRINÁRIA): 
-                               - Aprofunde o significado espiritual e teológico. Conecte os pontos. Ensine a doutrina correta sem usar rótulos complexos. (Foco 85% do texto junto com o parágrafo 1).
+                            2. PARÁGRAFO 2 (TEOLOGIA ORTODOXA): 
+                               - Aprofunde o ensino doutrinário. Conecte com outros textos bíblicos (Analogia da Fé) para confirmar a interpretação correta e afastar heresias. (Foco principal).
 
-                            3. PARÁGRAFO 3 (DESFECHO/APLICAÇÃO): 
-                               - Curto e forte. Como essa verdade muda a vida do aluno hoje? (Max 15% do texto).
+                            3. PARÁGRAFO 3 (APLICAÇÃO): 
+                               - Curto e prático. Como essa verdade bíblica transforma a vida do aluno hoje? (Max 15% do texto).
 
                             --- ESTILO VISUAL ---
                             Texto corrido, elegante, inspirador e fácil de ler.
