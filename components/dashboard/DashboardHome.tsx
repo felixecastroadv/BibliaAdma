@@ -216,7 +216,10 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
 
         {/* PROGRESS CARD */}
         <div className="px-6 -mt-16 relative z-30 mb-8">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="bg-white dark:bg-[#1E1E1E] p-6 rounded-[32px] shadow-xl border border-[#C5A059]/20 backdrop-blur-sm relative overflow-hidden">
+            <motion.div 
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} 
+                className="bg-white dark:bg-[#1E1E1E] p-6 rounded-[32px] border border-[#C5A059]/20 backdrop-blur-sm relative overflow-hidden transition-all duration-300 shadow-[0_15px_40px_-10px_rgba(0,0,0,0.1)] dark:shadow-[0_0_30px_-5px_rgba(197,160,89,0.15)]"
+            >
                 <div className="flex justify-between items-end mb-4 relative z-10">
                     <div className="flex flex-col">
                         <span className="font-montserrat text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1"><Sparkles className="w-3 h-3 text-[#C5A059]" /> Progresso</span>
@@ -241,7 +244,9 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 + (idx * 0.05) }}
                     whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.96 }}
                     onClick={() => onNavigate(item.id, { module: (item as any).module })} 
-                    className="relative overflow-hidden group bg-white dark:bg-[#1E1E1E] p-6 rounded-[24px] shadow-sm hover:shadow-xl border border-gray-100 dark:border-white/5 text-left h-40 flex flex-col justify-between"
+                    className="relative overflow-hidden group bg-white dark:bg-[#1E1E1E] p-6 rounded-[24px] text-left h-40 flex flex-col justify-between border transition-all duration-300 
+                    border-gray-100 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.12)]
+                    dark:border-white/5 dark:shadow-[0_0_15px_-3px_rgba(255,255,255,0.05)] dark:hover:shadow-[0_0_25px_-5px_rgba(197,160,89,0.25)]"
                 >
                     <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center shadow-md text-white mb-2`}>
                         <item.icon className="w-6 h-6" />
@@ -256,7 +261,8 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
             {isAdmin && (
                 <motion.button 
                     onClick={() => onNavigate('admin')} 
-                    className="col-span-2 bg-[#1a0f0f] dark:bg-black text-[#C5A059] p-5 rounded-3xl shadow-lg border border-[#C5A059]/30 flex items-center justify-center gap-4 group mt-4 relative overflow-hidden"
+                    className="col-span-2 bg-[#1a0f0f] dark:bg-black text-[#C5A059] p-5 rounded-3xl flex items-center justify-center gap-4 group mt-4 relative overflow-hidden border border-[#C5A059]/30 
+                    shadow-[0_10px_30px_-5px_rgba(0,0,0,0.3)] hover:shadow-[0_15px_40px_-5px_rgba(197,160,89,0.2)]"
                 >
                     <ShieldCheck className="w-6 h-6 group-hover:rotate-12 transition-transform" />
                     <div className="text-left relative z-10">
