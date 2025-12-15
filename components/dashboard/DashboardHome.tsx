@@ -137,13 +137,14 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
     <div className="min-h-screen bg-[#FDFBF7] dark:bg-dark-bg transition-colors duration-500 font-sans">
         {/* Modais de Instalação omitidos para brevidade (mantém lógica original) */}
         
-        {/* HERO SECTION */}
-        <div className="relative bg-[#0F0505] text-white pb-24 rounded-b-[50px] shadow-2xl overflow-hidden isolate" style={{ backgroundColor: '#0F0505' }}> {/* Fundo base fixo escuro */}
+        {/* HERO SECTION - LUXURY EDITION */}
+        <div className="relative bg-[#0F0505] text-white pb-28 rounded-b-[40px] shadow-2xl overflow-hidden isolate">
              
-             {/* Dynamic Gradient based on Config */}
-             <div className="absolute inset-0 z-0" style={{ background: `linear-gradient(to bottom, ${primaryColor}, #250005)` }}></div>
+             {/* Background Layers */}
+             <div className="absolute inset-0 z-0" style={{ background: `linear-gradient(to bottom, ${primaryColor}, #150505)` }}></div>
              <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay z-0"></div>
              
+             {/* Top Bar */}
              <div className="relative z-20 px-6 pt-6 flex justify-between items-center">
                 <AnimatePresence>
                     {!isStandalone && (
@@ -162,40 +163,53 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                 </div>
             </div>
 
-            <div className="relative z-10 px-6 pt-10 flex flex-col items-center justify-center text-center space-y-6">
-                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="flex flex-col items-center gap-2">
-                    <h3 className="font-montserrat text-[10px] font-bold tracking-[0.3em] text-[#C5A059] uppercase opacity-90">{CHURCH_NAME}</h3>
-                    <div className="h-[1px] w-12 bg-gradient-to-r from-transparent via-[#C5A059]/50 to-transparent"></div>
+            {/* Content Center */}
+            <div className="relative z-10 px-6 pt-8 flex flex-col items-center justify-center text-center space-y-5">
+                
+                {/* Church Name */}
+                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                    <h3 className="font-montserrat text-[9px] font-bold tracking-[0.4em] text-[#C5A059] uppercase opacity-90">{CHURCH_NAME}</h3>
                 </motion.div>
 
-                <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2 }} className="relative group cursor-pointer" onClick={handleLogoClick}>
-                    <div className="absolute inset-0 bg-[#C5A059] blur-3xl opacity-20 rounded-full"></div>
-                    <div className="relative w-24 h-24 bg-gradient-to-br from-white/10 to-transparent rounded-[32px] border border-[#C5A059]/40 shadow-xl backdrop-blur-md flex items-center justify-center">
-                        <BookOpen className="w-10 h-10 text-[#C5A059]" />
+                {/* Logo with LED Glow Effect */}
+                <motion.div 
+                    initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2 }} 
+                    className="relative group cursor-pointer my-2" 
+                    onClick={handleLogoClick}
+                >
+                    {/* The LED Glow */}
+                    <div className="absolute inset-0 bg-[#C5A059] blur-[50px] opacity-20 rounded-full animate-pulse"></div>
+                    
+                    <div className="relative w-28 h-28 bg-gradient-to-br from-[#ffffff]/10 to-transparent rounded-[36px] border border-[#C5A059]/40 shadow-[0_0_30px_-5px_rgba(197,160,89,0.3)] backdrop-blur-md flex items-center justify-center ring-1 ring-[#C5A059]/20">
+                        <BookOpen className="w-12 h-12 text-[#C5A059] drop-shadow-[0_2px_10px_rgba(197,160,89,0.5)]" />
                     </div>
                 </motion.div>
 
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                    <h1 className="font-cinzel text-4xl md:text-5xl font-bold text-white mb-2 drop-shadow-lg tracking-tight">{appName}</h1>
-                    <div className="space-y-1">
-                        <p className="font-cormorant text-lg text-[#C5A059] italic opacity-80 font-light">Prof. Michel Felix</p>
-                        <div className="flex items-center justify-center gap-2 opacity-60">
-                            <div className="h-[1px] w-4 bg-[#C5A059]"></div>
-                            <p className="font-cinzel text-[10px] uppercase tracking-widest text-[#C5A059]">Presidente: {PASTOR_PRESIDENT}</p>
-                            <div className="h-[1px] w-4 bg-[#C5A059]"></div>
-                        </div>
+                {/* App Title & Info */}
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="space-y-3">
+                    <div>
+                        <h1 className="font-cinzel text-4xl md:text-5xl font-bold text-white tracking-tight drop-shadow-lg">{appName}</h1>
+                        <p className="font-cormorant text-xl text-[#C5A059] italic font-medium mt-1">Prof. Michel Felix</p>
+                    </div>
+                    
+                    {/* President Divider */}
+                    <div className="flex items-center justify-center gap-3 opacity-80 pt-1">
+                        <div className="h-[1px] w-8 bg-gradient-to-r from-transparent to-[#C5A059]"></div>
+                        <p className="font-cinzel text-[10px] uppercase tracking-widest text-gray-300">Presidente: {PASTOR_PRESIDENT}</p>
+                        <div className="h-[1px] w-8 bg-gradient-to-l from-transparent to-[#C5A059]"></div>
                     </div>
                 </motion.div>
 
+                {/* Instagram Button - Bottom & Elegant */}
                 <motion.a 
-                    href="https://www.instagram.com/adma_ministerioagape/" 
+                    href="https://www.instagram.com/adma.vilardosteles/" 
                     target="_blank"
                     rel="noopener noreferrer"
-                    initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }}
-                    className="flex items-center gap-2 px-6 py-2 rounded-full bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] text-white font-bold text-xs shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+                    className="mt-6 px-6 py-2.5 rounded-full border border-[#C5A059]/50 text-[#C5A059] font-cinzel text-xs font-bold flex items-center gap-2 hover:bg-[#C5A059]/10 hover:border-[#C5A059] hover:shadow-[0_0_20px_rgba(197,160,89,0.4)] transition-all active:scale-95 group"
                 >
-                    <Instagram className="w-4 h-4" />
-                    <span>Siga no Instagram</span>
+                    <Instagram className="w-4 h-4 transition-transform group-hover:scale-110" />
+                    <span className="tracking-wide">Nos siga no Instagram</span>
                 </motion.a>
             </div>
         </div>
