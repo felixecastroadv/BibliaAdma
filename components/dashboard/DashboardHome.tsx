@@ -237,7 +237,7 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                         </div>
                     </div>
 
-                    {/* APP LOGO MINIATURE */}
+                    {/* APP LOGO MINIATURE (Inline SVG to fix loading issue) */}
                     <motion.div 
                         initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
@@ -246,7 +246,15 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                     >
                         <div className="absolute inset-0 bg-[#C5A059] blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-700"></div>
                         <div className="relative w-20 h-20 bg-gradient-to-b from-white/10 to-transparent rounded-2xl border border-[#C5A059]/30 shadow-2xl flex items-center justify-center backdrop-blur-sm p-4">
-                             <img src="/icon.svg" alt="ADMA Logo" className="w-full h-full object-contain drop-shadow-lg" />
+                             {/* Inline SVG para garantir que a imagem nunca quebre */}
+                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" className="w-full h-full drop-shadow-lg">
+                                <rect width="512" height="512" rx="120" ry="120" fill="#8B0000"/>
+                                <g fill="none" stroke="#FFFFFF" strokeWidth="36" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M256 140c-50 0-110 20-130 40v200c20-20 80-40 130-40"/>
+                                    <path d="M256 140c50 0 110 20 130 40v200c-20-20-80-40-130-40"/>
+                                    <path d="M256 140v200"/>
+                                </g>
+                             </svg>
                         </div>
                     </motion.div>
 
