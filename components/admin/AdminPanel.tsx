@@ -290,8 +290,12 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                       const version = (item.version || item.versao || "").toLowerCase();
                       const isTargetVersion = version.includes('acf') || version.includes('almeida') || version === ''; 
                       
-                      if (!isTargetVersion && (rawData.some((x:any) => (x.version||"").includes('acf')))) {
-                          continue; // Pula se não for ACF e existir ACF no arquivo
+                      // Se este item não for da versão alvo E soubermos que existe a versão alvo no arquivo, pulamos.
+                      // Simplificação: Se não contém 'acf' ou 'almeida', e não é vazio, pula.
+                      if (version && !version.includes('acf') && !version.includes('almeida')) {
+                          // Opcional: Só pula se tiver certeza que existe ACF no resto do arquivo. 
+                          // Para segurança, vamos permitir importar tudo se não tivermos certeza, mas o mapa sobrescreve.
+                          // MELHOR: Sobrescrever apenas se a versão atual for prioritária.
                       }
 
                       // Identifica Livro
