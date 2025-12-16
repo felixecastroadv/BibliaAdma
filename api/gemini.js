@@ -1,21 +1,17 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-// Configuração para Vercel Serverless Functions
-// Aumentamos para 300 (5 min) para contas Pro. Contas Hobby ficam limitadas a 10s ou 60s automaticamente.
 export const config = {
   maxDuration: 300, 
+  supportsResponseStreaming: true, // Habilita streaming no Vercel
 };
 
 export default async function handler(request, response) {
-  // CORS Headers
+  // Headers para suportar Streaming e CORS
   response.setHeader('Access-Control-Allow-Credentials', true);
   response.setHeader('Access-Control-Allow-Origin', '*');
-  response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  response.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
+  response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
+  response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (request.method === 'OPTIONS') {
     return response.status(200).end();
@@ -26,7 +22,7 @@ export default async function handler(request, response) {
   }
 
   try {
-    // --- 1. COLETA DE CHAVES ---
+    // 1. Coleta de Chaves
     const allKeys = [];
     if (process.env.API_KEY) allKeys.push(process.env.API_KEY);
     if (process.env.Biblia_ADMA_API) allKeys.push(process.env.Biblia_ADMA_API);
@@ -45,126 +41,92 @@ export default async function handler(request, response) {
          return response.status(500).json({ error: 'SERVER CONFIG ERROR: Nenhuma chave de API válida encontrada.' });
     }
 
-    // --- 2. PREPARAÇÃO DO BODY E MODO DE OPERAÇÃO ---
+    // Escolhe uma chave aleatória (sem rotação complexa no streaming para evitar falhas parciais)
+    const randomKey = validKeys[Math.floor(Math.random() * validKeys.length)];
+
     let body = request.body;
     if (typeof body === 'string') {
-        try {
-            body = JSON.parse(body);
-        } catch (e) {
-            return response.status(400).json({ error: 'Invalid JSON body' });
-        }
+        try { body = JSON.parse(body); } catch (e) {}
     }
     const { prompt, schema, isLongOutput } = body || {};
-    
-    // SISTEMÁTICA DE TEMPO:
-    // Se for EBD (isLongOutput), definimos como 0 (SEM LIMITE ARTIFICIAL). Deixamos a IA rodar até acabar ou o Vercel cortar.
-    // Se for Chat/Versículo, mantemos 20s para garantir agilidade na rotação se travar.
-    const TIMEOUT_MS = isLongOutput ? 0 : 20000; 
 
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
-    // --- 3. LOOP DE REVEZAMENTO ---
-    const shuffledKeys = [...validKeys];
-    // Embaralha
-    for (let i = shuffledKeys.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffledKeys[i], shuffledKeys[j]] = [shuffledKeys[j], shuffledKeys[i]];
-    }
-    
-    let lastError = null;
-    let successResponse = null;
-    let attempts = 0;
-    
-    // Se for Long Output, tentamos menos vezes para não estourar o tempo total da requisição HTTP do cliente
-    const maxAttempts = isLongOutput ? 2 : 3;
-    const selectedKeys = shuffledKeys.slice(0, maxAttempts);
-
-    for (const apiKey of selectedKeys) {
-        attempts++;
-        
+    // --- MODO STREAMING (Para Panorama/EBD) ---
+    // Mantém a conexão viva enviando chunks, evitando timeout de 10s/60s do Gateway
+    if (isLongOutput && !schema) {
         try {
-            const ai = new GoogleGenAI({ apiKey });
-            // Flash é rápido e suporta contexto longo.
+            const ai = new GoogleGenAI({ apiKey: randomKey });
             const modelId = "gemini-2.5-flash"; 
 
             const aiConfig = {
-                temperature: isLongOutput ? 0.8 : 0.7,
+                temperature: 0.8,
                 topP: 0.95,
                 topK: 40,
-                // Garante que o modelo saiba que pode gerar muito texto se for longo
-                maxOutputTokens: isLongOutput ? 8192 : 2048, 
+                maxOutputTokens: 8192,
             };
 
-            if (schema) {
-                aiConfig.responseMimeType = "application/json";
-                aiConfig.responseSchema = schema;
-            }
-
-            const generatePromise = ai.models.generateContent({
+            // Gera stream
+            const result = await ai.models.generateContentStream({
                 model: modelId,
                 contents: [{ parts: [{ text: prompt }] }],
                 config: aiConfig
             });
 
-            let aiResponse;
+            // Configura headers para SSE/Streaming
+            response.setHeader('Content-Type', 'text/plain; charset=utf-8');
+            response.setHeader('Transfer-Encoding', 'chunked');
 
-            if (TIMEOUT_MS > 0) {
-                // Modo Rápido (Com Timeout para rotação ágil)
-                const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error("TIMEOUT_KEY_RETRY")), TIMEOUT_MS)
-                );
-                aiResponse = await Promise.race([generatePromise, timeoutPromise]);
-            } else {
-                // Modo Livre (Panorama): Espera a IA terminar, sem cronômetro.
-                // Só sai daqui se a API do Google responder ou der erro real.
-                aiResponse = await generatePromise;
-            }
-
-            if (!aiResponse.text) {
-                throw new Error("EMPTY_RESPONSE");
-            }
-
-            successResponse = aiResponse.text;
-            break; // SUCESSO!
-
-        } catch (error) {
-            lastError = error;
-            const msg = error.message || '';
-            console.log(`Tentativa ${attempts} falhou: ${msg}`);
-
-            // Se for erro de Cota (429) ou Sobrecarga (503), tentamos a próxima chave.
-            // Se for outro erro (ex: prompt inválido), o loop continua também.
-            if (msg.includes('503') || msg.includes('429') || msg.includes('Overloaded')) {
-                // Pequena pausa para não bater na próxima chave instantaneamente
-                await new Promise(r => setTimeout(r, 1000));
+            for await (const chunk of result.stream) {
+                const chunkText = chunk.text();
+                if (chunkText) {
+                    response.write(chunkText);
+                }
             }
             
-            continue; 
+            response.end();
+            return;
+
+        } catch (streamError) {
+            console.error("Stream Error:", streamError);
+            // Se falhar no meio do stream, não tem como enviar JSON de erro limpo, pois headers já foram.
+            // Encerra a resposta.
+            response.end(); 
+            return;
         }
     }
 
-    // --- 4. RESPOSTA FINAL ---
-    if (successResponse) {
-        return response.status(200).json({ text: successResponse });
-    } else {
-        const errorMsg = lastError?.message || 'Erro desconhecido.';
+    // --- MODO PADRÃO (JSON Único) ---
+    // Para Chat, Dicionário e coisas curtas/estruturadas
+    try {
+        const ai = new GoogleGenAI({ apiKey: randomKey });
+        const modelId = "gemini-2.5-flash"; 
         
-        // Mensagens mais claras para o Frontend
-        if (errorMsg.includes('429') || errorMsg.includes('Quota')) {
-            return response.status(429).json({ 
-                error: 'Limite de cotas atingido em todas as chaves disponíveis. Tente mais tarde.' 
-            });
-        }
-        
-        if (errorMsg.includes('503') || errorMsg.includes('Overloaded')) {
-             return response.status(503).json({ 
-                error: 'Servidores do Google sobrecarregados momentaneamente.' 
-            });
+        const aiConfig = {
+            temperature: 0.7,
+            topP: 0.95,
+            topK: 40,
+        };
+
+        if (schema) {
+            aiConfig.responseMimeType = "application/json";
+            aiConfig.responseSchema = schema;
         }
 
-        return response.status(500).json({ 
-            error: `Não foi possível gerar o conteúdo. Detalhe: ${errorMsg}` 
+        const result = await ai.models.generateContent({
+            model: modelId,
+            contents: [{ parts: [{ text: prompt }] }],
+            config: aiConfig
         });
+        
+        return response.status(200).json({ text: result.response.text() });
+
+    } catch (error) {
+        const msg = error.message || '';
+        if (msg.includes('429')) {
+             return response.status(429).json({ error: 'Muitas requisições. Tente novamente em 1 minuto.' });
+        }
+        return response.status(500).json({ error: `Erro na geração: ${msg}` });
     }
 
   } catch (error) {
