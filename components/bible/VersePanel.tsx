@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { X, BookOpen, Languages, Loader2, RefreshCw, AlertTriangle, Send, Lock, Save, Sparkles, Volume2, Pause, Play, MessageCircle, User, Bot, Battery, Edit, Command } from 'lucide-react';
 import { db } from '../../services/database';

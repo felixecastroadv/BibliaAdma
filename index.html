@@ -11,16 +11,13 @@
     
     <title>Bíblia ADMA - Prof. Michel Felix</title>
     
-    <!-- Performance Optimization: Preconnect -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://bible-api.com">
 
-    <!-- PWA Icons Config: Generated Dinamically for iOS/Windows Compatibility -->
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="manifest" href="/manifest.json?v=8" />
 
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -28,9 +25,9 @@
         theme: {
           extend: {
             colors: {
-              primary: '#8B0000', // Dark Red
-              secondary: '#C5A059', // Gold
-              background: '#F5F5DC', // Beige/Cream
+              primary: '#8B0000',
+              secondary: '#C5A059',
+              background: '#F5F5DC',
               dark: '#0a0a0a', 
               'dark-bg': '#121212', 
               'dark-card': '#1E1E1E'
@@ -42,20 +39,6 @@
             },
             padding: {
                 'safe': 'env(safe-area-inset-bottom)'
-            },
-            animation: {
-              'shimmer': 'shimmer 2s linear infinite',
-              'float': 'float 6s ease-in-out infinite',
-            },
-            keyframes: {
-              shimmer: {
-                '0%': { backgroundPosition: '-1000px 0' },
-                '100%': { backgroundPosition: '1000px 0' }
-              },
-              float: {
-                '0%, 100%': { transform: 'translateY(0)' },
-                '50%': { transform: 'translateY(-10px)' },
-              }
             }
           }
         }
@@ -65,51 +48,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
-      html {
-        scroll-behavior: smooth;
-        -webkit-tap-highlight-color: transparent;
-      }
-      body {
-        background-color: #F5F5DC;
-      }
-      /* Textura de Papel Premium (Apenas no Modo Claro) */
-      .paper-texture {
-        background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-      }
-      .dark body {
-        background-color: #121212; 
-      }
-      .dark .paper-texture {
-        background-image: none;
-      }
-      .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-      }
-      .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-      }
-      .page-break {
-        border: 0; 
-        height: 1px; 
-        background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(197, 160, 89, 0.75), rgba(0, 0, 0, 0));
-        margin: 2rem 0;
-      }
-      
-      /* Seleção de texto Premium */
-      ::selection {
-        background: rgba(197, 160, 89, 0.3); /* Gold selection */
-        color: #8B0000;
-      }
-      .dark ::selection {
-        background: rgba(197, 160, 89, 0.3);
-        color: #ff6b6b;
-      }
-      
-      /* Input focus ring reset custom */
-      input:focus, textarea:focus, select:focus {
-        outline: none;
-      }
+      html { scroll-behavior: smooth; -webkit-tap-highlight-color: transparent; }
+      body { background-color: #F5F5DC; }
+      .paper-texture { background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E"); }
+      .dark body { background-color: #121212; }
+      .dark .paper-texture { background-image: none; }
+      .scrollbar-hide::-webkit-scrollbar { display: none; }
+      .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+      ::selection { background: rgba(197, 160, 89, 0.3); color: #8B0000; }
+      .dark ::selection { background: rgba(197, 160, 89, 0.3); color: #ff6b6b; }
+      input:focus, textarea:focus, select:focus { outline: none; }
     </style>
     
     <script>
@@ -118,44 +66,36 @@
             var links = document.querySelectorAll("link[rel*='icon']");
             links.forEach(l => l.parentNode.removeChild(l));
             var link = document.createElement('link');
-            link.type = 'image/png';
-            link.rel = 'icon';
-            link.href = url;
+            link.type = 'image/png'; link.rel = 'icon'; link.href = url;
             document.head.appendChild(link);
-            var appleLink = document.createElement('link');
-            appleLink.rel = 'apple-touch-icon';
-            appleLink.href = url;
-            document.head.appendChild(appleLink);
         }
         var iconCanvas = document.createElement('canvas');
-        iconCanvas.width = 512;
-        iconCanvas.height = 512;
+        iconCanvas.width = 512; iconCanvas.height = 512;
         var ctx = iconCanvas.getContext('2d');
         var img = new Image();
         img.crossOrigin = "Anonymous";
         img.src = '/icon.svg'; 
         img.onload = function() {
-            ctx.fillStyle = '#8B0000'; 
-            ctx.fillRect(0, 0, 512, 512);
+            ctx.fillStyle = '#8B0000'; ctx.fillRect(0, 0, 512, 512);
             ctx.drawImage(img, 0, 0, 512, 512);
-            var pngUrl = iconCanvas.toDataURL('image/png');
-            setIcon(pngUrl);
+            setIcon(iconCanvas.toDataURL('image/png'));
         };
       })();
     </script>
-<script type="importmap">
+    <script type="importmap">
 {
   "imports": {
     "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
-    "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react-dom/client": "https://esm.sh/react-dom@^19.2.3/client",
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.88.0",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
     "date-fns": "https://esm.sh/date-fns@^4.1.0",
-    "vite": "https://esm.sh/vite@^7.3.0",
     "framer-motion": "https://esm.sh/framer-motion@^12.23.26",
-    "lucide-react": "https://esm.sh/lucide-react@^0.561.0"
+    "lucide-react": "https://esm.sh/lucide-react@^0.561.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "vite": "https://esm.sh/vite@^7.3.0",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>
@@ -166,8 +106,7 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .catch(err => console.log('SW registration failed', err));
+          navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW failed', err));
         });
       }
     </script>
