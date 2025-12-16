@@ -31,7 +31,7 @@ function processResponse(text: string | undefined, jsonSchema: any) {
     return text;
 }
 
-// Tipos de tarefas (Mantido para compatibilidade, mas o backend agora unifica tudo)
+// Mantido para compatibilidade
 export type TaskType = 'commentary' | 'dictionary' | 'devotional' | 'ebd' | 'metadata' | 'general';
 
 export const generateContent = async (
@@ -45,7 +45,6 @@ export const generateContent = async (
         
         // --- MODO CLIENTE (Chave pessoal do Admin) ---
         if (adminKey) {
-            // No modo cliente, usamos direto o 2.5 Flash
             const ai = new GoogleGenAI({ apiKey: adminKey });
             const config: any = {
                 temperature: 0.9, 
@@ -69,7 +68,7 @@ export const generateContent = async (
         
         // --- MODO SERVER (Rotação Inteligente) ---
         const controller = new AbortController();
-        // Aumentamos o timeout para 90s para dar tempo do backend rodar todas as chaves se necessário
+        // Aumentado para 90s para dar tempo de rodar várias chaves
         const timeoutMs = 90000; 
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -92,7 +91,7 @@ export const generateContent = async (
             const detail = errData.error || `Status ${response.status}`;
             
             if (response.status === 503) {
-                throw new Error("Alta demanda global. Nenhuma chave disponível no momento. Tente em 1 minuto.");
+                throw new Error("Alta demanda global. Nenhuma chave disponível no momento. Tente em 30 segundos.");
             }
             if (response.status === 429) {
                 throw new Error("Cota excedida. Aguarde um momento.");
@@ -127,7 +126,7 @@ export const generateContent = async (
         console.error("Gemini Service Error:", error);
         
         if (error.name === 'AbortError') {
-             throw new Error("Demorou muito para encontrar uma chave livre. Tente novamente.");
+             throw new Error("O servidor demorou muito procurando uma chave livre. Tente novamente.");
         }
         
         throw error; 

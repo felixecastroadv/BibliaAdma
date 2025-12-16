@@ -2,11 +2,11 @@
 import { GoogleGenAI } from "@google/genai";
 
 export const config = {
-  maxDuration: 60, // Limite Vercel Hobby
+  maxDuration: 60, // Limite máximo da Vercel Hobby
   supportsResponseStreaming: true, 
 };
 
-// Função de espera apenas para erros de rede genéricos (não usada em 429)
+// Pequeno delay apenas para erros de rede (não usado para cota excedida)
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default async function handler(request, response) {
@@ -28,11 +28,10 @@ export default async function handler(request, response) {
 
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
-    // --- 1. COLETA TODAS AS CHAVES EM UMA LISTA ÚNICA ---
-    // Removemos a separação por tipo para maximizar a disponibilidade
+    // --- 1. COLETAR TODAS AS CHAVES DISPONÍVEIS ---
     let allKeys = [];
 
-    // Chaves numeradas
+    // Busca chaves numeradas de 1 a 50
     for (let i = 1; i <= 50; i++) {
         const keyName = `API_KEY_${i}`;
         const val = process.env[keyName];
@@ -41,41 +40,38 @@ export default async function handler(request, response) {
         }
     }
 
-    // Chaves extras
+    // Adiciona chaves extras se existirem
     if (process.env.API_KEY) allKeys.push(process.env.API_KEY.trim());
     if (process.env.Biblia_ADMA_API) allKeys.push(process.env.Biblia_ADMA_API.trim());
 
-    // Remove duplicatas
+    // Remove duplicatas e limpa
     allKeys = [...new Set(allKeys)];
 
     if (allKeys.length === 0) {
-         return response.status(500).json({ error: 'SERVER CONFIG ERROR: Nenhuma chave de API encontrada.' });
+         return response.status(500).json({ error: 'SERVER CONFIG ERROR: Nenhuma chave de API configurada.' });
     }
 
-    // --- 2. LÓGICA DE ROTAÇÃO SEQUENCIAL (CARROSSEL) ---
-    // Sorteia um ponto de partida para não sobrecarregar sempre a API_KEY_1
+    // --- 2. LÓGICA DE ROTAÇÃO SEQUENCIAL ---
+    // Sorteia um ponto de partida para distribuir a carga
     const startIndex = Math.floor(Math.random() * allKeys.length);
     
-    // Modelos: Tenta o melhor (2.5), se falhar tenta o mais rápido (1.5)
-    // Se a chave falhar no 2.5, pulamos para a próxima chave tentando 2.5 de novo.
-    // O fallback de modelo ocorre apenas se a chave for válida mas o modelo estiver instável.
-    const PRIMARY_MODEL = "gemini-2.5-flash";
-    const BACKUP_MODEL = "gemini-1.5-flash";
+    // Modelos
+    const PRIMARY_MODEL = "gemini-2.5-flash"; // Qualidade
+    const BACKUP_MODEL = "gemini-1.5-flash"; // Velocidade/Estabilidade
 
     let successResponse = null;
     let lastError = null;
 
-    // Tentamos usar até 15 chaves diferentes antes de desistir (ou todas se tiver menos que 15)
-    const MAX_KEY_ATTEMPTS = Math.min(allKeys.length, 15);
+    // Tenta usar todas as chaves disponíveis sequencialmente
+    // Limitamos a 15 tentativas para não estourar o tempo limite da Vercel (60s)
+    const MAX_ATTEMPTS = Math.min(allKeys.length, 15);
 
-    // LOOP DE TENTATIVAS (ROTAÇÃO DE CHAVES)
-    for (let i = 0; i < MAX_KEY_ATTEMPTS; i++) {
-        // Cálculo do índice circular: (Inicio + i) % Total
-        // Ex: Se tem 10 chaves e começou na 8: 8, 9, 0, 1, 2...
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+        // Pega a chave atual na roda (se chegar no fim, volta pro começo)
         const keyIndex = (startIndex + i) % allKeys.length;
         const apiKey = allKeys[keyIndex];
         
-        // Alterna modelo: Nas primeiras tentativas insiste no 2.5, depois do meio tenta o 1.5
+        // Estratégia de Modelo: Tenta o 2.5 nas primeiras 3 chaves, depois apela para o 1.5
         const currentModel = i < 3 ? PRIMARY_MODEL : BACKUP_MODEL;
 
         try {
@@ -102,7 +98,7 @@ export default async function handler(request, response) {
                 }
                 
                 response.end();
-                return; // SUCESSO E SAI DA FUNÇÃO
+                return; // SUCESSO! Encerra a função.
 
             } 
             // --- MODO PADRÃO (JSON/Curto) ---
@@ -120,23 +116,22 @@ export default async function handler(request, response) {
                 });
 
                 successResponse = result.text;
-                break; // SUCESSO - SAI DO LOOP
+                break; // SUCESSO! Sai do loop.
             }
 
         } catch (error) {
             const errMsg = error.message || '';
-            console.warn(`[Fail Key Index ${keyIndex}] Model ${currentModel}: ${errMsg.substring(0, 50)}...`);
+            console.warn(`[Falha Chave ${keyIndex}] Modelo ${currentModel}: ${errMsg.substring(0, 50)}...`);
             lastError = error;
 
-            // ANÁLISE DO ERRO PARA DECISÃO
-            const isQuota = errMsg.includes('429') || errMsg.includes('Quota') || errMsg.includes('Resource has been exhausted');
+            // Se for erro de COTA (429), NÃO ESPERE! Pule imediatamente para a próxima chave.
+            const isQuotaError = errMsg.includes('429') || errMsg.includes('Quota') || errMsg.includes('Exhausted');
             
-            if (isQuota) {
-                // Se for cota estourada (429), NÃO ESPERA. Pula imediatamente para a próxima chave.
-                continue;
+            if (isQuotaError) {
+                continue; // Próxima iteração imediata
             } else {
-                // Se for outro erro (ex: 503 do Google), espera um pouquinho antes de tentar outra chave
-                await delay(500); 
+                // Se for outro erro (ex: modelo sobrecarregado), espera um pouquinho
+                await delay(300);
             }
         }
     }
@@ -144,12 +139,11 @@ export default async function handler(request, response) {
     if (successResponse) {
         return response.status(200).json({ text: successResponse });
     } else {
-        // Se saiu do loop sem sucesso
         const msg = lastError?.message || 'Todas as chaves falharam.';
-        return response.status(503).json({ error: `Sistema ocupado. Tentamos várias conexões sem sucesso. (${msg})` });
+        return response.status(503).json({ error: `Servidores Google ocupados. Tente novamente em 30s. (${msg})` });
     }
 
   } catch (error) {
-    return response.status(500).json({ error: `Erro Interno Crítico: ${error.message}` });
+    return response.status(500).json({ error: `Erro Interno: ${error.message}` });
   }
 }
