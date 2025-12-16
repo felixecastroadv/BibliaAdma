@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, BookOpen, Languages, Loader2, RefreshCw, AlertTriangle, Send, Lock, Save, Sparkles, Volume2, Pause, Play, MessageCircle, User, Bot, Battery, Edit, Command } from 'lucide-react';
+import { X, BookOpen, Languages, Loader2, RefreshCw, AlertTriangle, Send, Lock, Save, Sparkles, Volume2, Pause, Play, FastForward, MessageCircle, User, Bot, Battery, Edit, Command, FileText } from 'lucide-react';
 import { db } from '../../services/database';
 import { generateContent } from '../../services/geminiService';
 import { generateVerseKey } from '../../constants';
@@ -217,7 +217,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
       `;
 
       try {
-          const response = await generateContent(prompt, null, false, 'general');
+          const response = await generateContent(prompt);
           setChatMessages(prev => [...prev, { role: 'model', text: response || "Desculpe, não consegui processar sua dúvida agora." }]);
       } catch (error) {
           setChatMessages(prev => [...prev, { role: 'model', text: "Erro de conexão com o Professor. Tente novamente." }]);
@@ -263,7 +263,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
     };
 
     try {
-      const response = await generateContent(prompt, schema, false, 'dictionary');
+      const response = await generateContent(prompt, schema);
       const data: DictionaryEntry = {
         book, chapter, verse: verseNumber, verse_key: verseKey,
         original_text: response.hebrewGreekText,
@@ -292,29 +292,49 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
     try {
         const prompt = `
             ATUE COMO: Professor Michel Felix.
-            CONTEXTO: Teologia Ortodoxa, Assembleiana, Bíblica.
-            VERSÍCULO ALVO: "${book} ${chapter}:${verseNumber} - ${verse}"
-
-            TAREFA: Escrever uma explicação profunda sobre a intenção original do autor bíblico.
-            
-            REGRAS DE ESTRUTURA (RIGOROSAS):
-            1. O texto deve ter EXATAMENTE 3 parágrafos. Nem mais, nem menos.
-            2. Tamanho total: Entre 200 a 250 palavras.
-            3. SEM SAUDAÇÕES: Não use "Olá", "Prezado", "Querido aluno". Comece direto na explicação.
-            4. SEM TÍTULOS: Apenas o texto corrido dos parágrafos.
-            5. "A BÍBLIA EXPLICA A BÍBLIA": Use referências cruzadas para validar a interpretação.
-
-            CONTEÚDO:
-            - Parágrafos 1 e 2 (Exegese): Explique o significado do texto no original, a intenção do autor e o contexto teológico. Sem polêmicas, sem apócrifos, sem cultura extra-bíblica desnecessária.
-            - Parágrafo 3 (Aplicação - Max 15%): Uma aplicação prática curta e forte. O momento "Ah! Entendi!".
-
-            ESTILO:
-            - Linguagem culta, porém clara e direta.
-            - Use negrito (**palavra**) APENAS para destacar termos chave ou palavras no original (transliteradas).
+            TAREFA: Escrever um comentário EXEGÉTICO para um aluno estudioso da Bíblia.
+            TEXTO BÍBLICO: "${verse}"
             ${customPromptAddon}
+
+            --- REGRAS DE INÍCIO (SEM ENROLACÃO) ---
+            1. ZERO SAUDAÇÕES: É PROIBIDO começar com "Olá", "Queridos alunos", "Paz do Senhor", "Que bom estarmos juntos".
+            2. TEXTO DIRETO: Comece IMEDIATAMENTE com a explicação do versículo. Ex: "Este versículo revela..." ou "A expressão original indica...".
+            3. ECONOMIA DE PALAVRAS: Não use frases de transição vazias ou introduções sociais ("Enfeitar o pavão"). Vá direto ao que de fato importa.
+
+            --- OBJETIVO SUPREMO: O EFEITO "AH! ENTENDI!" ---
+            1. O aluno deve terminar a leitura e pensar: "Ah! Agora tudo faz sentido!".
+            2. NÃO seja genérico. Traga DETALHES que iluminam o texto (costumes da época, geografia, ou o sentido exato de uma palavra original que muda tudo).
+            3. Explique de forma INDUBITÁVEL. O texto deve eliminar as dúvidas, não criar novas. Descomplique o difícil.
+
+            --- PROTOCOLO DE SEGURANÇA HERMENÊUTICA (PRIORIDADE TOTAL) ---
+            1. A BÍBLIA EXPLICA A BÍBLIA: Antes de formular o comentário, verifique mentalmente versículos conexos. A interpretação NÃO pode contradizer o restante das Escrituras.
+            2. ZERO POLÊMICAS/ESPECULAÇÕES: Rejeite interpretações baseadas em livros apócrifos, mitologia (ex: anjos coabitando com humanos) ou cultura judaica extra-bíblica. 
+            3. ORTODOXIA: Em textos difíceis (ex: Gn 6:2), opte SEMPRE pela linha teológica mais conservadora e segura (ex: Linhagem de Sete x Caim), evitando sensacionalismo.
+            4. FOCO NA INTENÇÃO ORIGINAL: O que o autor sagrado quis ensinar sobre Deus e o homem? Fique nisso.
+
+            --- LINGUAGEM E TOM ---
+            1. PÚBLICO: Alunos de 16 a 76 anos, escolaridade média.
+            2. CLAREZA: Profundo, mas simples e didático. Sem "teologês" desnecessário.
+            3. IMPLICITAMENTE PENTECOSTAL: Ensine a doutrina correta sem usar rótulos ("Arminiano", "Dispensacionalista"). Deixe a teologia fluir naturalmente no texto.
+
+            --- USO DOS ORIGINAIS ---
+            Cite palavras chaves em Hebraico/Grego (transliteradas) apenas quando iluminarem o sentido, de forma natural (ex: "O termo original *palavra* sugere...").
+
+            --- ESTRUTURA BLINDADA (3 PARÁGRAFOS - Max 250 Palavras) ---
+            
+            1. PARÁGRAFO 1 (O DESVENDAR DO TEXTO): 
+               - Explique o que está acontecendo com clareza cristalina. Traga aquele detalhe histórico ou linguístico que faz a diferença. Responda: O que isso significava para quem ouviu pela primeira vez?
+
+            2. PARÁGRAFO 2 (A CONEXÃO TEOLÓGICA): 
+               - Aprofunde o ensino. Conecte com outros textos bíblicos (Analogia da Fé) para confirmar a interpretação correta. Mostre como isso se encaixa no plano de Deus.
+
+            3. PARÁGRAFO 3 (APLICAÇÃO): 
+               - Curto e prático. Como essa verdade bíblica transforma a vida do aluno hoje? (Max 15% do texto).
+
+            --- ESTILO VISUAL ---
+            Texto corrido, elegante, inspirador e fácil de ler.
         `;
-        
-        const text = await generateContent(prompt, null, false, 'commentary');
+        const text = await generateContent(prompt);
         const data = { 
             ...(commentary || {}),
             book, chapter, verse: verseNumber, verse_key: verseKey, commentary_text: text 
@@ -355,6 +375,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
 
   const speakText = () => {
     if (!commentary || activeTab !== 'professor') return;
+    // Limpa marcadores de markdown para leitura fluida
     const cleanText = commentary.commentary_text.replace(/\*\*/g, '').replace(/\*/g, '');
     const utter = new SpeechSynthesisUtterance(cleanText);
     utter.lang = 'pt-BR';
@@ -380,19 +401,27 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
       setIsEditingCommentary(true);
   };
 
+  // --- RENDERIZADOR PREMIUM DE TEXTO (AJUSTADO PARA OS PRINTS) ---
   const renderFormattedCommentary = (text: string) => {
+    // 1. Divide em parágrafos para aplicar indentação
     const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+
     return (
         <div className="space-y-6">
             {paragraphs.map((para, i) => {
+                // 2. Parser de Markdown (* e **)
+                // Regex captura: (**bold**) OU (*italic*)
                 const parts = para.split(/(\*\*.*?\*\*|\*.*?\*)/g);
+
                 return (
                     <p key={i} className="font-cormorant text-xl leading-loose text-[#1a0f0f] dark:text-gray-200 text-justify indent-8 tracking-wide">
                         {parts.map((part, j) => {
                             if (part.startsWith('**') && part.endsWith('**')) {
+                                // Negrito Premium (Vermelho ADMA) - Se houver
                                 return <strong key={j} className="text-[#8B0000] dark:text-[#ff6b6b] font-bold">{part.slice(2, -2)}</strong>;
                             }
                             if (part.startsWith('*') && part.endsWith('*')) {
+                                // Itálico Premium (Dourado/Gold - Ideal para termos originais)
                                 return <span key={j} className="text-[#C5A059] font-medium italic">{part.slice(1, -1)}</span>;
                             }
                             return part;
@@ -447,6 +476,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                 </div>
             )}
 
+            {/* Tabs */}
             <div className="flex bg-[#F5F5DC] dark:bg-black border-b border-[#C5A059] shrink-0 overflow-x-auto">
                 <button 
                     onClick={() => setActiveTab('professor')}
@@ -469,6 +499,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                 </button>
             </div>
 
+            {/* Content Area */}
             <div className="flex-1 overflow-y-auto dark:text-gray-200 bg-[#FDFBF7] dark:bg-dark-card flex flex-col relative">
                 {loading && activeTab !== 'chat' ? (
                     <div className="h-full flex flex-col items-center justify-center text-[#8B0000] dark:text-white absolute inset-0 bg-[#FDFBF7]/90 dark:bg-dark-card/90 z-20">
@@ -501,6 +532,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                                     </div>
                                 ) : commentary ? (
                                     <>
+                                        {/* Decorative Header inside text */}
                                         <div className="flex items-center justify-center mb-6">
                                             <div className="h-[1px] w-12 bg-[#C5A059]/50"></div>
                                             <span className="mx-3 font-cinzel text-[#C5A059] text-[10px] uppercase tracking-[0.2em]">Exegese & Aplicação</span>
