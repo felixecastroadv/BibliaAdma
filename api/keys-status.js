@@ -45,11 +45,12 @@ export default async function handler(request, response) {
             
             // Usamos o modelo 1.5-flash pois é o "tanque de guerra". 
             // Se ele falhar, a chave está inutilizável.
+            // Solicitamos apenas 1 token para ser extremamente rápido e gastar pouco.
             const result = await ai.models.generateContent({
                 model: "gemini-1.5-flash",
-                contents: [{ parts: [{ text: "Responda OK" }] }],
+                contents: [{ parts: [{ text: "Hi" }] }],
                 config: { 
-                    maxOutputTokens: 5,
+                    maxOutputTokens: 1,
                     temperature: 0
                 } 
             });
@@ -75,7 +76,8 @@ export default async function handler(request, response) {
             if (err.includes('429') || err.includes('Quota') || err.includes('Exhausted') || err.includes('Resource has been exhausted')) {
                 status = 'exhausted';
                 msg = 'Cota Excedida (429)';
-            } else if (err.includes('API key not valid')) {
+            } else if (err.includes('API key not valid') || err.includes('400')) {
+                status = 'invalid';
                 msg = 'Chave Inválida';
             } else if (err.includes('503') || err.includes('Overloaded')) {
                 status = 'slow';

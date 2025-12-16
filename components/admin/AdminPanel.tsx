@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ShieldCheck, RefreshCw, Loader2, Upload, Download, Server, HardDrive, Flag, CheckCircle, XCircle, MessageSquare, Languages, GraduationCap, Calendar, CloudUpload, Wand2, Play, StopCircle, Trash2, AlertTriangle, FileJson, Save, Users, Lock, Unlock, KeyRound, Search, Cloud, CloudOff } from 'lucide-react';
+import { ChevronLeft, ShieldCheck, RefreshCw, Loader2, Upload, Download, Server, HardDrive, Flag, CheckCircle, XCircle, MessageSquare, Languages, GraduationCap, Calendar, CloudUpload, Wand2, Play, StopCircle, Trash2, AlertTriangle, FileJson, Save, Users, Lock, Unlock, KeyRound, Search, Cloud, Activity, Zap, Battery } from 'lucide-react';
 import { generateContent } from '../../services/geminiService';
 import { BIBLE_BOOKS, generateChapterKey, generateVerseKey, TOTAL_CHAPTERS } from '../../constants';
 import { db, bibleStorage } from '../../services/database';
@@ -12,6 +12,10 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   // --- STATES DE INFRAESTRUTURA ---
   const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   
+  // --- STATES DE CHAVES API (NOVO) ---
+  const [keysStatus, setKeysStatus] = useState<any>(null);
+  const [isCheckingKeys, setIsCheckingKeys] = useState(false);
+
   // --- STATES DE IMPORTAÇÃO/DOWNLOAD ---
   const [progress, setProgress] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -68,6 +72,21 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
     } catch (e) {
         setDbStatus('error');
     }
+  };
+
+  const checkKeysHealth = async () => {
+      setIsCheckingKeys(true);
+      setKeysStatus(null);
+      try {
+          const res = await fetch('/api/keys-status');
+          const data = await res.json();
+          setKeysStatus(data);
+          onShowToast(`Monitoramento: ${data.healthy} de ${data.total} chaves operacionais.`, data.healthy > 0 ? "success" : "error");
+      } catch (e) {
+          onShowToast("Erro ao testar chaves API.", "error");
+      } finally {
+          setIsCheckingKeys(false);
+      }
   };
 
   const checkOfflineIntegrity = async () => {
@@ -717,8 +736,8 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
             <button className="bg-white text-[#8B0000] px-6 py-3 rounded-lg font-bold shadow-lg">Abrir Builder</button>
         </div>
 
-        {/* SEÇÃO 1: INFRAESTRUTURA */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* SEÇÃO 1: INFRAESTRUTURA & CHAVES */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow border border-[#C5A059]/20">
                 <h3 className="font-bold text-gray-500 mb-4 flex items-center gap-2"><Server className="w-4 h-4"/> Status Banco de Dados</h3>
                 <div className="flex items-center gap-3">
@@ -738,7 +757,73 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                      <button onClick={checkOfflineIntegrity} className="text-xs underline text-blue-500">Verificar Agora</button>
                  </div>
             </div>
+            <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow border border-[#C5A059]/20 flex flex-col justify-between">
+                 <h3 className="font-bold text-gray-500 mb-2 flex items-center gap-2"><Activity className="w-4 h-4"/> Monitor de Chaves API</h3>
+                 
+                 {isCheckingKeys ? (
+                     <div className="flex items-center gap-2 text-[#C5A059] font-bold">
+                         <Loader2 className="w-5 h-5 animate-spin" /> Testando Lotes...
+                     </div>
+                 ) : keysStatus ? (
+                     <div className="flex flex-col">
+                         <div className="flex items-end gap-2 mb-1">
+                             <span className="text-3xl font-bold text-green-600">{keysStatus.healthy}</span>
+                             <span className="text-xs text-gray-500 mb-1">/ {keysStatus.total} ativas</span>
+                         </div>
+                         <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                             <div className="bg-green-500 h-full transition-all duration-500" style={{ width: `${keysStatus.healthPercentage}%` }}></div>
+                         </div>
+                     </div>
+                 ) : (
+                     <div className="text-xs text-gray-400">Clique para testar a saúde de todas as chaves.</div>
+                 )}
+                 <button 
+                    onClick={checkKeysHealth} 
+                    disabled={isCheckingKeys}
+                    className="w-full mt-2 bg-[#8B0000] text-white py-2 rounded text-xs font-bold hover:bg-[#600018] flex items-center justify-center gap-2 disabled:opacity-50"
+                 >
+                    {isCheckingKeys ? 'Aguarde...' : 'Testar Agora'}
+                 </button>
+            </div>
         </div>
+
+        {/* DETALHES DAS CHAVES (SE TIVER STATUS) */}
+        {keysStatus && (
+            <div className="bg-white dark:bg-dark-card rounded-xl shadow border border-[#C5A059]/20 overflow-hidden animate-in slide-in-from-top-5">
+                <div className="p-4 bg-gray-50 dark:bg-gray-900 border-b border-[#C5A059]/10 font-bold text-sm flex items-center justify-between">
+                    <span>Relatório Detalhado de Chaves</span>
+                    <button onClick={() => setKeysStatus(null)} className="text-xs text-gray-500 hover:text-red-500"><XCircle className="w-4 h-4"/></button>
+                </div>
+                <div className="max-h-60 overflow-y-auto grid grid-cols-2 md:grid-cols-4 gap-2 p-2">
+                    {keysStatus.keys.map((k: any) => {
+                        let color = 'bg-green-100 text-green-800 border-green-200';
+                        let icon = <Zap className="w-3 h-3 fill-green-500 text-green-600"/>;
+                        
+                        if (k.status === 'exhausted') {
+                            color = 'bg-red-100 text-red-800 border-red-200';
+                            icon = <Battery className="w-3 h-3 text-red-500"/>;
+                        } else if (k.status !== 'active') {
+                            color = 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                            icon = <AlertTriangle className="w-3 h-3 text-yellow-600"/>;
+                        }
+
+                        return (
+                            <div key={k.name} className={`text-[10px] p-2 rounded border flex flex-col gap-1 ${color}`}>
+                                <div className="flex justify-between items-center font-bold">
+                                    <span>{k.name}</span>
+                                    {icon}
+                                </div>
+                                <div className="flex justify-between items-center opacity-80">
+                                    <span className="font-mono">{k.mask}</span>
+                                    <span>{k.latency}ms</span>
+                                </div>
+                                {k.msg !== 'OK' && <span className="text-[9px] truncate text-red-600 font-bold">{k.msg}</span>}
+                            </div>
+                        )
+                    })}
+                </div>
+            </div>
+        )}
 
         {/* SEÇÃO 2: BÍBLIA OFFLINE */}
         <h2 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#ff6b6b] border-b border-[#C5A059] pb-2">1. Gestão da Bíblia (JSON)</h2>
