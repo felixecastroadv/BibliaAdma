@@ -87,9 +87,9 @@ export default async function handler(request, response) {
 
     // --- ESTRATÉGIA DE MODELOS (CAMADAS DE DEFESA) ---
     // 1. Principal: 2.5 Flash (Melhor Raciocínio)
-    // 2. Backup 1: 2.0 Flash Exp (Muitas vezes livre quando o 2.5 cai)
-    // 3. Backup 2: 1.5 Flash (O "Tanque de Guerra" - muito estável)
-    const MODELS = ["gemini-2.5-flash", "gemini-2.0-flash-exp", "gemini-1.5-flash"];
+    // 2. Backup: 2.0 Flash Exp (Muitas vezes livre quando o 2.5 cai)
+    // OBS: 1.5 foi removido conforme diretrizes
+    const MODELS = ["gemini-2.5-flash", "gemini-2.0-flash-exp"];
 
     // --- 3. EXECUÇÃO DA IA (FORÇA BRUTA INTELIGENTE) ---
     
@@ -122,8 +122,9 @@ export default async function handler(request, response) {
                 response.setHeader('Content-Type', 'text/plain; charset=utf-8');
                 response.setHeader('Transfer-Encoding', 'chunked');
 
-                for await (const chunk of result.stream) {
-                    const chunkText = chunk.text();
+                // CORREÇÃO CRÍTICA: Iterar sobre result diretamente e usar .text (propriedade)
+                for await (const chunk of result) {
+                    const chunkText = chunk.text;
                     if (chunkText) {
                         response.write(chunkText);
                     }
@@ -150,7 +151,7 @@ export default async function handler(request, response) {
     // MODO PADRÃO (JSON/Curto: Dicionário, Devocional, Chat)
     let successResponse = null;
     let lastError = null;
-    const shortAttempts = Math.min(shuffledKeys.length * 2, 12); // Também aumentei aqui
+    const shortAttempts = Math.min(shuffledKeys.length * 2, 12); 
 
     for (let i = 0; i < shortAttempts; i++) {
         const apiKey = shuffledKeys[i % shuffledKeys.length];
@@ -175,7 +176,8 @@ export default async function handler(request, response) {
                 config: aiConfig
             });
             
-            successResponse = result.response.text();
+            // CORREÇÃO CRÍTICA: Usar .text (propriedade)
+            successResponse = result.text;
             break; // Sucesso
 
         } catch (error) {

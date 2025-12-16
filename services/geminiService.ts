@@ -92,7 +92,7 @@ export const generateContent = async (
             
             if (response.status === 503) {
                 // Mensagem amigável para o "Red Toast"
-                throw new Error("Alta demanda nos servidores. O sistema tentou conectar várias vezes sem sucesso. Por favor, aguarde 30 segundos e tente novamente.");
+                throw new Error("Alta demanda nos servidores. O sistema tentou conectar 12 vezes sem sucesso. Por favor, aguarde 30 segundos e tente novamente.");
             }
             if (response.status === 429) {
                 throw new Error("Cota de uso excedida globalmente. Tente novamente em breve.");
