@@ -43,11 +43,11 @@ export default async function handler(request, response) {
         try {
             const ai = new GoogleGenAI({ apiKey: keyEntry.key });
             
-            // Usamos o modelo 1.5-flash pois é o "tanque de guerra". 
-            // Se ele falhar, a chave está inutilizável.
-            // Solicitamos apenas 1 token para ser extremamente rápido e gastar pouco.
+            // ATUALIZAÇÃO CRÍTICA:
+            // O erro 404 "models/gemini-1.5-flash is not found" indica que o modelo antigo não está acessível.
+            // Mudamos para "gemini-2.5-flash" que é o padrão atual, mais rápido e estável.
             const result = await ai.models.generateContent({
-                model: "gemini-1.5-flash",
+                model: "gemini-2.5-flash",
                 contents: [{ parts: [{ text: "Hi" }] }],
                 config: { 
                     maxOutputTokens: 1,
@@ -82,6 +82,9 @@ export default async function handler(request, response) {
             } else if (err.includes('503') || err.includes('Overloaded')) {
                 status = 'slow';
                 msg = 'Google Instável (503)';
+            } else if (err.includes('404') || err.includes('not found')) {
+                status = 'error';
+                msg = 'Modelo ñ encontrado (404)';
             }
 
             return {
