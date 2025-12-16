@@ -108,9 +108,9 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           const data = await res.json();
           setApiHealth(data);
           if (data.healthPercentage < 50) {
-              onShowToast("Alerta: Capacidade da API abaixo de 50%!", "error");
+              onShowToast("Crítico: Muitas chaves queimadas!", "error");
           } else {
-              onShowToast("Diagnóstico da API concluído.", "success");
+              onShowToast("Diagnóstico completo.", "success");
           }
       } catch (e) {
           onShowToast("Erro ao conectar com o monitor.", "error");
@@ -596,7 +596,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                 <h3 className="font-bold text-gray-500 mb-2 flex items-center gap-2"><Activity className="w-4 h-4"/> Saúde das Chaves API</h3>
                 {loadingApiHealth ? (
                     <div className="flex items-center gap-2 text-[#C5A059] py-2">
-                        <Loader2 className="w-5 h-5 animate-spin"/> Verificando latência e cotas...
+                        <Loader2 className="w-5 h-5 animate-spin"/> Testando {apiHealth ? apiHealth.total : ''} chaves...
                     </div>
                 ) : apiHealth ? (
                     <div>
@@ -609,9 +609,13 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                             </div>
                             <span className="text-xs font-bold text-gray-400">{apiHealth.healthy}/{apiHealth.total} Chaves Ativas</span>
                         </div>
-                        <div className="grid grid-cols-6 gap-1 max-h-24 overflow-y-auto">
+                        <div className="grid grid-cols-10 gap-1 max-h-24 overflow-y-auto">
                             {apiHealth.keys.map((k: any, i: number) => (
-                                <div key={i} title={`${k.name}: ${k.msg}`} className={`h-2 rounded w-full ${k.status === 'active' ? 'bg-green-500' : k.status === 'slow' ? 'bg-yellow-400' : 'bg-red-500'}`}></div>
+                                <div 
+                                    key={i} 
+                                    title={`${k.name}: ${k.msg}`} 
+                                    className={`h-3 rounded w-full cursor-help ${k.status === 'active' ? 'bg-green-500' : k.status === 'slow' ? 'bg-yellow-400' : 'bg-red-500'}`}
+                                ></div>
                             ))}
                         </div>
                         <button onClick={checkApiStatus} className="text-xs underline text-blue-500 mt-2 flex items-center gap-1"><RefreshCw className="w-3 h-3"/> Atualizar Diagnóstico</button>

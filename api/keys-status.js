@@ -2,7 +2,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 export const config = {
-  maxDuration: 60,
+  maxDuration: 60, // Limite Vercel Hobby
 };
 
 export default async function handler(request, response) {
@@ -11,7 +11,7 @@ export default async function handler(request, response) {
   }
 
   try {
-    // 1. Coleta todas as chaves
+    // 1. COLETAR CHAVES
     const allKeys = [];
     if (process.env.API_KEY) allKeys.push({ name: 'MAIN_KEY', key: process.env.API_KEY });
     if (process.env.Biblia_ADMA_API) allKeys.push({ name: 'ADMA_KEY', key: process.env.Biblia_ADMA_API });
@@ -24,7 +24,7 @@ export default async function handler(request, response) {
         }
     }
 
-    // Remove duplicatas baseadas no valor da chave
+    // Remove duplicatas
     const uniqueKeys = [];
     const seen = new Set();
     for (const k of allKeys) {
@@ -38,53 +38,88 @@ export default async function handler(request, response) {
         return response.status(200).json({ keys: [], total: 0, healthy: 0 });
     }
 
-    // 2. Testa cada chave (Concorrência limitada para não estourar o servidor)
-    const results = await Promise.all(uniqueKeys.map(async (k) => {
+    // 2. FUNÇÃO DE TESTE INDIVIDUAL (Rigorosa)
+    const checkKey = async (keyEntry) => {
         const start = Date.now();
-        let status = 'active'; // active, exhausted, error, slow
-        let msg = 'OK';
-
         try {
-            const ai = new GoogleGenAI({ apiKey: k.key });
-            // Faz uma requisição MÍNIMA para testar a chave (1 token)
-            await ai.models.generateContent({
-                model: "gemini-2.5-flash",
-                contents: [{ parts: [{ text: "oi" }] }],
-                config: { maxOutputTokens: 1 } 
+            const ai = new GoogleGenAI({ apiKey: keyEntry.key });
+            
+            // Usamos o modelo 1.5-flash pois é o "tanque de guerra". 
+            // Se ele falhar, a chave está inutilizável.
+            const result = await ai.models.generateContent({
+                model: "gemini-1.5-flash",
+                contents: [{ parts: [{ text: "Responda OK" }] }],
+                config: { 
+                    maxOutputTokens: 5,
+                    temperature: 0
+                } 
             });
-        } catch (e) {
-            const err = e.message || '';
-            if (err.includes('429') || err.includes('Quota') || err.includes('Exhausted')) {
-                status = 'exhausted';
-                msg = 'Limite Diário Atingido';
-            } else {
-                status = 'error';
-                msg = err.substring(0, 30);
+
+            // Validação rigorosa: Se não tem texto, falhou.
+            if (!result || !result.text) {
+                throw new Error("Resposta vazia (Sem texto)");
             }
+
+            return {
+                name: keyEntry.name,
+                mask: `...${keyEntry.key.slice(-4)}`,
+                status: 'active',
+                latency: Date.now() - start,
+                msg: 'OK'
+            };
+
+        } catch (e) {
+            const err = e.message || JSON.stringify(e);
+            let status = 'error';
+            let msg = err.substring(0, 60);
+
+            if (err.includes('429') || err.includes('Quota') || err.includes('Exhausted') || err.includes('Resource has been exhausted')) {
+                status = 'exhausted';
+                msg = 'Cota Excedida (429)';
+            } else if (err.includes('API key not valid')) {
+                msg = 'Chave Inválida';
+            } else if (err.includes('503') || err.includes('Overloaded')) {
+                status = 'slow';
+                msg = 'Google Instável (503)';
+            }
+
+            return {
+                name: keyEntry.name,
+                mask: `...${keyEntry.key.slice(-4)}`,
+                status,
+                latency: Date.now() - start,
+                msg
+            };
         }
+    };
 
-        const latency = Date.now() - start;
-        if (status === 'active' && latency > 2000) status = 'slow';
+    // 3. PROCESSAMENTO EM LOTES (BATCH)
+    // Processar 50 chaves simultâneas derruba a conexão. Vamos de 5 em 5.
+    const BATCH_SIZE = 5;
+    const finalResults = [];
 
-        return {
-            name: k.name,
-            mask: `...${k.key.slice(-4)}`,
-            status,
-            latency,
-            msg
-        };
-    }));
+    for (let i = 0; i < uniqueKeys.length; i += BATCH_SIZE) {
+        const batch = uniqueKeys.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(batch.map(k => checkKey(k)));
+        finalResults.push(...batchResults);
+        
+        // Pequena pausa entre lotes para não ser bloqueado por "flood"
+        if (i + BATCH_SIZE < uniqueKeys.length) {
+            await new Promise(r => setTimeout(r, 200));
+        }
+    }
 
-    const healthyCount = results.filter(r => r.status === 'active' || r.status === 'slow').length;
+    const healthyCount = finalResults.filter(r => r.status === 'active').length;
 
     return response.status(200).json({
-        keys: results,
-        total: results.length,
+        keys: finalResults,
+        total: finalResults.length,
         healthy: healthyCount,
-        healthPercentage: Math.round((healthyCount / results.length) * 100)
+        healthPercentage: finalResults.length > 0 ? Math.round((healthyCount / finalResults.length) * 100) : 0
     });
 
   } catch (error) {
-    return response.status(500).json({ error: 'Erro ao verificar chaves.' });
+    console.error("Monitor Error:", error);
+    return response.status(500).json({ error: 'Erro crítico no monitoramento.' });
   }
 }
