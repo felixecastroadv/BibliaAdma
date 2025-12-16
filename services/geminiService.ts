@@ -35,9 +35,10 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export const generateContent = async (
   prompt: string, 
   jsonSchema?: any,
-  isLongOutput: boolean = false // NOVO PARÂMETRO
+  isLongOutput: boolean = false
 ) => {
-  const MAX_RETRIES = isLongOutput ? 2 : 3; // Menos retries para long tasks para não estourar timeout total
+  // Para tarefas longas, tentamos menos vezes para evitar esperas eternas
+  const MAX_RETRIES = isLongOutput ? 2 : 3; 
   let attempt = 0;
 
   while (attempt < MAX_RETRIES) {
@@ -69,8 +70,11 @@ export const generateContent = async (
         
         // --- MODO SERVER (Com Rotação de Chaves + Retry) ---
         const controller = new AbortController();
-        // Timeout do fetch deve ser maior que o do backend
-        const timeoutMs = isLongOutput ? 65000 : 30000; 
+        
+        // AUMENTO CRÍTICO DE TIMEOUT DO CLIENTE
+        // Se for Long Output, damos 300s (5 minutos) para o servidor processar.
+        // Isso impede o erro "The user aborted a request" ou timeout do fetch.
+        const timeoutMs = isLongOutput ? 300000 : 30000; 
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         const response = await fetch('/api/gemini', {
@@ -88,13 +92,10 @@ export const generateContent = async (
             if (response.status === 429 || errData.error === 'QUOTA_EXCEEDED') {
                 throw new Error("QUOTA_RETRY");
             }
-            if (response.status === 504 || response.status === 503) {
-                 throw new Error("TIMEOUT_RETRY");
+            if (response.status === 503) {
+                 throw new Error("TIMEOUT_RETRY"); // Trata 503 como algo que vale a pena tentar de novo
             }
-            if (errData.error === 'RECITATION_ERROR') {
-                throw new Error("A IA bloqueou por Direitos Autorais. Tente reduzir citações diretas.");
-            }
-
+            
             throw new Error(errData.error || `Erro (${response.status})`);
         }
 
@@ -105,21 +106,17 @@ export const generateContent = async (
         attempt++;
         
         const isQuota = error.message === "QUOTA_RETRY" || error.message?.includes("429");
-        const isTimeout = error.message === "TIMEOUT_RETRY";
+        const isTimeout = error.message === "TIMEOUT_RETRY" || error.name === 'AbortError';
 
-        // Se for Long Task e deu timeout, provavelmente não adianta tentar de novo imediatamente
-        if (isLongOutput && isTimeout) {
-             throw new Error("O conteúdo demorou muito para ser gerado. Tente novamente em alguns instantes.");
-        }
-
+        // Se for Long Task e falhou, provavelmente não vale a pena martelar muitas vezes
         if (attempt >= MAX_RETRIES) {
-            if (isQuota) throw new Error("Sistema sobrecarregado. Aguarde 30 segundos.");
-            if (isTimeout) throw new Error("A IA demorou muito para responder.");
+            if (isQuota) throw new Error("Sistema sobrecarregado (Cotas). Aguarde um momento.");
+            if (isTimeout) throw new Error("A geração demorou demais e excedeu o tempo limite da conexão.");
             throw error;
         }
 
         if (isQuota || isTimeout) {
-            const waitTime = attempt * 1500; 
+            const waitTime = attempt * 2000; 
             console.log(`⚠️ Tentativa ${attempt} falhou. Retentando em ${waitTime}ms...`);
             await delay(waitTime);
             continue; 
