@@ -75,6 +75,7 @@ export default async function handler(request, response) {
 
     // Fallback de pool se vazio
     if (targetPool.length === 0) targetPool = keyPools.general;
+    // Fallback Supremo: Pega TUDO o que tiver
     if (targetPool.length === 0) targetPool = Object.values(keyPools).flat();
 
     if (targetPool.length === 0) {
@@ -84,27 +85,29 @@ export default async function handler(request, response) {
     // Embaralha chaves
     const shuffledKeys = targetPool.sort(() => 0.5 - Math.random());
 
-    // --- ESTRATÉGIA DE MODELOS ---
-    // Se o principal falhar, tenta o experimental que costuma estar menos cheio
-    const MODELS = ["gemini-2.5-flash", "gemini-2.0-flash-exp"];
+    // --- ESTRATÉGIA DE MODELOS (CAMADAS DE DEFESA) ---
+    // 1. Principal: 2.5 Flash (Melhor Raciocínio)
+    // 2. Backup 1: 2.0 Flash Exp (Muitas vezes livre quando o 2.5 cai)
+    // 3. Backup 2: 1.5 Flash (O "Tanque de Guerra" - muito estável)
+    const MODELS = ["gemini-2.5-flash", "gemini-2.0-flash-exp", "gemini-1.5-flash"];
 
-    // --- 3. EXECUÇÃO DA IA (COM RETRY INTELIGENTE) ---
+    // --- 3. EXECUÇÃO DA IA (FORÇA BRUTA INTELIGENTE) ---
     
     // MODO STREAMING (Textos Longos: EBD, Comentário)
     if (isLongOutput && !schema) {
         let lastError = null;
-        // Tenta até 4 chaves/modelos diferentes
-        const attempts = Math.min(shuffledKeys.length, 4);
+        // Tenta MUITAS vezes (até 12 tentativas distribuídas entre chaves e modelos)
+        const maxAttempts = Math.min(shuffledKeys.length * 2, 12); 
 
-        for (let i = 0; i < attempts; i++) {
-            const apiKey = shuffledKeys[i];
-            // Alterna modelo baseado na tentativa (par/impar) para aumentar chance
+        for (let i = 0; i < maxAttempts; i++) {
+            // Rotaciona chaves e modelos
+            const apiKey = shuffledKeys[i % shuffledKeys.length];
             const modelId = MODELS[i % MODELS.length]; 
 
             try {
                 const ai = new GoogleGenAI({ apiKey });
                 const aiConfig = {
-                    temperature: 0.7, // Reduzi levemente para estabilidade
+                    temperature: 0.7, 
                     topP: 0.95,
                     topK: 40,
                     maxOutputTokens: 8192,
@@ -119,48 +122,44 @@ export default async function handler(request, response) {
                 response.setHeader('Content-Type', 'text/plain; charset=utf-8');
                 response.setHeader('Transfer-Encoding', 'chunked');
 
-                for await (const chunk of result) {
-                    const chunkText = chunk.text;
+                for await (const chunk of result.stream) {
+                    const chunkText = chunk.text();
                     if (chunkText) {
                         response.write(chunkText);
                     }
                 }
                 
                 response.end();
-                return; // Sucesso
+                return; // Sucesso Absoluto
 
             } catch (streamError) {
-                console.error(`Stream Error (${taskType}) [Key ${i}]:`, streamError.message);
+                console.warn(`Stream Fail [Attempt ${i+1}/${maxAttempts}] (${modelId}):`, streamError.message.substring(0, 50));
                 lastError = streamError;
                 
-                // Se já enviou headers, não tem como recuperar
                 if (response.headersSent) { response.end(); return; }
                 
-                // Se erro for 503 (Overloaded) ou 429 (Quota), espera um pouco antes de tentar a próxima chave
-                if (streamError.message.includes('503') || streamError.message.includes('429')) {
-                    await delay(1500 * (i + 1)); // Backoff: 1.5s, 3s, 4.5s...
-                }
+                // Backoff progressivo (1s, 2s, 3s...)
+                await delay(1000 + (i * 500));
             }
         }
         
-        // Se falhou todas
         const msg = lastError?.message || 'Erro desconhecido';
-        return response.status(503).json({ error: `Servidores do Google sobrecarregados (503). Tente novamente em alguns segundos. Detalhe: ${msg}` });
+        return response.status(503).json({ error: `Sistema sobrecarregado após várias tentativas. Tente novamente em 1 minuto. (${msg})` });
     }
 
     // MODO PADRÃO (JSON/Curto: Dicionário, Devocional, Chat)
     let successResponse = null;
     let lastError = null;
-    const shortAttempts = Math.min(shuffledKeys.length, 4);
+    const shortAttempts = Math.min(shuffledKeys.length * 2, 12); // Também aumentei aqui
 
     for (let i = 0; i < shortAttempts; i++) {
-        const apiKey = shuffledKeys[i];
+        const apiKey = shuffledKeys[i % shuffledKeys.length];
         const modelId = MODELS[i % MODELS.length];
 
         try {
             const ai = new GoogleGenAI({ apiKey });
             const aiConfig = {
-                temperature: 0.6, // Mais conservador para JSON
+                temperature: 0.6,
                 topP: 0.95,
                 topK: 40,
             };
@@ -176,15 +175,13 @@ export default async function handler(request, response) {
                 config: aiConfig
             });
             
-            successResponse = result.text;
+            successResponse = result.response.text();
             break; // Sucesso
 
         } catch (error) {
             lastError = error;
-            console.error(`Standard Error [Key ${i}]:`, error.message);
-            if (error.message.includes('503') || error.message.includes('429')) {
-                await delay(1000 * (i + 1));
-            }
+            console.warn(`Standard Fail [Attempt ${i+1}/${shortAttempts}] (${modelId}):`, error.message.substring(0, 50));
+            await delay(800 + (i * 400));
         }
     }
 
@@ -192,7 +189,7 @@ export default async function handler(request, response) {
         return response.status(200).json({ text: successResponse });
     } else {
         const msg = lastError?.message || '';
-        return response.status(503).json({ error: `Instabilidade na IA (Google 503). Por favor, clique em tentar novamente. (${msg})` });
+        return response.status(503).json({ error: `Instabilidade momentânea na IA. Clique em tentar novamente. (${msg})` });
     }
 
   } catch (error) {

@@ -20,7 +20,6 @@ function processResponse(text: string | undefined, jsonSchema: any) {
     
     if (jsonSchema) {
       let cleanText = text || "{}";
-      // Limpeza agressiva de Markdown
       cleanText = cleanText.replace(/```json/g, '').replace(/```/g, '').trim();
       try {
         return JSON.parse(cleanText);
@@ -69,7 +68,7 @@ export const generateContent = async (
         
         // --- MODO SERVER (Com Roteamento de Chaves) ---
         const controller = new AbortController();
-        // Aumentei o timeout para 5 minutos para aguentar os retries do backend
+        // Timeout de 5 minutos para permitir os múltiplos retries do backend
         const timeoutMs = 300000; 
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -92,10 +91,11 @@ export const generateContent = async (
             const errMsg = errData.error || `Erro HTTP ${response.status}`;
             
             if (response.status === 503) {
-                throw new Error("Muitos acessos simultâneos. Aguarde 5 segundos e tente novamente.");
+                // Mensagem amigável para o "Red Toast"
+                throw new Error("Alta demanda nos servidores. O sistema tentou conectar várias vezes sem sucesso. Por favor, aguarde 30 segundos e tente novamente.");
             }
             if (response.status === 429) {
-                throw new Error("Limite de uso atingido. Tente mais tarde.");
+                throw new Error("Cota de uso excedida globalmente. Tente novamente em breve.");
             }
             throw new Error(errMsg);
         }
@@ -127,7 +127,7 @@ export const generateContent = async (
         console.error("Gemini Service Error:", error);
         
         if (error.name === 'AbortError') {
-             throw new Error("A conexão expirou. A internet pode estar lenta ou a IA demorou muito.");
+             throw new Error("O servidor demorou muito para responder (Timeout). A internet pode estar lenta.");
         }
         
         throw new Error(error.message || "Não foi possível gerar o conteúdo.");
