@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ChevronLeft, CheckCircle, XCircle, FileText, ExternalLink, Brain } from 'lucide-react';
 import { DynamicModule } from '../../types';

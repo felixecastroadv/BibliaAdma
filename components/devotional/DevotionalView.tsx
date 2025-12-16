@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Calendar, Loader2, Volume2, VolumeX, Edit3, Settings, RefreshCw, Command, ChevronRight, Lock, AlertCircle, FastForward, Type, Trash2, Flame } from 'lucide-react';
 import { generateContent } from '../../services/geminiService';
@@ -28,14 +27,14 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
   const [showAdminControls, setShowAdminControls] = useState(false);
   
   const today = new Date();
-  today.setHours(0,0,0,0); 
+  today.setHours(0,0,0,0); // Normaliza para meia-noite
   
   const displayDateStr = format(currentDate, 'yyyy-MM-dd');
   const daysDiff = differenceInDays(currentDate, today);
   
   // Regras de Data
   const isFuture = daysDiff > 0;
-  const isExpired = daysDiff < -365; 
+  const isExpired = daysDiff < -365; // Mais antigo que 1 ano
 
   useEffect(() => {
     loadDevotional();
@@ -77,8 +76,10 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
         const res = await db.entities.Devotional.filter({ date: displayDateStr });
         
         if (res.length > 0) {
+            // Conteúdo encontrado!
             const foundDevotional = res[0];
 
+            // Verifica se está expirado para limpar o banco (Policy: 365 dias)
             if (isExpired) {
                 setStatusMessage('Limpando registros antigos...');
                 await db.entities.Devotional.delete(foundDevotional.id!);
@@ -89,6 +90,8 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
         } else {
             // Nenhum conteúdo encontrado.
             if (!isFuture && !isExpired) {
+                // Se for hoje ou passado recente (e não tiver no banco), GERA AUTOMATICAMENTE
+                // Isso acontece para qualquer usuário, tornando o devocional "original" do app.
                 await generateDevotional(); 
             } else {
                 setDevotional(null);
@@ -103,6 +106,7 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
 
   const generateDevotional = async (customInstruction?: string) => {
     // Se for comando customizado, só admin pode.
+    // Se for auto-geração (customInstruction undefined), qualquer um dispara se a data for válida.
     if (customInstruction && !isAdmin) return;
 
     setStatusMessage('Gerando devocional inédito...');
@@ -121,7 +125,16 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
         1. O campo 'body' DEVE conter quebras de linha duplas (\n\n) para separar os parágrafos. O texto NÃO pode ser um bloco único.
         2. SEM MARKDOWN: Não use asteriscos (**), negrito ou caracteres especiais. Apenas texto puro.
         3. TAMANHO: Aprox. 500 palavras no total.
-        ...
+
+        ESTRUTURA OBRIGATÓRIA DO CORPO (3 PARÁGRAFOS DISTINTOS):
+        - Parágrafo 1 (O Texto): Explique o texto base, focando na intenção do autor, contexto histórico/cultural e análise das palavras originais.
+        - Parágrafo 2 (A Aplicação): Aplique essa verdade teológica à vida cotidiana do leitor hoje. Use exemplos práticos.
+        - Parágrafo 3 (A Prática): Conclusão reflexiva que leve à prática ("melhor do que ouvir é praticar"), visando o crescimento espiritual.
+
+        ORAÇÃO:
+        - Uma oração contextualizada com o ensino acima.
+
+        Retorne JSON válido.
     `;
 
     const schema = {
@@ -137,13 +150,14 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
     };
 
     try {
-        // Usa taskType 'devotional'
-        const res = await generateContent(prompt, schema, false, 'devotional');
+        const res = await generateContent(prompt, schema);
         
+        // Se a geração falhar ou vier vazia, não salvamos
         if (!res || !res.title) throw new Error("Falha na geração");
 
         const data: Devotional = { ...res, date: displayDateStr, is_published: true };
         
+        // Remove anterior se for regeração do admin
         if (customInstruction) {
              const existing = await db.entities.Devotional.filter({ date: displayDateStr });
              if(existing.length > 0) await db.entities.Devotional.delete(existing[0].id!);
@@ -164,8 +178,6 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
     }
   };
 
-  // ... (Resto do componente mantido igual) ...
-  
   const speakText = () => {
     if(!devotional) return;
     const cleanBody = devotional.body.replace(/\*\*/g, '').replace(/\*/g, '').replace(/\n/g, ' ');
@@ -209,8 +221,7 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
             {isAdmin && <button onClick={() => setShowAdminControls(!showAdminControls)} className="p-2 hover:bg-white/10 rounded-full"><Edit3 className="w-5 h-5" /></button>}
         </div>
       </div>
-      
-      {/* ... (Resto do JSX mantido igual) ... */}
+
       <div className="bg-[#1a0f0f] dark:bg-black text-[#C5A059] p-3 flex items-center justify-between shadow-md">
          <button onClick={handlePrevDay} className="p-2 hover:text-white transition"><ChevronLeft /></button>
          <div className="flex items-center gap-2 font-montserrat font-bold uppercase tracking-wider text-sm">
@@ -223,6 +234,7 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
       {showSettings && (
          <div className="bg-white dark:bg-dark-card p-4 border-b border-[#C5A059] animate-in slide-in-from-top-2 shadow-lg z-20 relative">
             <div className="flex flex-col gap-4">
+                {/* Fonte */}
                 <div className="flex items-center justify-between">
                     <span className="font-montserrat text-sm font-bold text-[#1a0f0f] dark:text-gray-200 flex items-center gap-2">
                         <Type className="w-4 h-4" /> Tamanho da Letra:
@@ -233,12 +245,16 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
                         <button onClick={() => setFontSize(Math.min(32, fontSize + 2))} className="w-8 h-8 flex items-center justify-center border rounded hover:bg-gray-100 dark:hover:bg-gray-700 font-bold">+</button>
                     </div>
                 </div>
+
+                {/* Voz */}
                 <div>
                     <label className="text-sm font-bold text-gray-700 dark:text-gray-200">Voz de Leitura:</label>
                     <select className="w-full p-2 border rounded mt-1 dark:bg-gray-800 dark:text-white" value={selectedVoice} onChange={e => setSelectedVoice(e.target.value)}>
                         {voices.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
                     </select>
                 </div>
+                
+                {/* Velocidade */}
                 <div>
                     <span className="font-montserrat text-sm font-bold text-[#1a0f0f] dark:text-gray-200 flex items-center gap-2 mb-1">
                         <FastForward className="w-4 h-4" /> Velocidade:

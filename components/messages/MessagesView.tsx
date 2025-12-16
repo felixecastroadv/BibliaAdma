@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Bell, Flame, Plus, Trash2, Send, Megaphone, User, Heart, Edit } from 'lucide-react';
 import { db } from '../../services/database';

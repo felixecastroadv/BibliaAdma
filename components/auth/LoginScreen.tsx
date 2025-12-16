@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { BookOpen, User, ArrowRight, Loader2, Lock, ShieldAlert, KeyRound, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';

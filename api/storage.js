@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 // --- CONFIGURAÇÃO MANUAL (FALLBACK) ---
