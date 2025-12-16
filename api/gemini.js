@@ -2,10 +2,11 @@
 import { GoogleGenAI } from "@google/genai";
 
 export const config = {
-  maxDuration: 60, // Limite padrão da Vercel (evita segurar conexões mortas)
+  maxDuration: 60, // Limite Vercel Hobby
   supportsResponseStreaming: true, 
 };
 
+// Função de espera apenas para erros de rede genéricos (não usada em 429)
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default async function handler(request, response) {
@@ -23,75 +24,67 @@ export default async function handler(request, response) {
     if (typeof body === 'string') {
         try { body = JSON.parse(body); } catch (e) {}
     }
-    const { prompt, schema, isLongOutput, taskType } = body || {};
+    const { prompt, schema, isLongOutput } = body || {};
 
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
-    // --- 1. POOL DE CHAVES ---
-    const keyPools = {
-        commentary: [], dictionary: [], devotional: [], ebd: [], metadata: [], general: []
-    };
+    // --- 1. COLETA TODAS AS CHAVES EM UMA LISTA ÚNICA ---
+    // Removemos a separação por tipo para maximizar a disponibilidade
+    let allKeys = [];
 
-    // Coleta chaves do ENV
+    // Chaves numeradas
     for (let i = 1; i <= 50; i++) {
         const keyName = `API_KEY_${i}`;
         const val = process.env[keyName];
         if (val && val.trim().length > 20) {
-            const key = val.trim();
-            if (i >= 1 && i <= 5) keyPools.commentary.push(key);
-            else if (i >= 6 && i <= 8) keyPools.dictionary.push(key);
-            else if (i === 9) keyPools.devotional.push(key);
-            else if (i >= 10 && i <= 14) keyPools.ebd.push(key);
-            else if (i === 15) keyPools.metadata.push(key);
-            else keyPools.general.push(key); 
+            allKeys.push(val.trim());
         }
     }
 
-    if (process.env.API_KEY) keyPools.general.push(process.env.API_KEY);
-    if (process.env.Biblia_ADMA_API) keyPools.general.push(process.env.Biblia_ADMA_API);
+    // Chaves extras
+    if (process.env.API_KEY) allKeys.push(process.env.API_KEY.trim());
+    if (process.env.Biblia_ADMA_API) allKeys.push(process.env.Biblia_ADMA_API.trim());
 
-    // Seleção Inteligente de Pool
-    let targetPool = [];
-    switch (taskType) {
-        case 'commentary': targetPool = keyPools.commentary; break;
-        case 'dictionary': targetPool = keyPools.dictionary; break;
-        case 'devotional': targetPool = keyPools.devotional; break;
-        case 'ebd': targetPool = keyPools.ebd; break;
-        case 'metadata': targetPool = keyPools.metadata; break;
-        default: targetPool = keyPools.general; break;
+    // Remove duplicatas
+    allKeys = [...new Set(allKeys)];
+
+    if (allKeys.length === 0) {
+         return response.status(500).json({ error: 'SERVER CONFIG ERROR: Nenhuma chave de API encontrada.' });
     }
 
-    // Fallbacks
-    if (targetPool.length === 0) targetPool = keyPools.general;
-    if (targetPool.length === 0) targetPool = Object.values(keyPools).flat();
+    // --- 2. LÓGICA DE ROTAÇÃO SEQUENCIAL (CARROSSEL) ---
+    // Sorteia um ponto de partida para não sobrecarregar sempre a API_KEY_1
+    const startIndex = Math.floor(Math.random() * allKeys.length);
     
-    // Remove duplicatas e embaralha
-    targetPool = [...new Set(targetPool)].sort(() => 0.5 - Math.random());
+    // Modelos: Tenta o melhor (2.5), se falhar tenta o mais rápido (1.5)
+    // Se a chave falhar no 2.5, pulamos para a próxima chave tentando 2.5 de novo.
+    // O fallback de modelo ocorre apenas se a chave for válida mas o modelo estiver instável.
+    const PRIMARY_MODEL = "gemini-2.5-flash";
+    const BACKUP_MODEL = "gemini-1.5-flash";
 
-    if (targetPool.length === 0) {
-         return response.status(500).json({ error: 'CONFIG ERROR: Nenhuma chave de API disponível.' });
-    }
-
-    // --- 2. ESTRATÉGIA DE MODELOS ---
-    // 2.5 Flash: Melhor qualidade (Principal)
-    // 1.5 Flash: Maior estabilidade e velocidade (Backup Imediato)
-    const MODELS = ["gemini-2.5-flash", "gemini-1.5-flash"];
-
-    // --- 3. EXECUÇÃO ---
-    // Reduzimos tentativas para 3 para evitar Timeout da Vercel (10s limit no plano Hobby)
-    const MAX_ATTEMPTS = 3; 
+    let successResponse = null;
     let lastError = null;
 
-    // --- MODO STREAMING (EBD, Comentário) ---
-    if (isLongOutput && !schema) {
-        for (let i = 0; i < MAX_ATTEMPTS; i++) {
-            const apiKey = targetPool[i % targetPool.length];
-            const modelId = MODELS[i % MODELS.length];
+    // Tentamos usar até 15 chaves diferentes antes de desistir (ou todas se tiver menos que 15)
+    const MAX_KEY_ATTEMPTS = Math.min(allKeys.length, 15);
 
-            try {
-                const ai = new GoogleGenAI({ apiKey });
+    // LOOP DE TENTATIVAS (ROTAÇÃO DE CHAVES)
+    for (let i = 0; i < MAX_KEY_ATTEMPTS; i++) {
+        // Cálculo do índice circular: (Inicio + i) % Total
+        // Ex: Se tem 10 chaves e começou na 8: 8, 9, 0, 1, 2...
+        const keyIndex = (startIndex + i) % allKeys.length;
+        const apiKey = allKeys[keyIndex];
+        
+        // Alterna modelo: Nas primeiras tentativas insiste no 2.5, depois do meio tenta o 1.5
+        const currentModel = i < 3 ? PRIMARY_MODEL : BACKUP_MODEL;
+
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            
+            // --- MODO STREAMING (Textos Longos) ---
+            if (isLongOutput && !schema) {
                 const streamResult = await ai.models.generateContentStream({
-                    model: modelId,
+                    model: currentModel,
                     contents: [{ parts: [{ text: prompt }] }],
                     config: {
                         temperature: 0.7,
@@ -109,52 +102,54 @@ export default async function handler(request, response) {
                 }
                 
                 response.end();
-                return; // Sucesso
+                return; // SUCESSO E SAI DA FUNÇÃO
 
-            } catch (err) {
-                console.warn(`Stream Error [${i}] (${modelId}):`, err.message);
-                lastError = err;
-                if (response.headersSent) { response.end(); return; }
-                // Delay pequeno apenas para não bater taxa instantânea
-                if (i < MAX_ATTEMPTS - 1) await delay(500);
+            } 
+            // --- MODO PADRÃO (JSON/Curto) ---
+            else {
+                const config = { temperature: 0.6 };
+                if (schema) {
+                    config.responseMimeType = "application/json";
+                    config.responseSchema = schema;
+                }
+
+                const result = await ai.models.generateContent({
+                    model: currentModel,
+                    contents: [{ parts: [{ text: prompt }] }],
+                    config: config
+                });
+
+                successResponse = result.text;
+                break; // SUCESSO - SAI DO LOOP
             }
-        }
-        return response.status(503).json({ error: `Falha na IA após ${MAX_ATTEMPTS} tentativas. Último erro: ${lastError?.message}` });
-    }
 
-    // --- MODO PADRÃO (JSON, Chat) ---
-    for (let i = 0; i < MAX_ATTEMPTS; i++) {
-        const apiKey = targetPool[i % targetPool.length];
-        const modelId = MODELS[i % MODELS.length];
+        } catch (error) {
+            const errMsg = error.message || '';
+            console.warn(`[Fail Key Index ${keyIndex}] Model ${currentModel}: ${errMsg.substring(0, 50)}...`);
+            lastError = error;
 
-        try {
-            const ai = new GoogleGenAI({ apiKey });
-            const config = { temperature: 0.6 };
+            // ANÁLISE DO ERRO PARA DECISÃO
+            const isQuota = errMsg.includes('429') || errMsg.includes('Quota') || errMsg.includes('Resource has been exhausted');
             
-            if (schema) {
-                config.responseMimeType = "application/json";
-                config.responseSchema = schema;
+            if (isQuota) {
+                // Se for cota estourada (429), NÃO ESPERA. Pula imediatamente para a próxima chave.
+                continue;
+            } else {
+                // Se for outro erro (ex: 503 do Google), espera um pouquinho antes de tentar outra chave
+                await delay(500); 
             }
-
-            const result = await ai.models.generateContent({
-                model: modelId,
-                contents: [{ parts: [{ text: prompt }] }],
-                config: config
-            });
-
-            // Sucesso
-            return response.status(200).json({ text: result.text });
-
-        } catch (err) {
-            console.warn(`Standard Error [${i}] (${modelId}):`, err.message);
-            lastError = err;
-            if (i < MAX_ATTEMPTS - 1) await delay(500);
         }
     }
 
-    return response.status(503).json({ error: `Serviço indisponível. Detalhe: ${lastError?.message || 'Timeout'}` });
+    if (successResponse) {
+        return response.status(200).json({ text: successResponse });
+    } else {
+        // Se saiu do loop sem sucesso
+        const msg = lastError?.message || 'Todas as chaves falharam.';
+        return response.status(503).json({ error: `Sistema ocupado. Tentamos várias conexões sem sucesso. (${msg})` });
+    }
 
   } catch (error) {
-    return response.status(500).json({ error: `Erro Interno: ${error.message}` });
+    return response.status(500).json({ error: `Erro Interno Crítico: ${error.message}` });
   }
 }

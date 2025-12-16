@@ -31,7 +31,7 @@ function processResponse(text: string | undefined, jsonSchema: any) {
     return text;
 }
 
-// Tipos de tarefas para roteamento de chaves
+// Tipos de tarefas (Mantido para compatibilidade, mas o backend agora unifica tudo)
 export type TaskType = 'commentary' | 'dictionary' | 'devotional' | 'ebd' | 'metadata' | 'general';
 
 export const generateContent = async (
@@ -45,6 +45,7 @@ export const generateContent = async (
         
         // --- MODO CLIENTE (Chave pessoal do Admin) ---
         if (adminKey) {
+            // No modo cliente, usamos direto o 2.5 Flash
             const ai = new GoogleGenAI({ apiKey: adminKey });
             const config: any = {
                 temperature: 0.9, 
@@ -66,9 +67,10 @@ export const generateContent = async (
             return processResponse(response.text, jsonSchema);
         } 
         
-        // --- MODO SERVER (Com Roteamento de Chaves) ---
+        // --- MODO SERVER (Rotação Inteligente) ---
         const controller = new AbortController();
-        const timeoutMs = 60000; // 60s timeout (razoável para user experience)
+        // Aumentamos o timeout para 90s para dar tempo do backend rodar todas as chaves se necessário
+        const timeoutMs = 90000; 
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         const response = await fetch('/api/gemini', {
@@ -87,12 +89,10 @@ export const generateContent = async (
 
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
-            // Pega a mensagem detalhada do backend se existir
             const detail = errData.error || `Status ${response.status}`;
             
             if (response.status === 503) {
-                // Se tiver detalhe do erro (ex: quota), mostra ele. Senão, mensagem genérica.
-                throw new Error(detail.includes('Detalhe:') ? detail : "Servidores ocupados. Tente novamente em instantes.");
+                throw new Error("Alta demanda global. Nenhuma chave disponível no momento. Tente em 1 minuto.");
             }
             if (response.status === 429) {
                 throw new Error("Cota excedida. Aguarde um momento.");
@@ -127,9 +127,9 @@ export const generateContent = async (
         console.error("Gemini Service Error:", error);
         
         if (error.name === 'AbortError') {
-             throw new Error("Tempo limite excedido. Verifique sua internet.");
+             throw new Error("Demorou muito para encontrar uma chave livre. Tente novamente.");
         }
         
-        throw error; // Repassa o erro original para o Toast
+        throw error; 
     }
 };
