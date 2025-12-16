@@ -37,27 +37,45 @@ export default async function handler(request, response) {
         return response.status(200).json({ keys: [], total: 0, healthy: 0 });
     }
 
-    // 2. FUNÇÃO DE TESTE INDIVIDUAL (Rigorosa)
+    // 2. FUNÇÃO DE TESTE INDIVIDUAL (FAILOVER INTELIGENTE)
     const checkKey = async (keyEntry) => {
         const start = Date.now();
+        let usedModel = "gemini-2.5-flash";
+
         try {
             const ai = new GoogleGenAI({ apiKey: keyEntry.key });
             
-            // ATUALIZAÇÃO CRÍTICA:
-            // O erro 404 "models/gemini-1.5-flash is not found" indica que o modelo antigo não está acessível.
-            // Mudamos para "gemini-2.5-flash" que é o padrão atual, mais rápido e estável.
-            const result = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
-                contents: [{ parts: [{ text: "Hi" }] }],
-                config: { 
-                    maxOutputTokens: 1,
-                    temperature: 0
-                } 
-            });
+            // Função auxiliar de chamada
+            const performCall = async (modelName) => {
+                return await ai.models.generateContent({
+                    model: modelName,
+                    contents: [{ parts: [{ text: "Hello" }] }],
+                    config: { 
+                        maxOutputTokens: 5, // Aumentado para evitar respostas vazias
+                        temperature: 0
+                    } 
+                });
+            };
 
-            // Validação rigorosa: Se não tem texto, falhou.
-            if (!result || !result.text) {
-                throw new Error("Resposta vazia (Sem texto)");
+            let result;
+            try {
+                // Tenta modelo novo
+                result = await performCall("gemini-2.5-flash");
+            } catch (errPrimary) {
+                const msg = errPrimary.message || JSON.stringify(errPrimary);
+                // Se o modelo não existir (404) ou falhar por algo que não seja cota/chave, tenta o antigo
+                if (msg.includes("404") || msg.includes("not found") || msg.includes("model")) {
+                    usedModel = "gemini-1.5-flash";
+                    result = await performCall("gemini-1.5-flash");
+                } else {
+                    throw errPrimary; // Se for erro de cota (429) ou chave (400), lança direto
+                }
+            }
+
+            // Se chegou aqui, a requisição HTTP foi 200 OK.
+            // Validação básica de integridade
+            if (!result || !result.candidates) {
+                throw new Error("API respondeu mas sem candidatos.");
             }
 
             return {
@@ -65,7 +83,8 @@ export default async function handler(request, response) {
                 mask: `...${keyEntry.key.slice(-4)}`,
                 status: 'active',
                 latency: Date.now() - start,
-                msg: 'OK'
+                msg: 'OK',
+                model: usedModel
             };
 
         } catch (e) {
@@ -76,7 +95,7 @@ export default async function handler(request, response) {
             if (err.includes('429') || err.includes('Quota') || err.includes('Exhausted') || err.includes('Resource has been exhausted')) {
                 status = 'exhausted';
                 msg = 'Cota Excedida (429)';
-            } else if (err.includes('API key not valid') || err.includes('400')) {
+            } else if (err.includes('API key not valid') || err.includes('400') || err.includes('INVALID_ARGUMENT')) {
                 status = 'invalid';
                 msg = 'Chave Inválida';
             } else if (err.includes('503') || err.includes('Overloaded')) {
@@ -84,7 +103,7 @@ export default async function handler(request, response) {
                 msg = 'Google Instável (503)';
             } else if (err.includes('404') || err.includes('not found')) {
                 status = 'error';
-                msg = 'Modelo ñ encontrado (404)';
+                msg = 'Modelo 404 (Falha Geral)';
             }
 
             return {
@@ -109,7 +128,7 @@ export default async function handler(request, response) {
         
         // Pequena pausa entre lotes para não ser bloqueado por "flood"
         if (i + BATCH_SIZE < uniqueKeys.length) {
-            await new Promise(r => setTimeout(r, 200));
+            await new Promise(r => setTimeout(r, 300));
         }
     }
 
