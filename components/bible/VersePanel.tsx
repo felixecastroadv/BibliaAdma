@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+// VersePanel Component v2.0 - Full Features
 import { X, BookOpen, Languages, Loader2, RefreshCw, AlertTriangle, Send, Lock, Save, Sparkles, Volume2, Pause, Play, FastForward, MessageCircle, User, Bot, Battery, Edit, Command, FileText } from 'lucide-react';
 import { db } from '../../services/database';
 import { generateContent } from '../../services/geminiService';
