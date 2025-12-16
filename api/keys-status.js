@@ -45,37 +45,45 @@ export default async function handler(request, response) {
         try {
             const ai = new GoogleGenAI({ apiKey: keyEntry.key });
             
-            // Função auxiliar de chamada
+            // Função auxiliar de chamada com configurações permissivas
             const performCall = async (modelName) => {
                 return await ai.models.generateContent({
                     model: modelName,
                     contents: [{ parts: [{ text: "Hello" }] }],
                     config: { 
-                        maxOutputTokens: 5, // Aumentado para evitar respostas vazias
-                        temperature: 0
+                        maxOutputTokens: 30, 
+                        temperature: 0.1,
+                        safetySettings: [
+                            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+                            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+                            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+                            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+                        ]
                     } 
                 });
             };
 
             let result;
             try {
-                // Tenta modelo novo
                 result = await performCall("gemini-2.5-flash");
             } catch (errPrimary) {
                 const msg = errPrimary.message || JSON.stringify(errPrimary);
-                // Se o modelo não existir (404) ou falhar por algo que não seja cota/chave, tenta o antigo
                 if (msg.includes("404") || msg.includes("not found") || msg.includes("model")) {
                     usedModel = "gemini-1.5-flash";
                     result = await performCall("gemini-1.5-flash");
                 } else {
-                    throw errPrimary; // Se for erro de cota (429) ou chave (400), lança direto
+                    throw errPrimary;
                 }
             }
 
-            // Se chegou aqui, a requisição HTTP foi 200 OK.
-            // Validação básica de integridade
-            if (!result || !result.candidates) {
-                throw new Error("API respondeu mas sem candidatos.");
+            // Validação de integridade
+            let textOutput = result?.text;
+            if (!textOutput) {
+                textOutput = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+            }
+
+            if (!textOutput) {
+                throw new Error("Resposta vazia (Sem texto)");
             }
 
             return {
@@ -92,7 +100,7 @@ export default async function handler(request, response) {
             let status = 'error';
             let msg = err.substring(0, 60);
 
-            if (err.includes('429') || err.includes('Quota') || err.includes('Exhausted') || err.includes('Resource has been exhausted')) {
+            if (err.includes('429') || err.includes('Quota') || err.includes('Exhausted')) {
                 status = 'exhausted';
                 msg = 'Cota Excedida (429)';
             } else if (err.includes('API key not valid') || err.includes('400') || err.includes('INVALID_ARGUMENT')) {
@@ -103,7 +111,10 @@ export default async function handler(request, response) {
                 msg = 'Google Instável (503)';
             } else if (err.includes('404') || err.includes('not found')) {
                 status = 'error';
-                msg = 'Modelo 404 (Falha Geral)';
+                msg = 'Modelo 404';
+            } else if (err.includes('fetch failed')) {
+                status = 'error';
+                msg = 'Erro de Conexão';
             }
 
             return {
@@ -117,7 +128,6 @@ export default async function handler(request, response) {
     };
 
     // 3. PROCESSAMENTO EM LOTES (BATCH)
-    // Processar 50 chaves simultâneas derruba a conexão. Vamos de 5 em 5.
     const BATCH_SIZE = 5;
     const finalResults = [];
 
@@ -126,7 +136,6 @@ export default async function handler(request, response) {
         const batchResults = await Promise.all(batch.map(k => checkKey(k)));
         finalResults.push(...batchResults);
         
-        // Pequena pausa entre lotes para não ser bloqueado por "flood"
         if (i + BATCH_SIZE < uniqueKeys.length) {
             await new Promise(r => setTimeout(r, 300));
         }
