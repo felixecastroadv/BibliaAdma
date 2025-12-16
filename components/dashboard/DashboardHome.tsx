@@ -127,6 +127,7 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
 
   const allMenuItems = [...baseMenuItems, ...dynamicItems];
   const progressPercent = userProgress ? Math.min(100, (userProgress.total_chapters / TOTAL_CHAPTERS) * 100) : 0;
+  const readCount = userProgress?.total_chapters || 0;
   
   // Custom Styles from Config
   const primaryColor = appConfig?.theme?.primaryColor || '#8B0000';
@@ -223,6 +224,9 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                     <div className="flex flex-col">
                         <span className="font-montserrat text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1"><Sparkles className="w-3 h-3 text-[#C5A059]" /> Progresso</span>
                         <span className="font-cinzel font-bold text-xl" style={{ color: primaryColor }}>Leitura Bíblica</span>
+                        <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mt-1 font-mono tracking-tight bg-gray-100 dark:bg-white/5 px-2 py-0.5 rounded-md self-start border border-gray-200 dark:border-white/10">
+                            {readCount} <span className="opacity-60">/ {TOTAL_CHAPTERS} caps</span>
+                        </span>
                     </div>
                     <div className="flex items-baseline gap-1">
                         <span className="font-montserrat font-bold text-4xl dark:text-white leading-none">{progressPercent.toFixed(0)}</span>
