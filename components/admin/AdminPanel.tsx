@@ -200,66 +200,88 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       onShowToast("Bíblia Restaurada e Sincronizada com Sucesso!", "success");
   };
 
+  // --- RESTAURAÇÃO INTELIGENTE (LIVRO A LIVRO) ---
   const handleRestoreFromCloud = async () => {
-      if (!window.confirm("Isso irá baixar todo o texto bíblico salvo no seu Banco de Dados na Nuvem para este dispositivo. Continuar?")) return;
+      if (!window.confirm("Isso irá verificar a BASE DE DADOS NA NUVEM e baixar todo o texto bíblico salvo para o seu dispositivo. Isso corrige o problema de 'textos sumindo'. Continuar?")) return;
       
       setIsProcessing(true);
-      setProcessStatus("Conectando à Nuvem...");
+      setProcessStatus("Conectando à Base de Dados...");
       setProgress(0);
+      stopBatchRef.current = false;
 
       try {
-          const result = await db.entities.BibleChapter.list();
-          const allChapters = (Array.isArray(result) ? result : []) as any[];
-          
-          if (!allChapters || allChapters.length === 0) {
-              onShowToast("Nenhum capítulo encontrado na nuvem. Use o botão 'Baixar da Web' primeiro.", "error");
-              setIsProcessing(false);
-              return;
-          }
+          let totalRestored = 0;
+          let currentBookIndex = 0;
 
-          setProcessStatus(`Sincronizando ${allChapters.length} arquivos...`);
-          
-          let count = 0;
-          const total = allChapters.length;
-
-          await bibleStorage.clear();
-
-          for (const item of allChapters) {
-              if (item.id && item.verses) {
-                  await bibleStorage.save(item.id, item.verses);
-                  count++;
+          // Itera sobre os livros definidos no constants.ts para buscar ordenadamente
+          for (const book of BIBLE_BOOKS) {
+              if (stopBatchRef.current) break;
+              
+              setProcessStatus(`Verificando Base: ${book.name}...`);
+              
+              // Em vez de buscar TUDO (que quebra por tamanho), buscamos cap a cap ou tentamos carregar do cache da nuvem se existir endpoint especifico.
+              // Como `getCloud` busca por ID, vamos iterar os capítulos. É mais lento, mas INFALÍVEL.
+              
+              for (let c = 1; c <= book.chapters; c++) {
+                  if (stopBatchRef.current) break;
                   
-                  if (count % 20 === 0) {
-                      setProgress(Math.round((count / total) * 100));
-                      setProcessStatus(`Restaurando: ${Math.round((count / total) * 100)}%`);
-                      await new Promise(r => setTimeout(r, 0)); 
+                  const key = `bible_acf_${book.abbrev}_${c}`;
+                  
+                  // Tenta buscar ESPECIFICAMENTE este capítulo na nuvem
+                  const verses = await db.entities.BibleChapter.getCloud(key);
+                  
+                  if (verses && Array.isArray(verses) && verses.length > 0) {
+                      // Salva no IndexedDB Local
+                      await bibleStorage.save(key, verses);
+                      totalRestored++;
+                  }
+
+                  // Atualiza barra de progresso global
+                  const totalSteps = TOTAL_CHAPTERS;
+                  const currentStep = totalRestored; 
+                  // Obs: totalRestored pode divergir se o banco não estiver completo, mas serve de feedback visual
+                  
+                  if (c % 5 === 0) {
+                      // Feedback visual a cada 5 capítulos para não travar a UI
+                      setProcessStatus(`Restaurando: ${book.name} ${c}`);
+                      await new Promise(r => setTimeout(r, 0));
                   }
               }
+              
+              currentBookIndex++;
+              setProgress(Math.round((currentBookIndex / BIBLE_BOOKS.length) * 100));
           }
 
-          setOfflineCount(count);
-          onShowToast(`Sucesso! ${count} capítulos recuperados da nuvem.`, "success");
+          setOfflineCount(await bibleStorage.count());
+          
+          if (totalRestored === 0) {
+              onShowToast("Nenhum texto encontrado na Base de Dados. Por favor, faça o 'Upload JSON' ou 'Baixar da Web' primeiro.", "error");
+          } else {
+              onShowToast(`Restauração Completa! ${totalRestored} capítulos recuperados da Nuvem.`, "success");
+          }
 
-      } catch (e) {
+      } catch (e: any) {
           console.error(e);
-          onShowToast("Erro ao resgatar da nuvem. Verifique a conexão.", "error");
+          onShowToast(`Erro na restauração: ${e.message}`, "error");
       } finally {
           setIsProcessing(false);
           setProgress(0);
       }
   };
 
-  // --- ALGORITMO INTELIGENTE DE IMPORTAÇÃO (RESOLVE O PROBLEMA DOS 180k CAPS) ---
+  // --- IMPORTADOR INTELIGENTE (BIG DATA JSON) ---
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file) return;
       const reader = new FileReader();
       setIsProcessing(true);
       setProcessStatus("Lendo arquivo gigante...");
+      stopBatchRef.current = false;
       
       reader.onload = async (e) => {
           try {
               const jsonText = e.target?.result as string;
+              // Remove BOM se existir
               const cleanJson = jsonText.replace(/^\uFEFF/, ''); 
               let rawData;
               try {
@@ -271,38 +293,38 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
               setProcessStatus("Analisando estrutura e versões...");
               let count = 0;
 
-              // --- ESTRATÉGIA 1: DETECÇÃO DE VERSÍCULOS SOLTOS (O PROBLEMA DOS 180k) ---
-              // Se for um array gigante plano e tiver 'verse' ou 'versiculo', precisamos agrupar.
-              const isFlatVerseList = Array.isArray(rawData) && rawData.length > 5000 && (rawData[0].verse || rawData[0].versiculo);
+              // --- ESTRATÉGIA: DETECÇÃO DE VERSÍCULOS SOLTOS (180k LINHAS) ---
+              // Detecta se é uma lista plana de versículos
+              const isFlatVerseList = Array.isArray(rawData) && rawData.length > 1000 && (rawData[0].verse || rawData[0].versiculo);
               
               if (isFlatVerseList) {
-                  setProcessStatus("Modo Versículos Detectado. Agrupando capítulos...");
-                  // MAPA: Chave = 'gn_1', Valor = ['texto v1', 'texto v2', ...]
+                  setProcessStatus("Modo Big Data Detectado. Agrupando e Filtrando...");
+                  
+                  // MAPA: Chave = 'bible_acf_gn_1', Valor = ['texto v1', 'texto v2', ...]
                   const chaptersMap: Record<string, string[]> = {};
                   const totalItems = rawData.length;
 
                   // 1. Agrupamento em Memória
                   for (let i = 0; i < totalItems; i++) {
+                      if (stopBatchRef.current) break;
                       const item = rawData[i];
                       
-                      // Filtro de Versão: Prioriza ACF, depois ARA, ARC, NVI. Se tiver version e não for uma dessas, ignora se possível.
-                      // Se o usuário só tiver uma versão, aceita qualquer coisa.
+                      // --- FILTRO DE VERSÃO CRUCIAL ---
+                      // Prioriza ACF, Almeida. Ignora NVI, KJV, etc se não for a desejada.
+                      // Se o campo version não existir, assume que é o correto.
                       const version = (item.version || item.versao || "").toLowerCase();
-                      const isTargetVersion = version.includes('acf') || version.includes('almeida') || version === ''; 
+                      const isTargetVersion = version.includes('acf') || version.includes('almeida') || version.includes('corrigida') || version === ''; 
                       
-                      // Se este item não for da versão alvo E soubermos que existe a versão alvo no arquivo, pulamos.
-                      // Simplificação: Se não contém 'acf' ou 'almeida', e não é vazio, pula.
-                      if (version && !version.includes('acf') && !version.includes('almeida')) {
-                          // Opcional: Só pula se tiver certeza que existe ACF no resto do arquivo. 
-                          // Para segurança, vamos permitir importar tudo se não tivermos certeza, mas o mapa sobrescreve.
-                          // MELHOR: Sobrescrever apenas se a versão atual for prioritária.
+                      if (!isTargetVersion) {
+                          // Se detectamos que NÃO é a versão alvo, ignoramos para não misturar textos
+                          continue; 
                       }
 
-                      // Identifica Livro
+                      // Identifica Livro (Normalização de Nomes)
                       let bName = (item.book || item.book_name || item.name || "").toLowerCase();
                       const bAbbrevRaw = (item.abbrev || item.abbreviation || "").toLowerCase();
                       
-                      // Tenta achar o livro no nosso sistema
+                      // Tenta achar o livro no nosso sistema (constants.ts)
                       const foundBook = BIBLE_BOOKS.find(b => 
                           b.abbrev === bAbbrevRaw || 
                           b.name.toLowerCase() === bName || 
@@ -316,109 +338,77 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                       const text = item.text || item.texto;
 
                       if (foundBook && cNum && text) {
+                          // Gera a chave padrão do sistema
                           const key = `bible_acf_${foundBook.abbrev}_${cNum}`;
                           if (!chaptersMap[key]) chaptersMap[key] = [];
-                          // Garante a ordem pelo índice do array (assumindo versículo 1 na posição 0)
+                          
+                          // Garante a ordem pelo índice do array (versículo 1 = índice 0)
                           chaptersMap[key][vNum - 1] = text.trim();
                       }
 
-                      if (i % 5000 === 0) {
+                      if (i % 10000 === 0) {
                           setProcessStatus(`Processando linha ${i}/${totalItems}...`);
-                          await new Promise(r => setTimeout(r, 0));
+                          await new Promise(r => setTimeout(r, 0)); // Yield para UI não travar
                       }
                   }
 
                   // 2. Salvamento dos Capítulos Agrupados
                   const chapterKeys = Object.keys(chaptersMap);
                   const totalChapters = chapterKeys.length;
-                  setProcessStatus(`Salvando ${totalChapters} capítulos montados...`);
+                  setProcessStatus(`Implantando ${totalChapters} capítulos na Base de Dados...`);
 
                   for (let i = 0; i < totalChapters; i++) {
+                      if (stopBatchRef.current) break;
                       const key = chapterKeys[i];
-                      // Remove buracos do array (ex: versículo faltante)
+                      // Remove buracos do array (undefined) caso algum versículo falte
                       const verses = chaptersMap[key].filter(v => v !== undefined && v !== null);
                       
                       if (verses.length > 0) {
+                          // SALVA NA BASE DE DADOS (PRIORIDADE) E LOCAL
                           await db.entities.BibleChapter.saveUniversal(key, verses);
                           count++;
                       }
 
-                      if (i % 10 === 0) {
+                      if (i % 5 === 0) {
                           setProgress(Math.round(((i + 1) / totalChapters) * 100));
-                          setProcessStatus(`Implantando: ${i}/${totalChapters}`);
+                          setProcessStatus(`Salvando na Nuvem: ${i}/${totalChapters}`);
                           await new Promise(r => setTimeout(r, 0));
                       }
                   }
 
               } 
-              // --- ESTRATÉGIA 2: HIERÁRQUICO (LIVROS -> CAPÍTULOS) ---
-              else if (Array.isArray(rawData) && rawData.length > 0 && (rawData[0].capítulos || rawData[0].chapters)) {
-                  const totalBooks = rawData.length;
-                  setProcessStatus("Modo Hierárquico detectado...");
-                  
-                  for (let i = 0; i < totalBooks; i++) {
-                      const bookItem = rawData[i];
-                      const abbrev = (bookItem.abbrev || bookItem.abbreviation || "").toLowerCase();
-                      const chapters = bookItem.capítulos || bookItem.chapters || [];
-                      const bookName = bookItem.nome || bookItem.name;
-
-                      if (abbrev && Array.isArray(chapters)) {
-                          for (let cIndex = 0; cIndex < chapters.length; cIndex++) {
-                              const chapterNum = cIndex + 1;
-                              const versesRaw = chapters[cIndex];
-                              
-                              if (Array.isArray(versesRaw) && versesRaw.length > 0) {
-                                  const cleanVerses = versesRaw.map((v: any) => typeof v === 'string' ? v.trim() : (v.text || "").trim());
-                                  const key = `bible_acf_${abbrev}_${chapterNum}`;
-                                  await db.entities.BibleChapter.saveUniversal(key, cleanVerses);
-                                  count++;
-                              }
-                          }
-                      }
-                      
-                      const pct = Math.round(((i + 1) / totalBooks) * 100);
-                      setProgress(pct);
-                      setProcessStatus(`Importando ${bookName || abbrev}...`);
-                      if (i % 2 === 0) await new Promise(r => setTimeout(r, 0));
-                  }
-              } 
-              // --- ESTRATÉGIA 3: LISTA PLANA DE CAPÍTULOS (JÁ PRONTOS) ---
+              // --- ESTRATÉGIA DE FALLBACK: ARQUIVOS JÁ ESTRUTURADOS ---
               else {
+                  // Código para formatos já agrupados (capítulos inteiros)
                   const flatList = Array.isArray(rawData) ? rawData : (rawData.verses || rawData.chapters || []);
-                  
                   const total = flatList.length;
+                  
                   for (let i = 0; i < total; i++) {
+                      if (stopBatchRef.current) break;
                       const item = flatList[i];
-                      let key = item.key;
+                      let key = item.key; // Se já tiver a chave correta
                       let verses = item.verses || item.text;
 
-                      // Lógica de fallback para gerar chave se não existir
+                      // Se não tiver chave, tenta gerar
                       if (!key) {
-                          let bName = item.book || item.book_name || item.name;
-                          const abbrev = item.abbrev || (item.book && item.book.abbrev);
-                          const cNum = item.chapter || item.c || item.number;
-
-                          if (!bName && abbrev) {
-                              const foundBook = BIBLE_BOOKS.find(b => b.abbrev.toLowerCase() === abbrev.toLowerCase());
-                              if (foundBook) bName = foundBook.name;
-                          }
-
-                          if (bName && cNum) {
-                              key = generateChapterKey(bName, cNum);
-                          } else if (abbrev && cNum) {
+                          // Lógica de fallback
+                          let bName = item.book || item.book_name;
+                          const cNum = item.chapter;
+                          const abbrev = item.abbrev; // Tenta abreviação
+                          
+                          if (abbrev && cNum) {
                               key = `bible_acf_${abbrev.toLowerCase()}_${cNum}`;
+                          } else if (bName && cNum) {
+                              key = generateChapterKey(bName, cNum);
                           }
                       }
 
                       if (key && verses && Array.isArray(verses)) {
-                          if (typeof verses[0] === 'object' && verses[0].text) {
-                              verses = verses.map((v: any) => v.text);
-                          }
                           await db.entities.BibleChapter.saveUniversal(key, verses);
                           count++;
                       }
-
-                      if (i % 20 === 0) {
+                      
+                      if (i % 10 === 0) {
                           setProgress(Math.round((i / total) * 100));
                           setProcessStatus(`Importando: ${i}/${total}`);
                           await new Promise(r => setTimeout(r, 0));
@@ -428,9 +418,9 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
               
               setOfflineCount(await bibleStorage.count());
               if (count === 0) {
-                  onShowToast("Nenhum dado compatível encontrado no arquivo.", "error");
+                  onShowToast("Nenhum dado compatível encontrado. Verifique se o JSON tem versículos ou capítulos.", "error");
               } else {
-                  onShowToast(`Sucesso! ${count} capítulos implantados na Nuvem e Local.`, "success");
+                  onShowToast(`Sucesso! ${count} capítulos salvos na Base de Dados e Offline.`, "success");
               }
 
           } catch (error: any) {
@@ -761,7 +751,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                  <span className="font-bold text-xs text-center dark:text-white">Baixar da Web</span>
              </button>
              
-             {/* BOTÃO RESGATAR DA NUVEM */}
+             {/* BOTÃO RESGATAR DA NUVEM (LIVRO A LIVRO) */}
              <button onClick={handleRestoreFromCloud} disabled={isProcessing} className="bg-[#8B0000] text-white p-4 rounded-xl shadow border border-[#C5A059]/30 flex flex-col items-center justify-center gap-2 hover:bg-[#600018] transition animate-pulse">
                  {isProcessing ? <Loader2 className="w-8 h-8 animate-spin text-white" /> : <Cloud className="w-8 h-8 text-white" />}
                  <span className="font-bold text-xs text-center">Resgatar da Nuvem</span>
