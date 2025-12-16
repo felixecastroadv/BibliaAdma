@@ -159,7 +159,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   };
 
   const handleDownloadBible = async () => {
-      if (!window.confirm("Isso baixará toda a Bíblia da API externa para o armazenamento local. Continuar?")) return;
+      if (!window.confirm("Isso baixará toda a Bíblia da API externa e salvará na NUVEM e no dispositivo. Isso restaura textos perdidos. Continuar?")) return;
       setIsProcessing(true);
       setProcessStatus("Preparando...");
       setProgress(0);
@@ -180,6 +180,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                     const data = await fetchWithRetry(`https://www.abibliadigital.com.br/api/verses/acf/${book.abbrev}/${c}`);
                     if (data && data.verses) {
                         const optimizedVerses = data.verses.map((v: any) => v.text.trim());
+                        // Salva UNIVERSALMENTE (Local + Nuvem)
                         await db.entities.BibleChapter.saveUniversal(key, optimizedVerses);
                         setOfflineCount(prev => (prev || 0) + 1);
                     }
@@ -196,7 +197,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       setIsProcessing(false);
       stopBatchRef.current = false;
       await checkOfflineIntegrity(); 
-      onShowToast("Download Completo!", "success");
+      onShowToast("Bíblia Restaurada e Sincronizada com Sucesso!", "success");
   };
 
   const handleRestoreFromCloud = async () => {
@@ -211,7 +212,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           const allChapters = (Array.isArray(result) ? result : []) as any[];
           
           if (!allChapters || allChapters.length === 0) {
-              onShowToast("Nenhum capítulo encontrado na nuvem para resgatar.", "error");
+              onShowToast("Nenhum capítulo encontrado na nuvem. Use o botão 'Baixar da Web' primeiro.", "error");
               setIsProcessing(false);
               return;
           }
@@ -248,12 +249,13 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       }
   };
 
+  // --- ALGORITMO INTELIGENTE DE IMPORTAÇÃO (RESOLVE O PROBLEMA DOS 180k CAPS) ---
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file) return;
       const reader = new FileReader();
       setIsProcessing(true);
-      setProcessStatus("Lendo arquivo...");
+      setProcessStatus("Lendo arquivo gigante...");
       
       reader.onload = async (e) => {
           try {
@@ -266,10 +268,87 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                   throw new Error("Arquivo JSON inválido/corrompido.");
               }
               
-              setProcessStatus("Analisando estrutura...");
+              setProcessStatus("Analisando estrutura e versões...");
               let count = 0;
 
-              if (Array.isArray(rawData) && rawData.length > 0 && (rawData[0].capítulos || rawData[0].chapters)) {
+              // --- ESTRATÉGIA 1: DETECÇÃO DE VERSÍCULOS SOLTOS (O PROBLEMA DOS 180k) ---
+              // Se for um array gigante plano e tiver 'verse' ou 'versiculo', precisamos agrupar.
+              const isFlatVerseList = Array.isArray(rawData) && rawData.length > 5000 && (rawData[0].verse || rawData[0].versiculo);
+              
+              if (isFlatVerseList) {
+                  setProcessStatus("Modo Versículos Detectado. Agrupando capítulos...");
+                  // MAPA: Chave = 'gn_1', Valor = ['texto v1', 'texto v2', ...]
+                  const chaptersMap: Record<string, string[]> = {};
+                  const totalItems = rawData.length;
+
+                  // 1. Agrupamento em Memória
+                  for (let i = 0; i < totalItems; i++) {
+                      const item = rawData[i];
+                      
+                      // Filtro de Versão: Prioriza ACF, depois ARA, ARC, NVI. Se tiver version e não for uma dessas, ignora se possível.
+                      // Se o usuário só tiver uma versão, aceita qualquer coisa.
+                      const version = (item.version || item.versao || "").toLowerCase();
+                      const isTargetVersion = version.includes('acf') || version.includes('almeida') || version === ''; 
+                      
+                      if (!isTargetVersion && (rawData.some((x:any) => (x.version||"").includes('acf')))) {
+                          continue; // Pula se não for ACF e existir ACF no arquivo
+                      }
+
+                      // Identifica Livro
+                      let bName = (item.book || item.book_name || item.name || "").toLowerCase();
+                      const bAbbrevRaw = (item.abbrev || item.abbreviation || "").toLowerCase();
+                      
+                      // Tenta achar o livro no nosso sistema
+                      const foundBook = BIBLE_BOOKS.find(b => 
+                          b.abbrev === bAbbrevRaw || 
+                          b.name.toLowerCase() === bName || 
+                          b.name.toLowerCase().replace(/ê/g,'e').replace(/á/g,'a') === bName
+                      );
+
+                      if (!foundBook) continue;
+
+                      const cNum = item.chapter || item.capitulo || item.c;
+                      const vNum = item.verse || item.versiculo || item.v;
+                      const text = item.text || item.texto;
+
+                      if (foundBook && cNum && text) {
+                          const key = `bible_acf_${foundBook.abbrev}_${cNum}`;
+                          if (!chaptersMap[key]) chaptersMap[key] = [];
+                          // Garante a ordem pelo índice do array (assumindo versículo 1 na posição 0)
+                          chaptersMap[key][vNum - 1] = text.trim();
+                      }
+
+                      if (i % 5000 === 0) {
+                          setProcessStatus(`Processando linha ${i}/${totalItems}...`);
+                          await new Promise(r => setTimeout(r, 0));
+                      }
+                  }
+
+                  // 2. Salvamento dos Capítulos Agrupados
+                  const chapterKeys = Object.keys(chaptersMap);
+                  const totalChapters = chapterKeys.length;
+                  setProcessStatus(`Salvando ${totalChapters} capítulos montados...`);
+
+                  for (let i = 0; i < totalChapters; i++) {
+                      const key = chapterKeys[i];
+                      // Remove buracos do array (ex: versículo faltante)
+                      const verses = chaptersMap[key].filter(v => v !== undefined && v !== null);
+                      
+                      if (verses.length > 0) {
+                          await db.entities.BibleChapter.saveUniversal(key, verses);
+                          count++;
+                      }
+
+                      if (i % 10 === 0) {
+                          setProgress(Math.round(((i + 1) / totalChapters) * 100));
+                          setProcessStatus(`Implantando: ${i}/${totalChapters}`);
+                          await new Promise(r => setTimeout(r, 0));
+                      }
+                  }
+
+              } 
+              // --- ESTRATÉGIA 2: HIERÁRQUICO (LIVROS -> CAPÍTULOS) ---
+              else if (Array.isArray(rawData) && rawData.length > 0 && (rawData[0].capítulos || rawData[0].chapters)) {
                   const totalBooks = rawData.length;
                   setProcessStatus("Modo Hierárquico detectado...");
                   
@@ -298,9 +377,10 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                       setProcessStatus(`Importando ${bookName || abbrev}...`);
                       if (i % 2 === 0) await new Promise(r => setTimeout(r, 0));
                   }
-              } else {
+              } 
+              // --- ESTRATÉGIA 3: LISTA PLANA DE CAPÍTULOS (JÁ PRONTOS) ---
+              else {
                   const flatList = Array.isArray(rawData) ? rawData : (rawData.verses || rawData.chapters || []);
-                  if (!Array.isArray(flatList)) throw new Error("Formato não reconhecido.");
                   
                   const total = flatList.length;
                   for (let i = 0; i < total; i++) {
@@ -308,6 +388,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                       let key = item.key;
                       let verses = item.verses || item.text;
 
+                      // Lógica de fallback para gerar chave se não existir
                       if (!key) {
                           let bName = item.book || item.book_name || item.name;
                           const abbrev = item.abbrev || (item.book && item.book.abbrev);
@@ -343,14 +424,14 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
               
               setOfflineCount(await bibleStorage.count());
               if (count === 0) {
-                  onShowToast("Nenhum capítulo importado.", "error");
+                  onShowToast("Nenhum dado compatível encontrado no arquivo.", "error");
               } else {
-                  onShowToast(`Sucesso! ${count} capítulos importados.`, "success");
+                  onShowToast(`Sucesso! ${count} capítulos implantados na Nuvem e Local.`, "success");
               }
 
           } catch (error: any) {
               console.error(error);
-              onShowToast(`Erro: ${error.message}`, "error");
+              onShowToast(`Erro crítico: ${error.message}`, "error");
           } finally {
               setIsProcessing(false);
               setProgress(0);

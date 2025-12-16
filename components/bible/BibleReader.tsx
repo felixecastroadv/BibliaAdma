@@ -402,21 +402,24 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
     const loadMetadata = async () => {
         setMetadata(null);
         try {
+            // Tenta pegar local primeiro
             let meta = await db.entities.ChapterMetadata.get(chapterKey);
+            
             if (!meta) {
+               // Tenta pegar da nuvem
                const cloudMeta = await db.entities.ChapterMetadata.getCloud(chapterKey);
                if (cloudMeta) {
                    meta = cloudMeta;
+                   // Sincroniza localmente para o futuro
                    await db.entities.ChapterMetadata.save(meta);
                }
             }
+            
             if (meta) {
                 setMetadata(meta);
-            } else {
-                if (navigator.onLine) {
-                    generateMetadata();
-                }
-            }
+            } 
+            // CORREÇÃO: Não gera automaticamente se não encontrar.
+            // A geração deve ser explícita pelo Admin.
         } catch (e) { console.error("Metadata Error", e); }
     };
 
@@ -430,10 +433,15 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                 const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
                 const res = JSON.parse(cleanJson);
                 if (res && res.title) {
-                    const data = { chapter_key: chapterKey, title: res.title, subtitle: res.subtitle };
+                    const data = { 
+                        chapter_key: chapterKey, // IMPORTANTE: Usa a chave do capítulo como ID
+                        title: res.title, 
+                        subtitle: res.subtitle 
+                    };
+                    // Salva na nuvem e local
                     await db.entities.ChapterMetadata.save(data);
                     setMetadata(data);
-                    onShowToast("Epígrafe atualizada!", "success");
+                    onShowToast("Epígrafe salva para todos!", "success");
                 }
             }
         } catch (e) {
