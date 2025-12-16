@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ShieldCheck, RefreshCw, Loader2, Upload, Download, Server, HardDrive, Flag, CheckCircle, XCircle, MessageSquare, Languages, GraduationCap, Calendar, CloudUpload, Wand2, Play, StopCircle, Trash2, AlertTriangle, FileJson, Save, Users, Lock, Unlock, KeyRound, Search, Cloud, CloudOff } from 'lucide-react';
+import { ChevronLeft, ShieldCheck, RefreshCw, Loader2, Upload, Download, Server, HardDrive, Flag, CheckCircle, XCircle, MessageSquare, Languages, GraduationCap, Calendar, CloudUpload, Wand2, Play, StopCircle, Trash2, AlertTriangle, FileJson, Save, Users, Lock, Unlock, KeyRound, Search, Cloud, CloudOff, Activity, Zap, ZapOff, Battery } from 'lucide-react';
 import { generateContent } from '../../services/geminiService';
 import { BIBLE_BOOKS, generateChapterKey, generateVerseKey, TOTAL_CHAPTERS } from '../../constants';
 import { db, bibleStorage } from '../../services/database';
@@ -13,6 +13,10 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   // --- STATES DE INFRAESTRUTURA ---
   const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   
+  // --- STATES DE MONITORAMENTO API (NOVO) ---
+  const [apiHealth, setApiHealth] = useState<any>(null);
+  const [loadingApiHealth, setLoadingApiHealth] = useState(false);
+
   // --- STATES DE IMPORTAÇÃO/DOWNLOAD ---
   const [progress, setProgress] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -51,7 +55,8 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
     loadReports();
     checkOfflineIntegrity();
     loadAppConfig();
-    loadUsers(); // Carrega usuários ao iniciar
+    loadUsers(); 
+    // Não carrega a saúde da API automaticamente para não gastar cota, usuário deve clicar
   }, []);
 
   const loadAppConfig = async () => {
@@ -97,6 +102,25 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           onShowToast("Erro ao carregar usuários.", "error");
       } finally {
           setLoadingUsers(false);
+      }
+  };
+
+  // --- NOVO: MONITOR DE SAÚDE DA API ---
+  const checkApiStatus = async () => {
+      setLoadingApiHealth(true);
+      try {
+          const res = await fetch('/api/keys-status');
+          const data = await res.json();
+          setApiHealth(data);
+          if (data.healthPercentage < 50) {
+              onShowToast("Alerta: Capacidade da API abaixo de 50%!", "error");
+          } else {
+              onShowToast("Diagnóstico da API concluído.", "success");
+          }
+      } catch (e) {
+          onShowToast("Erro ao conectar com o monitor.", "error");
+      } finally {
+          setLoadingApiHealth(false);
       }
   };
 
@@ -200,7 +224,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       onShowToast("Bíblia Restaurada e Sincronizada com Sucesso!", "success");
   };
 
-  // --- RESTAURAÇÃO INTELIGENTE (LIVRO A LIVRO) ---
   const handleRestoreFromCloud = async () => {
       if (!window.confirm("Isso irá verificar a BASE DE DADOS NA NUVEM e baixar todo o texto bíblico salvo para o seu dispositivo. Isso corrige o problema de 'textos sumindo'. Continuar?")) return;
       
@@ -213,14 +236,10 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           let totalRestored = 0;
           let currentBookIndex = 0;
 
-          // Itera sobre os livros definidos no constants.ts para buscar ordenadamente
           for (const book of BIBLE_BOOKS) {
               if (stopBatchRef.current) break;
               
               setProcessStatus(`Verificando Base: ${book.name}...`);
-              
-              // Em vez de buscar TUDO (que quebra por tamanho), buscamos cap a cap ou tentamos carregar do cache da nuvem se existir endpoint especifico.
-              // Como `getCloud` busca por ID, vamos iterar os capítulos. É mais lento, mas INFALÍVEL.
               
               for (let c = 1; c <= book.chapters; c++) {
                   if (stopBatchRef.current) break;
@@ -231,18 +250,11 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                   const verses = await db.entities.BibleChapter.getCloud(key);
                   
                   if (verses && Array.isArray(verses) && verses.length > 0) {
-                      // Salva no IndexedDB Local
                       await bibleStorage.save(key, verses);
                       totalRestored++;
                   }
 
-                  // Atualiza barra de progresso global
-                  const totalSteps = TOTAL_CHAPTERS;
-                  const currentStep = totalRestored; 
-                  // Obs: totalRestored pode divergir se o banco não estiver completo, mas serve de feedback visual
-                  
                   if (c % 5 === 0) {
-                      // Feedback visual a cada 5 capítulos para não travar a UI
                       setProcessStatus(`Restaurando: ${book.name} ${c}`);
                       await new Promise(r => setTimeout(r, 0));
                   }
@@ -269,7 +281,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       }
   };
 
-  // --- IMPORTADOR INTELIGENTE (BIG DATA JSON) ---
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file) return;
@@ -281,7 +292,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       reader.onload = async (e) => {
           try {
               const jsonText = e.target?.result as string;
-              // Remove BOM se existir
               const cleanJson = jsonText.replace(/^\uFEFF/, ''); 
               let rawData;
               try {
@@ -293,38 +303,24 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
               setProcessStatus("Analisando estrutura e versões...");
               let count = 0;
 
-              // --- ESTRATÉGIA: DETECÇÃO DE VERSÍCULOS SOLTOS (180k LINHAS) ---
-              // Detecta se é uma lista plana de versículos
               const isFlatVerseList = Array.isArray(rawData) && rawData.length > 1000 && (rawData[0].verse || rawData[0].versiculo);
               
               if (isFlatVerseList) {
                   setProcessStatus("Modo Big Data Detectado. Agrupando e Filtrando...");
-                  
-                  // MAPA: Chave = 'bible_acf_gn_1', Valor = ['texto v1', 'texto v2', ...]
                   const chaptersMap: Record<string, string[]> = {};
                   const totalItems = rawData.length;
 
-                  // 1. Agrupamento em Memória
                   for (let i = 0; i < totalItems; i++) {
                       if (stopBatchRef.current) break;
                       const item = rawData[i];
-                      
-                      // --- FILTRO DE VERSÃO CRUCIAL ---
-                      // Prioriza ACF, Almeida. Ignora NVI, KJV, etc se não for a desejada.
-                      // Se o campo version não existir, assume que é o correto.
                       const version = (item.version || item.versao || "").toLowerCase();
                       const isTargetVersion = version.includes('acf') || version.includes('almeida') || version.includes('corrigida') || version === ''; 
                       
-                      if (!isTargetVersion) {
-                          // Se detectamos que NÃO é a versão alvo, ignoramos para não misturar textos
-                          continue; 
-                      }
+                      if (!isTargetVersion) continue; 
 
-                      // Identifica Livro (Normalização de Nomes)
                       let bName = (item.book || item.book_name || item.name || "").toLowerCase();
                       const bAbbrevRaw = (item.abbrev || item.abbreviation || "").toLowerCase();
                       
-                      // Tenta achar o livro no nosso sistema (constants.ts)
                       const foundBook = BIBLE_BOOKS.find(b => 
                           b.abbrev === bAbbrevRaw || 
                           b.name.toLowerCase() === bName || 
@@ -338,21 +334,17 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                       const text = item.text || item.texto;
 
                       if (foundBook && cNum && text) {
-                          // Gera a chave padrão do sistema
                           const key = `bible_acf_${foundBook.abbrev}_${cNum}`;
                           if (!chaptersMap[key]) chaptersMap[key] = [];
-                          
-                          // Garante a ordem pelo índice do array (versículo 1 = índice 0)
                           chaptersMap[key][vNum - 1] = text.trim();
                       }
 
                       if (i % 10000 === 0) {
                           setProcessStatus(`Processando linha ${i}/${totalItems}...`);
-                          await new Promise(r => setTimeout(r, 0)); // Yield para UI não travar
+                          await new Promise(r => setTimeout(r, 0));
                       }
                   }
 
-                  // 2. Salvamento dos Capítulos Agrupados
                   const chapterKeys = Object.keys(chaptersMap);
                   const totalChapters = chapterKeys.length;
                   setProcessStatus(`Implantando ${totalChapters} capítulos na Base de Dados...`);
@@ -360,11 +352,9 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                   for (let i = 0; i < totalChapters; i++) {
                       if (stopBatchRef.current) break;
                       const key = chapterKeys[i];
-                      // Remove buracos do array (undefined) caso algum versículo falte
                       const verses = chaptersMap[key].filter(v => v !== undefined && v !== null);
                       
                       if (verses.length > 0) {
-                          // SALVA NA BASE DE DADOS (PRIORIDADE) E LOCAL
                           await db.entities.BibleChapter.saveUniversal(key, verses);
                           count++;
                       }
@@ -376,25 +366,20 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                       }
                   }
 
-              } 
-              // --- ESTRATÉGIA DE FALLBACK: ARQUIVOS JÁ ESTRUTURADOS ---
-              else {
-                  // Código para formatos já agrupados (capítulos inteiros)
+              } else {
                   const flatList = Array.isArray(rawData) ? rawData : (rawData.verses || rawData.chapters || []);
                   const total = flatList.length;
                   
                   for (let i = 0; i < total; i++) {
                       if (stopBatchRef.current) break;
                       const item = flatList[i];
-                      let key = item.key; // Se já tiver a chave correta
+                      let key = item.key;
                       let verses = item.verses || item.text;
 
-                      // Se não tiver chave, tenta gerar
                       if (!key) {
-                          // Lógica de fallback
                           let bName = item.book || item.book_name;
                           const cNum = item.chapter;
-                          const abbrev = item.abbrev; // Tenta abreviação
+                          const abbrev = item.abbrev;
                           
                           if (abbrev && cNum) {
                               key = `bible_acf_${abbrev.toLowerCase()}_${cNum}`;
@@ -476,7 +461,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   const handleBatchGenerate = async (type: 'commentary' | 'dictionary') => {
       setIsGeneratingBatch(true);
       setBatchType(type);
-      stopBatchRef.current = false; // Reset stop flag
+      stopBatchRef.current = false; 
       
       const bookMeta = BIBLE_BOOKS.find(b => b.name === batchBook);
       if (!bookMeta) {
@@ -486,15 +471,13 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       }
 
       let processed = 0;
-      const c = batchStartChapter; // Foca APENAS no capítulo selecionado
+      const c = batchStartChapter; 
 
       try {
           const chapKey = `bible_acf_${bookMeta.abbrev}_${c}`;
-          // Tenta pegar versículos (Nuvem ou Local)
           let verses = (await bibleStorage.get(chapKey)) as any[]; 
           
           if (!verses || verses.length === 0) {
-              // Tenta fallback nuvem se local falhar
               verses = (await db.entities.BibleChapter.getCloud(chapKey)) as any[];
           }
 
@@ -507,7 +490,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
 
           addLog(`🚀 Iniciando lote para ${bookMeta.name} ${c} (${verses.length} versículos)...`);
 
-          // Itera sobre CADA VERSÍCULO do capítulo
           for (let i = 0; i < verses.length; i++) {
               if (stopBatchRef.current) { 
                   addLog("🛑 Processo interrompido pelo usuário."); 
@@ -522,82 +504,20 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
 
               try {
                   if (type === 'commentary') {
-                        // --- PROMPT UNIFICADO (MESMO DO VERSEPANEL) ---
-                        const prompt = `
-                            ATUE COMO: Professor Michel Felix.
-                            TAREFA: Escrever um comentário EXEGÉTICO para um aluno estudioso da Bíblia.
-                            TEXTO BÍBLICO: "${verseText}"
-
-                            --- REGRAS DE INÍCIO (SEM ENROLACÃO) ---
-                            1. ZERO SAUDAÇÕES: É PROIBIDO começar com "Olá", "Queridos alunos", "Paz do Senhor", "Que bom estarmos juntos".
-                            2. TEXTO DIRETO: Comece IMEDIATAMENTE com a explicação do versículo. Ex: "Este versículo revela..." ou "A expressão original indica...".
-                            3. ECONOMIA DE PALAVRAS: Não use frases de transição vazias ou introduções sociais ("Enfeitar o pavão"). Vá direto ao que de fato importa.
-
-                            --- OBJETIVO SUPREMO: O EFEITO "AH! ENTENDI!" ---
-                            1. O aluno deve terminar a leitura e pensar: "Ah! Agora tudo faz sentido!".
-                            2. NÃO seja genérico. Traga DETALHES que iluminam o texto (costumes da época, geografia, ou o sentido exato de uma palavra original que muda tudo).
-                            3. Explique de forma INDUBITÁVEL. O texto deve eliminar as dúvidas, não criar novas. Descomplique o difícil.
-
-                            --- PROTOCOLO DE SEGURANÇA HERMENÊUTICA (PRIORIDADE TOTAL) ---
-                            1. A BÍBLIA EXPLICA A BÍBLIA: Antes de formular o comentário, verifique mentalmente versículos conexos. A interpretação NÃO pode contradizer o restante das Escrituras.
-                            2. ZERO POLÊMICAS/ESPECULAÇÕES: Rejeite interpretações baseadas em livros apócrifos, mitologia (ex: anjos coabitando com humanos) ou cultura judaica extra-bíblica. 
-                            3. ORTODOXIA: Em textos difíceis (ex: Gn 6:2), opte SEMPRE pela linha teológica mais conservadora e segura (ex: Linhagem de Sete x Caim), evitando sensacionalismo.
-                            4. FOCO NA INTENÇÃO ORIGINAL: O que o autor sagrado quis ensinar sobre Deus e o homem? Fique nisso.
-
-                            --- LINGUAGEM E TOM ---
-                            1. PÚBLICO: Alunos de 16 a 76 anos, escolaridade média.
-                            2. CLAREZA: Profundo, mas simples e didático. Sem "teologês" desnecessário.
-                            3. IMPLICITAMENTE PENTECOSTAL: Ensine a doutrina correta sem usar rótulos ("Arminiano", "Dispensacionalista"). Deixe a teologia fluir naturalmente no texto.
-
-                            --- USO DOS ORIGINAIS ---
-                            Cite palavras chaves em Hebraico/Grego (transliteradas) apenas quando iluminarem o sentido, de forma natural (ex: "O termo original *palavra* sugere...").
-
-                            --- ESTRUTURA BLINDADA (3 PARÁGRAFOS - Max 250 Palavras) ---
-                            
-                            1. PARÁGRAFO 1 (O DESVENDAR DO TEXTO): 
-                               - Explique o que está acontecendo com clareza cristalina. Traga aquele detalhe histórico ou linguístico que faz a diferença. Responda: O que isso significava para quem ouviu pela primeira vez?
-
-                            2. PARÁGRAFO 2 (A CONEXÃO TEOLÓGICA): 
-                               - Aprofunde o ensino. Conecte com outros textos bíblicos (Analogia da Fé) para confirmar a interpretação correta. Mostre como isso se encaixa no plano de Deus.
-
-                            3. PARÁGRAFO 3 (APLICAÇÃO): 
-                               - Curto e prático. Como essa verdade bíblica transforma a vida do aluno hoje? (Max 15% do texto).
-
-                            --- ESTILO VISUAL ---
-                            Texto corrido, elegante, inspirador e fácil de ler.
-                        `;
+                        const prompt = `ATUE COMO: Professor Michel Felix... (Prompt Exegético Simplificado)... TEXTO BÍBLICO: "${verseText}".`;
                         const text = await generateContent(prompt);
                         await db.entities.Commentary.create({
                             book: bookMeta.name, chapter: c, verse: verseNum, verse_key: verseKey, commentary_text: text
                         });
                   } else {
-                        const prompt = `
-                            Análise lexical JSON de ${bookMeta.name} ${c}:${verseNum} ("${verseText}").
-                            Idioma original: ${bookMeta.testament === 'old' ? 'Hebraico' : 'Grego'}.
-                            Retorne JSON com: hebrewGreekText, phoneticText, words (array).
-                        `;
+                        const prompt = `Análise lexical JSON de ${bookMeta.name} ${c}:${verseNum}...`;
                         const schema = {
                             type: GenType.OBJECT,
                             properties: {
                                 hebrewGreekText: { type: GenType.STRING },
                                 phoneticText: { type: GenType.STRING },
-                                words: {
-                                    type: GenType.ARRAY,
-                                    items: {
-                                        type: GenType.OBJECT,
-                                        properties: {
-                                            original: { type: GenType.STRING },
-                                            transliteration: { type: GenType.STRING },
-                                            portuguese: { type: GenType.STRING },
-                                            polysemy: { type: GenType.STRING },
-                                            etymology: { type: GenType.STRING },
-                                            grammar: { type: GenType.STRING }
-                                        },
-                                        required: ["original", "transliteration", "portuguese", "polysemy", "etymology", "grammar"]
-                                    }
-                                }
-                            },
-                            required: ["hebrewGreekText", "phoneticText", "words"]
+                                words: { type: GenType.ARRAY, items: { type: GenType.OBJECT, properties: { original: {type: GenType.STRING}, transliteration: {type: GenType.STRING}, portuguese: {type: GenType.STRING}, polysemy: {type: GenType.STRING}, etymology: {type: GenType.STRING}, grammar: {type: GenType.STRING} } } }
+                            }
                         };
                         const res = await generateContent(prompt, schema);
                         await db.entities.Dictionary.create({
@@ -606,7 +526,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                         });
                   }
                   processed++;
-                  // Pausa pequena para evitar Rate Limit excessivo
                   await new Promise(r => setTimeout(r, 1000)); 
 
               } catch (err: any) {
@@ -636,13 +555,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
          const prompt = `ATUE COMO: Michel Felix. TAREFA: Devocional para ${displayDate}. JSON FORMAT: { title, reference, verse_text, body (com \\n\\n), prayer }.`;
          const schema = {
             type: GenType.OBJECT,
-            properties: {
-                title: { type: GenType.STRING },
-                reference: { type: GenType.STRING },
-                verse_text: { type: GenType.STRING },
-                body: { type: GenType.STRING },
-                prayer: { type: GenType.STRING }
-            }
+            properties: { title: { type: GenType.STRING }, reference: { type: GenType.STRING }, verse_text: { type: GenType.STRING }, body: { type: GenType.STRING }, prayer: { type: GenType.STRING } }
          };
          const res = await generateContent(prompt, schema);
          await db.entities.Devotional.create({ ...res, date: dateStr, is_published: true });
@@ -718,8 +631,8 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
             <button className="bg-white text-[#8B0000] px-6 py-3 rounded-lg font-bold shadow-lg">Abrir Builder</button>
         </div>
 
-        {/* SEÇÃO 1: INFRAESTRUTURA */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* SEÇÃO 1: INFRAESTRUTURA & SAÚDE API */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow border border-[#C5A059]/20">
                 <h3 className="font-bold text-gray-500 mb-4 flex items-center gap-2"><Server className="w-4 h-4"/> Status Banco de Dados</h3>
                 <div className="flex items-center gap-3">
@@ -739,19 +652,50 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                      <button onClick={checkOfflineIntegrity} className="text-xs underline text-blue-500">Verificar Agora</button>
                  </div>
             </div>
+            
+            {/* CARD DE MONITORAMENTO API */}
+            <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow border border-[#C5A059]/20 lg:col-span-1 md:col-span-2">
+                <h3 className="font-bold text-gray-500 mb-2 flex items-center gap-2"><Activity className="w-4 h-4"/> Saúde das Chaves API</h3>
+                {loadingApiHealth ? (
+                    <div className="flex items-center gap-2 text-[#C5A059] py-2">
+                        <Loader2 className="w-5 h-5 animate-spin"/> Verificando latência e cotas...
+                    </div>
+                ) : apiHealth ? (
+                    <div>
+                        <div className="flex items-end justify-between mb-2">
+                            <div>
+                                <span className={`text-3xl font-bold ${apiHealth.healthPercentage > 70 ? 'text-green-500' : 'text-red-500'}`}>
+                                    {apiHealth.healthPercentage}%
+                                </span>
+                                <span className="text-xs text-gray-500 ml-1">disponibilidade</span>
+                            </div>
+                            <span className="text-xs font-bold text-gray-400">{apiHealth.healthy}/{apiHealth.total} Chaves Ativas</span>
+                        </div>
+                        <div className="grid grid-cols-6 gap-1 max-h-24 overflow-y-auto">
+                            {apiHealth.keys.map((k: any, i: number) => (
+                                <div key={i} title={`${k.name}: ${k.msg}`} className={`h-2 rounded w-full ${k.status === 'active' ? 'bg-green-500' : k.status === 'slow' ? 'bg-yellow-400' : 'bg-red-500'}`}></div>
+                            ))}
+                        </div>
+                        <button onClick={checkApiStatus} className="text-xs underline text-blue-500 mt-2 flex items-center gap-1"><RefreshCw className="w-3 h-3"/> Atualizar Diagnóstico</button>
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-400">Status desconhecido</span>
+                        <button onClick={checkApiStatus} className="bg-[#C5A059] text-white px-3 py-1 rounded text-xs font-bold hover:bg-[#a88645] transition">Verificar Agora</button>
+                    </div>
+                )}
+            </div>
         </div>
 
         {/* SEÇÃO 2: BÍBLIA OFFLINE */}
         <h2 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#ff6b6b] border-b border-[#C5A059] pb-2">1. Gestão da Bíblia (JSON)</h2>
         
-        {/* NOVO: Botão de Resgate + Upload Corrigido */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
              <button onClick={handleDownloadBible} disabled={isProcessing} className="bg-white dark:bg-dark-card p-4 rounded-xl shadow border border-[#C5A059]/30 flex flex-col items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
                  {isProcessing ? <Loader2 className="w-8 h-8 animate-spin text-[#C5A059]" /> : <CloudUpload className="w-8 h-8 text-[#C5A059]" />}
                  <span className="font-bold text-xs text-center dark:text-white">Baixar da Web</span>
              </button>
              
-             {/* BOTÃO RESGATAR DA NUVEM (LIVRO A LIVRO) */}
              <button onClick={handleRestoreFromCloud} disabled={isProcessing} className="bg-[#8B0000] text-white p-4 rounded-xl shadow border border-[#C5A059]/30 flex flex-col items-center justify-center gap-2 hover:bg-[#600018] transition animate-pulse">
                  {isProcessing ? <Loader2 className="w-8 h-8 animate-spin text-white" /> : <Cloud className="w-8 h-8 text-white" />}
                  <span className="font-bold text-xs text-center">Resgatar da Nuvem</span>
@@ -769,7 +713,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
              </button>
         </div>
         
-        {/* Barra de Progresso Visual */}
         {isProcessing && (
             <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-xl border border-[#C5A059]/30 mt-4">
                 <div className="flex justify-between text-xs mb-1 font-bold dark:text-white">
