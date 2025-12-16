@@ -10,43 +10,41 @@ import AppBuilder from './AppBuilder';
 import { format, addDays } from 'date-fns';
 
 export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void, onShowToast: (msg: string, type: 'success' | 'error' | 'info') => void }) {
-  // --- STATES DE INFRAESTRUTURA ---
   const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   
-  // --- STATES DE MONITORAMENTO API (NOVO) ---
+  // STATES DE MONITORAMENTO API
   const [apiHealth, setApiHealth] = useState<any>(null);
   const [loadingApiHealth, setLoadingApiHealth] = useState(false);
 
-  // --- STATES DE IMPORTAÇÃO/DOWNLOAD ---
+  // STATES DE IMPORTAÇÃO/DOWNLOAD
   const [progress, setProgress] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processStatus, setProcessStatus] = useState('');
   const [offlineCount, setOfflineCount] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // --- STATES DE GERAÇÃO EM LOTE ---
+  // STATES DE GERAÇÃO EM LOTE
   const [batchBook, setBatchBook] = useState('Gênesis');
   const [batchStartChapter, setBatchStartChapter] = useState(1);
   const [isGeneratingBatch, setIsGeneratingBatch] = useState(false);
   const [batchType, setBatchType] = useState<'commentary' | 'dictionary' | null>(null);
   const [batchLogs, setBatchLogs] = useState<string[]>([]);
   
-  // Ref para controle imediato de parada (State não atualiza dentro do loop async)
   const stopBatchRef = useRef(false);
 
-  // --- STATE DE DEVOCIONAL ---
+  // STATE DE DEVOCIONAL
   const [devotionalDate, setDevotionalDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // --- STATES DE RELATÓRIOS ---
+  // STATES DE RELATÓRIOS
   const [reports, setReports] = useState<ContentReport[]>([]);
   const [showReportsModal, setShowReportsModal] = useState(false);
 
-  // --- STATES DE USUÁRIOS (NOVO) ---
+  // STATES DE USUÁRIOS
   const [usersList, setUsersList] = useState<UserProgress[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const [loadingUsers, setLoadingUsers] = useState(false);
 
-  // --- BUILDER STATE ---
+  // BUILDER STATE
   const [showBuilder, setShowBuilder] = useState(false);
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
 
@@ -56,7 +54,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
     checkOfflineIntegrity();
     loadAppConfig();
     loadUsers(); 
-    // Não carrega a saúde da API automaticamente para não gastar cota, usuário deve clicar
   }, []);
 
   const loadAppConfig = async () => {
@@ -95,7 +92,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   const loadUsers = async () => {
       setLoadingUsers(true);
       try {
-          // Usa listagem de progresso para pegar usuários (a tabela ReadingProgress armazena os usuários)
           const data = await db.entities.ReadingProgress.list('chapters', 1000); 
           setUsersList(data || []);
       } catch(e) {
@@ -105,7 +101,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       }
   };
 
-  // --- NOVO: MONITOR DE SAÚDE DA API ---
   const checkApiStatus = async () => {
       setLoadingApiHealth(true);
       try {
@@ -135,7 +130,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       }
   };
 
-  // --- AÇÕES DE USUÁRIO ---
   const toggleUserBlock = async (user: UserProgress) => {
       const newStatus = !user.is_blocked;
       if (!window.confirm(newStatus ? `Bloquear ${user.user_name}?` : `Desbloquear ${user.user_name}?`)) return;
@@ -154,8 +148,8 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       
       try {
           await db.entities.ReadingProgress.update(user.id!, { 
-              password_pin: "", // Limpa a senha
-              reset_requested: false // Remove a flag de pedido
+              password_pin: "", 
+              reset_requested: false 
           });
           setUsersList(prev => prev.map(u => u.id === user.id ? { ...u, password_pin: "", reset_requested: false } : u));
           onShowToast("Senha resetada com sucesso.", "success");
@@ -164,26 +158,8 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       }
   };
 
-  // --- FUNÇÕES DE DOWNLOAD / IMPORTAÇÃO BÍBLIA ---
-  const fetchWithRetry = async (url: string, retries = 3, backoff = 1000): Promise<any> => {
-      try {
-          const res = await fetch(url);
-          if (res.status === 429) throw new Error("RATE_LIMIT");
-          if (!res.ok) throw new Error(`HTTP_${res.status}`);
-          const json = await res.json();
-          if (!json || !json.verses || json.verses.length === 0) throw new Error("EMPTY_DATA");
-          return json;
-      } catch (e: any) {
-          if (retries > 0) {
-              await new Promise(r => setTimeout(r, backoff));
-              return fetchWithRetry(url, retries - 1, backoff * 2);
-          }
-          throw e;
-      }
-  };
-
   const handleDownloadBible = async () => {
-      if (!window.confirm("Isso baixará toda a Bíblia da API externa e salvará na NUVEM e no dispositivo. Isso restaura textos perdidos. Continuar?")) return;
+    if (!window.confirm("Isso baixará toda a Bíblia da API externa e salvará na NUVEM e no dispositivo. Isso restaura textos perdidos. Continuar?")) return;
       setIsProcessing(true);
       setProcessStatus("Preparando...");
       setProgress(0);
@@ -204,7 +180,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                     const data = await fetchWithRetry(`https://www.abibliadigital.com.br/api/verses/acf/${book.abbrev}/${c}`);
                     if (data && data.verses) {
                         const optimizedVerses = data.verses.map((v: any) => v.text.trim());
-                        // Salva UNIVERSALMENTE (Local + Nuvem)
                         await db.entities.BibleChapter.saveUniversal(key, optimizedVerses);
                         setOfflineCount(prev => (prev || 0) + 1);
                     }
@@ -238,40 +213,30 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
 
           for (const book of BIBLE_BOOKS) {
               if (stopBatchRef.current) break;
-              
               setProcessStatus(`Verificando Base: ${book.name}...`);
-              
               for (let c = 1; c <= book.chapters; c++) {
                   if (stopBatchRef.current) break;
-                  
                   const key = `bible_acf_${book.abbrev}_${c}`;
-                  
-                  // Tenta buscar ESPECIFICAMENTE este capítulo na nuvem
                   const verses = await db.entities.BibleChapter.getCloud(key);
-                  
                   if (verses && Array.isArray(verses) && verses.length > 0) {
                       await bibleStorage.save(key, verses);
                       totalRestored++;
                   }
-
                   if (c % 5 === 0) {
                       setProcessStatus(`Restaurando: ${book.name} ${c}`);
                       await new Promise(r => setTimeout(r, 0));
                   }
               }
-              
               currentBookIndex++;
               setProgress(Math.round((currentBookIndex / BIBLE_BOOKS.length) * 100));
           }
 
           setOfflineCount(await bibleStorage.count());
-          
           if (totalRestored === 0) {
               onShowToast("Nenhum texto encontrado na Base de Dados. Por favor, faça o 'Upload JSON' ou 'Baixar da Web' primeiro.", "error");
           } else {
               onShowToast(`Restauração Completa! ${totalRestored} capítulos recuperados da Nuvem.`, "success");
           }
-
       } catch (e: any) {
           console.error(e);
           onShowToast(`Erro na restauração: ${e.message}`, "error");
@@ -294,15 +259,10 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
               const jsonText = e.target?.result as string;
               const cleanJson = jsonText.replace(/^\uFEFF/, ''); 
               let rawData;
-              try {
-                  rawData = JSON.parse(cleanJson);
-              } catch (parseError) {
-                  throw new Error("Arquivo JSON inválido/corrompido.");
-              }
+              try { rawData = JSON.parse(cleanJson); } catch (parseError) { throw new Error("Arquivo JSON inválido/corrompido."); }
               
               setProcessStatus("Analisando estrutura e versões...");
               let count = 0;
-
               const isFlatVerseList = Array.isArray(rawData) && rawData.length > 1000 && (rawData[0].verse || rawData[0].versiculo);
               
               if (isFlatVerseList) {
@@ -315,18 +275,10 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                       const item = rawData[i];
                       const version = (item.version || item.versao || "").toLowerCase();
                       const isTargetVersion = version.includes('acf') || version.includes('almeida') || version.includes('corrigida') || version === ''; 
-                      
                       if (!isTargetVersion) continue; 
-
                       let bName = (item.book || item.book_name || item.name || "").toLowerCase();
                       const bAbbrevRaw = (item.abbrev || item.abbreviation || "").toLowerCase();
-                      
-                      const foundBook = BIBLE_BOOKS.find(b => 
-                          b.abbrev === bAbbrevRaw || 
-                          b.name.toLowerCase() === bName || 
-                          b.name.toLowerCase().replace(/ê/g,'e').replace(/á/g,'a') === bName
-                      );
-
+                      const foundBook = BIBLE_BOOKS.find(b => b.abbrev === bAbbrevRaw || b.name.toLowerCase() === bName || b.name.toLowerCase().replace(/ê/g,'e').replace(/á/g,'a') === bName);
                       if (!foundBook) continue;
 
                       const cNum = item.chapter || item.capitulo || item.c;
@@ -338,61 +290,41 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                           if (!chaptersMap[key]) chaptersMap[key] = [];
                           chaptersMap[key][vNum - 1] = text.trim();
                       }
-
                       if (i % 10000 === 0) {
                           setProcessStatus(`Processando linha ${i}/${totalItems}...`);
                           await new Promise(r => setTimeout(r, 0));
                       }
                   }
-
                   const chapterKeys = Object.keys(chaptersMap);
                   const totalChapters = chapterKeys.length;
                   setProcessStatus(`Implantando ${totalChapters} capítulos na Base de Dados...`);
-
                   for (let i = 0; i < totalChapters; i++) {
                       if (stopBatchRef.current) break;
                       const key = chapterKeys[i];
                       const verses = chaptersMap[key].filter(v => v !== undefined && v !== null);
-                      
-                      if (verses.length > 0) {
-                          await db.entities.BibleChapter.saveUniversal(key, verses);
-                          count++;
-                      }
-
+                      if (verses.length > 0) { await db.entities.BibleChapter.saveUniversal(key, verses); count++; }
                       if (i % 5 === 0) {
                           setProgress(Math.round(((i + 1) / totalChapters) * 100));
                           setProcessStatus(`Salvando na Nuvem: ${i}/${totalChapters}`);
                           await new Promise(r => setTimeout(r, 0));
                       }
                   }
-
               } else {
                   const flatList = Array.isArray(rawData) ? rawData : (rawData.verses || rawData.chapters || []);
                   const total = flatList.length;
-                  
                   for (let i = 0; i < total; i++) {
                       if (stopBatchRef.current) break;
                       const item = flatList[i];
                       let key = item.key;
                       let verses = item.verses || item.text;
-
                       if (!key) {
                           let bName = item.book || item.book_name;
                           const cNum = item.chapter;
                           const abbrev = item.abbrev;
-                          
-                          if (abbrev && cNum) {
-                              key = `bible_acf_${abbrev.toLowerCase()}_${cNum}`;
-                          } else if (bName && cNum) {
-                              key = generateChapterKey(bName, cNum);
-                          }
+                          if (abbrev && cNum) { key = `bible_acf_${abbrev.toLowerCase()}_${cNum}`; } 
+                          else if (bName && cNum) { key = generateChapterKey(bName, cNum); }
                       }
-
-                      if (key && verses && Array.isArray(verses)) {
-                          await db.entities.BibleChapter.saveUniversal(key, verses);
-                          count++;
-                      }
-                      
+                      if (key && verses && Array.isArray(verses)) { await db.entities.BibleChapter.saveUniversal(key, verses); count++; }
                       if (i % 10 === 0) {
                           setProgress(Math.round((i / total) * 100));
                           setProcessStatus(`Importando: ${i}/${total}`);
@@ -400,14 +332,9 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                       }
                   }
               }
-              
               setOfflineCount(await bibleStorage.count());
-              if (count === 0) {
-                  onShowToast("Nenhum dado compatível encontrado. Verifique se o JSON tem versículos ou capítulos.", "error");
-              } else {
-                  onShowToast(`Sucesso! ${count} capítulos salvos na Base de Dados e Offline.`, "success");
-              }
-
+              if (count === 0) { onShowToast("Nenhum dado compatível encontrado.", "error"); } 
+              else { onShowToast(`Sucesso! ${count} capítulos salvos.`, "success"); }
           } catch (error: any) {
               console.error(error);
               onShowToast(`Erro crítico: ${error.message}`, "error");
@@ -450,7 +377,23 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       }
   };
 
-  // --- FUNÇÕES DE GERAÇÃO EM LOTE (IA) ---
+  const fetchWithRetry = async (url: string, retries = 3, backoff = 1000): Promise<any> => {
+      try {
+          const res = await fetch(url);
+          if (res.status === 429) throw new Error("RATE_LIMIT");
+          if (!res.ok) throw new Error(`HTTP_${res.status}`);
+          const json = await res.json();
+          if (!json || !json.verses || json.verses.length === 0) throw new Error("EMPTY_DATA");
+          return json;
+      } catch (e: any) {
+          if (retries > 0) {
+              await new Promise(r => setTimeout(r, backoff));
+              return fetchWithRetry(url, retries - 1, backoff * 2);
+          }
+          throw e;
+      }
+  };
+
   const addLog = (msg: string) => setBatchLogs(prev => [msg, ...prev].slice(0, 50));
 
   const handleStopBatch = () => {
@@ -505,7 +448,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
               try {
                   if (type === 'commentary') {
                         const prompt = `ATUE COMO: Professor Michel Felix... (Prompt Exegético Simplificado)... TEXTO BÍBLICO: "${verseText}".`;
-                        const text = await generateContent(prompt);
+                        const text = await generateContent(prompt, null, false, 'commentary');
                         await db.entities.Commentary.create({
                             book: bookMeta.name, chapter: c, verse: verseNum, verse_key: verseKey, commentary_text: text
                         });
@@ -519,7 +462,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                                 words: { type: GenType.ARRAY, items: { type: GenType.OBJECT, properties: { original: {type: GenType.STRING}, transliteration: {type: GenType.STRING}, portuguese: {type: GenType.STRING}, polysemy: {type: GenType.STRING}, etymology: {type: GenType.STRING}, grammar: {type: GenType.STRING} } } }
                             }
                         };
-                        const res = await generateContent(prompt, schema);
+                        const res = await generateContent(prompt, schema, false, 'dictionary');
                         await db.entities.Dictionary.create({
                             book: bookMeta.name, chapter: c, verse: verseNum, verse_key: verseKey,
                             original_text: res.hebrewGreekText, transliteration: res.phoneticText, key_words: res.words
@@ -557,7 +500,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
             type: GenType.OBJECT,
             properties: { title: { type: GenType.STRING }, reference: { type: GenType.STRING }, verse_text: { type: GenType.STRING }, body: { type: GenType.STRING }, prayer: { type: GenType.STRING } }
          };
-         const res = await generateContent(prompt, schema);
+         const res = await generateContent(prompt, schema, false, 'devotional');
          await db.entities.Devotional.create({ ...res, date: dateStr, is_published: true });
          addLog(`Devocional de ${displayDate} criado com sucesso!`);
          onShowToast(`Devocional de ${displayDate} gerado!`, "success");
@@ -579,7 +522,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   return (
     <div className="min-h-screen bg-[#FDFBF7] dark:bg-dark-bg transition-colors duration-300">
       
-      {/* MODAL DE RELATÓRIOS (Mantido) */}
       {showReportsModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <div className="absolute inset-0 bg-black/60" onClick={() => setShowReportsModal(false)} />
@@ -606,7 +548,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           </div>
       )}
 
-      {/* HEADER */}
       <div className="bg-[#1a0f0f] text-white p-4 flex items-center gap-4 sticky top-0 shadow-lg z-10">
         <button onClick={onBack}><ChevronLeft /></button>
         <h1 className="font-cinzel font-bold text-[#C5A059] flex items-center gap-2">
@@ -622,7 +563,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
 
       <div className="p-6 max-w-4xl mx-auto space-y-8 pb-24">
         
-        {/* BOTÃO BUILDER */}
         <div className="bg-gradient-to-r from-[#C5A059] to-[#8B0000] p-6 rounded-xl shadow-xl text-white flex justify-between items-center transform hover:scale-[1.01] transition-transform cursor-pointer" onClick={() => setShowBuilder(true)}>
             <div>
                 <h2 className="font-cinzel font-bold text-2xl flex items-center gap-2"><Wand2 className="w-6 h-6"/> ADMA Builder AI</h2>
@@ -631,7 +571,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
             <button className="bg-white text-[#8B0000] px-6 py-3 rounded-lg font-bold shadow-lg">Abrir Builder</button>
         </div>
 
-        {/* SEÇÃO 1: INFRAESTRUTURA & SAÚDE API */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow border border-[#C5A059]/20">
                 <h3 className="font-bold text-gray-500 mb-4 flex items-center gap-2"><Server className="w-4 h-4"/> Status Banco de Dados</h3>
@@ -653,7 +592,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                  </div>
             </div>
             
-            {/* CARD DE MONITORAMENTO API */}
             <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow border border-[#C5A059]/20 lg:col-span-1 md:col-span-2">
                 <h3 className="font-bold text-gray-500 mb-2 flex items-center gap-2"><Activity className="w-4 h-4"/> Saúde das Chaves API</h3>
                 {loadingApiHealth ? (
@@ -687,26 +625,21 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
             </div>
         </div>
 
-        {/* SEÇÃO 2: BÍBLIA OFFLINE */}
         <h2 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#ff6b6b] border-b border-[#C5A059] pb-2">1. Gestão da Bíblia (JSON)</h2>
-        
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
              <button onClick={handleDownloadBible} disabled={isProcessing} className="bg-white dark:bg-dark-card p-4 rounded-xl shadow border border-[#C5A059]/30 flex flex-col items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
                  {isProcessing ? <Loader2 className="w-8 h-8 animate-spin text-[#C5A059]" /> : <CloudUpload className="w-8 h-8 text-[#C5A059]" />}
                  <span className="font-bold text-xs text-center dark:text-white">Baixar da Web</span>
              </button>
-             
              <button onClick={handleRestoreFromCloud} disabled={isProcessing} className="bg-[#8B0000] text-white p-4 rounded-xl shadow border border-[#C5A059]/30 flex flex-col items-center justify-center gap-2 hover:bg-[#600018] transition animate-pulse">
                  {isProcessing ? <Loader2 className="w-8 h-8 animate-spin text-white" /> : <Cloud className="w-8 h-8 text-white" />}
                  <span className="font-bold text-xs text-center">Resgatar da Nuvem</span>
              </button>
-
              <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow border border-[#C5A059]/30 flex flex-col items-center justify-center gap-2 relative overflow-hidden group hover:bg-gray-50 cursor-pointer">
                  <Upload className="w-8 h-8 text-blue-500" />
                  <span className="font-bold text-xs text-center dark:text-white">Upload JSON (4MB)</span>
                  <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".json" className="absolute inset-0 opacity-0 cursor-pointer" disabled={isProcessing} />
              </div>
-             
              <button onClick={handleExportJson} disabled={isProcessing} className="bg-white dark:bg-dark-card p-4 rounded-xl shadow border border-[#C5A059]/30 flex flex-col items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
                  <Download className="w-8 h-8 text-green-500" />
                  <span className="font-bold text-xs text-center dark:text-white">Backup Local</span>
@@ -725,7 +658,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
             </div>
         )}
 
-        {/* SEÇÃO 3: FÁBRICA DE CONTEÚDO */}
         <h2 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#ff6b6b] border-b border-[#C5A059] pb-2 mt-8">2. Fábrica de Conteúdo (IA)</h2>
         <div className="bg-white dark:bg-dark-card p-6 rounded-xl shadow border-l-4 border-[#8B0000]">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -760,7 +692,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
             )}
         </div>
 
-        {/* SEÇÃO 4: GESTÃO DE USUÁRIOS (NOVO) */}
         <h2 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#ff6b6b] border-b border-[#C5A059] pb-2 mt-8">3. Gestão de Usuários</h2>
         <div className="bg-white dark:bg-dark-card rounded-xl shadow border border-[#C5A059]/20 overflow-hidden">
             <div className="p-4 bg-gray-50 dark:bg-gray-900 border-b border-[#C5A059]/20 flex gap-2">

@@ -8,7 +8,7 @@ import { generateContent } from '../../services/geminiService';
 import { ChapterMetadata } from '../../types';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- CATEGORIZAÇÃO DIDÁTICA DA BÍBLIA ---
+// ... (BIBLE_CATEGORIES e PremiumNavigator mantidos sem alteração) ...
 const BIBLE_CATEGORIES = [
     {
         id: 'ot_law',
@@ -58,7 +58,6 @@ const PremiumNavigator = ({ isOpen, onClose, currentBook, onSelect }: any) => {
     const [selectedBook, setSelectedBook] = useState<string>(currentBook);
     const [searchTerm, setSearchTerm] = useState('');
 
-    // Rola para o livro selecionado ao abrir
     const bookListRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
         if (isOpen) {
@@ -69,7 +68,6 @@ const PremiumNavigator = ({ isOpen, onClose, currentBook, onSelect }: any) => {
 
     const activeBookData = BIBLE_BOOKS.find(b => b.name === selectedBook);
     
-    // Filtragem de busca
     const filteredCategories = searchTerm.trim() === '' 
         ? BIBLE_CATEGORIES 
         : BIBLE_CATEGORIES.map(cat => ({
@@ -88,7 +86,6 @@ const PremiumNavigator = ({ isOpen, onClose, currentBook, onSelect }: any) => {
                     exit={{ scale: 0.95, opacity: 0, y: 20 }}
                     className="bg-[#FDFBF7] dark:bg-[#121212] w-full md:w-[90%] md:max-w-5xl h-full md:h-[85vh] md:rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-[#C5A059]/30"
                 >
-                    {/* Header Luxuoso */}
                     <div className="bg-[#1a0f0f] text-white p-5 flex items-center justify-between shrink-0 border-b border-[#C5A059]/50 relative overflow-hidden">
                         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
                         <div className="relative z-10 flex flex-col">
@@ -101,9 +98,7 @@ const PremiumNavigator = ({ isOpen, onClose, currentBook, onSelect }: any) => {
                     </div>
 
                     <div className="flex flex-col md:flex-row h-full overflow-hidden">
-                        {/* COLUNA ESQUERDA: LISTA DE LIVROS (Com Busca e Categorias) */}
                         <div className="w-full md:w-1/3 border-r border-[#C5A059]/20 bg-[#F5F5DC]/50 dark:bg-black/20 flex flex-col h-[50vh] md:h-full">
-                            {/* Barra de Busca */}
                             <div className="p-4 border-b border-[#C5A059]/10 bg-white dark:bg-[#1E1E1E]">
                                 <div className="relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -116,8 +111,6 @@ const PremiumNavigator = ({ isOpen, onClose, currentBook, onSelect }: any) => {
                                     />
                                 </div>
                             </div>
-
-                            {/* Lista Categorizada */}
                             <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-hide" ref={bookListRef}>
                                 {filteredCategories.map((cat) => (
                                     <div key={cat.id} className="animate-in slide-in-from-left-5 duration-500">
@@ -156,9 +149,7 @@ const PremiumNavigator = ({ isOpen, onClose, currentBook, onSelect }: any) => {
                             </div>
                         </div>
 
-                        {/* COLUNA DIREITA: CAPÍTULOS (Visual Premium) */}
                         <div className="w-full md:w-2/3 bg-white dark:bg-[#1E1E1E] flex flex-col h-[50vh] md:h-full relative">
-                             {/* Título do Livro Selecionado */}
                              <div className="p-6 md:p-8 text-center border-b border-[#C5A059]/10 bg-gradient-to-b from-[#FDFBF7] to-white dark:from-[#1E1E1E] dark:to-[#151515]">
                                 <motion.div 
                                     key={selectedBook}
@@ -179,7 +170,6 @@ const PremiumNavigator = ({ isOpen, onClose, currentBook, onSelect }: any) => {
                                 </motion.div>
                              </div>
 
-                             {/* Grid de Capítulos */}
                              <div className="flex-1 overflow-y-auto p-6 md:p-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed">
                                 <motion.div 
                                     key={selectedBook + "_grid"}
@@ -204,7 +194,6 @@ const PremiumNavigator = ({ isOpen, onClose, currentBook, onSelect }: any) => {
                                 </motion.div>
                              </div>
 
-                             {/* Botão Flutuante 'Ler Capítulo 1' se não quiser escolher */}
                              <div className="absolute bottom-6 right-6 md:hidden">
                                 <button 
                                     onClick={() => { onSelect(selectedBook, 1); onClose(); }}
@@ -259,7 +248,6 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
     const [selectedVoice, setSelectedVoice] = useState<string>('');
     const [playbackRate, setPlaybackRate] = useState(1);
     
-    // --- LÓGICA DO TIMER DE LEITURA (RANKING JUSTO) ---
     const READING_TIME_SEC = 40;
     const [readingTimer, setReadingTimer] = useState(0);
 
@@ -285,22 +273,19 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
         }
     }, [playbackRate, selectedVoice]);
 
-    // Efeito para carregar capítulo e INICIAR TIMER
     useEffect(() => {
         window.scrollTo(0, 0);
         fetchChapter();
         loadMetadata();
 
-        // Se já foi lido, timer é 0. Se não, inicia em 40s.
         if (isRead) {
             setReadingTimer(0);
         } else {
             setReadingTimer(READING_TIME_SEC);
         }
 
-    }, [book, chapter]); // Reinicia sempre que muda o capítulo
+    }, [book, chapter]);
 
-    // Efeito para contagem regressiva
     useEffect(() => {
         let interval: any;
         if (readingTimer > 0 && !isRead) {
@@ -323,7 +308,6 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
 
             const cacheKey = `bible_acf_${bookMeta.abbrev}_${chapter}`;
             
-            // 1. TENTA OFFLINE (IndexedDB)
             const cached = await db.entities.BibleChapter.getOffline(cacheKey);
             if (cached && Array.isArray(cached) && cached.length > 0) {
                 const formatted = cached.map((t: string, i: number) => ({ number: i + 1, text: t }));
@@ -332,27 +316,6 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                 return;
             }
 
-            // 2. TENTA LOCAL STORAGE (LEGADO)
-            const legacyCache = localStorage.getItem(cacheKey);
-            if (legacyCache) {
-                try {
-                    const parsed = JSON.parse(legacyCache);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                        if (typeof parsed[0] === 'string') {
-                            const formatted = parsed.map((t: string, i: number) => ({ number: i + 1, text: t }));
-                            setVerses(formatted);
-                            setLoading(false);
-                            return;
-                        } else if (typeof parsed[0] === 'object' && parsed[0].text) {
-                            setVerses(parsed);
-                            setLoading(false);
-                            return;
-                        }
-                    }
-                } catch(e) {}
-            }
-
-            // 3. TENTA NUVEM (SUPABASE - UNIVERSAL)
             const cloudData = await db.entities.BibleChapter.getCloud(cacheKey);
             if (cloudData && Array.isArray(cloudData) && cloudData.length > 0) {
                 setSourceMode('cloud');
@@ -363,7 +326,6 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                 return;
             }
 
-            // 4. FALLBACK FINAL: API EXTERNA
             setSourceMode('online');
             const res = await fetch(`https://www.abibliadigital.com.br/api/verses/acf/${bookMeta.abbrev}/${chapter}`);
             if (!res.ok) throw new Error("Falha ao baixar da internet.");
@@ -402,15 +364,12 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
     const loadMetadata = async () => {
         setMetadata(null);
         try {
-            // Tenta pegar local primeiro
             let meta = await db.entities.ChapterMetadata.get(chapterKey);
             
             if (!meta) {
-               // Tenta pegar da nuvem
                const cloudMeta = await db.entities.ChapterMetadata.getCloud(chapterKey);
                if (cloudMeta) {
                    meta = cloudMeta;
-                   // Sincroniza localmente para o futuro
                    await db.entities.ChapterMetadata.save(meta);
                }
             }
@@ -418,8 +377,6 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
             if (meta) {
                 setMetadata(meta);
             } 
-            // CORREÇÃO: Não gera automaticamente se não encontrar.
-            // A geração deve ser explícita pelo Admin.
         } catch (e) { console.error("Metadata Error", e); }
     };
 
@@ -428,17 +385,17 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
         setIsGeneratingMeta(true);
         const prompt = `ATUE COMO: Teólogo Brasileiro. TAREFA: Gerar metadados para ${book} ${chapter}. IDIOMA DE RESPOSTA: PORTUGUÊS DO BRASIL (pt-BR). FORMATO JSON OBRIGATÓRIO (sem markdown): { "title": "Título Curto (Max 5 palavras)", "subtitle": "Resumo em 1 frase" }. Estilo: Clássico e Conservador.`;
         try {
-            const rawText = await generateContent(prompt, null);
+            // Usa 'metadata' keys
+            const rawText = await generateContent(prompt, null, false, 'metadata');
             if (rawText) {
                 const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
                 const res = JSON.parse(cleanJson);
                 if (res && res.title) {
                     const data = { 
-                        chapter_key: chapterKey, // IMPORTANTE: Usa a chave do capítulo como ID
+                        chapter_key: chapterKey, 
                         title: res.title, 
                         subtitle: res.subtitle 
                     };
-                    // Salva na nuvem e local
                     await db.entities.ChapterMetadata.save(data);
                     setMetadata(data);
                     onShowToast("Epígrafe salva para todos!", "success");
@@ -452,6 +409,7 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
         }
     };
 
+    // ... (Resto do JSX e métodos mantidos igual) ...
     const togglePlay = () => {
         if (isPlaying) { window.speechSynthesis.cancel(); setIsPlaying(false); }
         else {
@@ -502,7 +460,7 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
 
     return (
         <div className="min-h-screen bg-transparent flex flex-col transition-colors duration-300">
-            {/* Header com Ultra Glassmorphism */}
+            {/* ... (Header e Controles mantidos igual) ... */}
             <div className="sticky top-0 z-30 bg-[#8B0000]/80 dark:bg-black/60 backdrop-blur-xl text-white p-3 shadow-lg flex justify-between items-center border-b border-white/10 safe-top">
                 <div className="flex items-center gap-2">
                     <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full transition-all active:scale-90"><ChevronLeft /></button>
@@ -674,7 +632,6 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                 </div>
             </div>
 
-            {/* Bottom Controls Float */}
             <div className="fixed bottom-6 left-0 w-full px-4 flex justify-between items-center z-20 pointer-events-none pb-safe">
                  <button onClick={handlePrev} className="pointer-events-auto w-12 h-12 bg-white/90 dark:bg-[#1E1E1E]/90 backdrop-blur shadow-lg rounded-full flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-[#8B0000] hover:scale-110 active:scale-95 transition-all border border-gray-200 dark:border-gray-700">
                     <ChevronLeft className="w-6 h-6" />

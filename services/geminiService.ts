@@ -29,10 +29,14 @@ function processResponse(text: string | undefined, jsonSchema: any) {
     return text;
 }
 
+// Tipos de tarefas para roteamento de chaves
+export type TaskType = 'commentary' | 'dictionary' | 'devotional' | 'ebd' | 'metadata' | 'general';
+
 export const generateContent = async (
   prompt: string, 
   jsonSchema?: any,
-  isLongOutput: boolean = false
+  isLongOutput: boolean = false,
+  taskType: TaskType = 'general' // Novo parâmetro com default
 ) => {
     try {
         const adminKey = getStoredApiKey();
@@ -57,19 +61,24 @@ export const generateContent = async (
                 config: config
             });
             
-            return processResponse(response.response.text(), jsonSchema);
+            // Fixed: use response.text directly instead of response.response.text()
+            return processResponse(response.text, jsonSchema);
         } 
         
-        // --- MODO SERVER (Com Streaming e Retry no Backend) ---
+        // --- MODO SERVER (Com Roteamento de Chaves) ---
         const controller = new AbortController();
-        // Timeout generoso de 5 minutos
         const timeoutMs = 300000; 
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         const response = await fetch('/api/gemini', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: prompt, schema: jsonSchema, isLongOutput: isLongOutput }),
+            body: JSON.stringify({ 
+                prompt, 
+                schema: jsonSchema, 
+                isLongOutput,
+                taskType // Envia o tipo para o backend escolher o pool
+            }),
             signal: controller.signal
         });
 
@@ -80,7 +89,7 @@ export const generateContent = async (
             throw new Error(errData.error || `Erro (${response.status}): Falha na comunicação com a IA.`);
         }
 
-        // SE FOR STREAMING (Long Output), lemos o body como stream
+        // SE FOR STREAMING (Long Output)
         if (isLongOutput && !jsonSchema && response.body) {
             const reader = response.body.getReader();
             const decoder = new TextDecoder("utf-8");
@@ -94,7 +103,7 @@ export const generateContent = async (
             }
             
             if (!fullText || fullText.trim().length === 0) {
-                 throw new Error("Conexão estabelecida, mas a IA não enviou texto. Possível bloqueio de segurança ou sobrecarga.");
+                 throw new Error("Conexão estabelecida, mas a IA não enviou texto.");
             }
             return fullText;
         }

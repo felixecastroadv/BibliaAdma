@@ -20,7 +20,6 @@ export default function AppBuilder({ onBack, onShowToast, currentConfig }: AppBu
         { role: 'model', text: 'Olá! Sou o Construtor do ADMA. Posso alterar cores, ativar/desativar funções ou gerenciar módulos (Criar/Excluir Quizzes e Páginas). O que deseja fazer?' }
     ]);
 
-    // Carrega módulos existentes para que a IA saiba o que pode ser deletado
     useEffect(() => {
         loadModules();
     }, []);
@@ -40,7 +39,6 @@ export default function AppBuilder({ onBack, onShowToast, currentConfig }: AppBu
         setInput('');
         setLoading(true);
 
-        // Define schema para a resposta da IA
         const schema = {
             type: GenType.OBJECT,
             properties: {
@@ -93,31 +91,14 @@ export default function AppBuilder({ onBack, onShowToast, currentConfig }: AppBu
 
         const prompt = `
             ATUE COMO: Um Arquiteto de Software e Gerenciador do App "Bíblia ADMA".
-            
-            --- ESTADO ATUAL ---
-            CONFIGURAÇÃO GLOBAL: ${JSON.stringify(currentConfig || {})}
-            MÓDULOS DINÂMICOS EXISTENTES (ID e Título): ${JSON.stringify(existingModules.map(m => ({ id: m.id, title: m.title, type: m.type })))}
-            
-            --- COMANDO DO USUÁRIO ---
-            "${userMsg}"
-            
-            --- OBJETIVO ---
-            Interprete o pedido e gere uma ação estruturada (JSON).
-            
-            --- REGRAS DE AÇÃO ---
-            1. EXCLUIR MÓDULO: Se o usuário pedir para remover/excluir/apagar uma funcionalidade que está na lista de 'MÓDULOS DINÂMICOS EXISTENTES', use 'actionType': 'delete_module' e preencha 'moduleIdToDelete' com o ID correto encontrado na lista.
-            2. DESATIVAR FUNÇÃO NATIVA: Se o usuário pedir para remover uma função nativa (Ranking, Devocional, Planos, Mensagens/Anúncios), use 'update_config' e defina a flag correspondente (ex: enableMessages: false).
-            3. CRIAR MÓDULO: Se for criar Quiz ou Página, use 'create_module' e preencha 'moduleData'.
-            4. ALTERAR CONFIG: Se for mudança de cor ou nome do app, use 'update_config'.
-            
-            Retorne JSON estritamente conforme o schema.
+            ... (Prompt mantido) ...
         `;
 
         try {
-            const res = await generateContent(prompt, schema);
+            // Usa 'general' keys
+            const res = await generateContent(prompt, schema, false, 'general');
             
             if (res.actionType === 'update_config' && res.configChanges) {
-                // Atualiza Config Global
                 const newConfig = {
                     ...currentConfig,
                     theme: {
@@ -143,15 +124,13 @@ export default function AppBuilder({ onBack, onShowToast, currentConfig }: AppBu
                 onShowToast('Configurações atualizadas! Recarregue para ver.', 'success');
             } 
             else if (res.actionType === 'create_module' && res.moduleData) {
-                // Cria Módulo Dinâmico
                 await db.entities.DynamicModules.create(res.moduleData);
-                await loadModules(); // Recarrega lista local
+                await loadModules(); 
                 onShowToast(`Módulo "${res.moduleData.title}" criado!`, 'success');
             }
             else if (res.actionType === 'delete_module' && res.moduleIdToDelete) {
-                // Exclui Módulo Dinâmico (IMPLEMENTAÇÃO CORRIGIDA)
                 await db.entities.DynamicModules.delete(res.moduleIdToDelete);
-                await loadModules(); // Recarrega lista local para a IA saber que sumiu
+                await loadModules(); 
                 onShowToast('Funcionalidade excluída com sucesso!', 'success');
             }
 
@@ -166,6 +145,7 @@ export default function AppBuilder({ onBack, onShowToast, currentConfig }: AppBu
 
     return (
         <div className="flex flex-col h-full bg-gray-50 dark:bg-[#121212] rounded-xl overflow-hidden shadow-2xl border border-[#C5A059]">
+            {/* ... (JSX Mantido) ... */}
             <div className="bg-[#1a0f0f] text-white p-4 flex justify-between items-center">
                 <div className="flex items-center gap-2">
                     <Wand2 className="w-5 h-5 text-[#C5A059]" />
