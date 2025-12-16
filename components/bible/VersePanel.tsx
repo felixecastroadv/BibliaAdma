@@ -296,15 +296,17 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
             TEXTO BÍBLICO: "${verse}"
             ${customPromptAddon}
 
-            --- REGRAS DE INÍCIO (SEM ENROLACÃO) ---
-            1. ZERO SAUDAÇÕES: É PROIBIDO começar com "Olá", "Queridos alunos", "Paz do Senhor", "Que bom estarmos juntos".
-            2. TEXTO DIRETO: Comece IMEDIATAMENTE com a explicação do versículo. Ex: "Este versículo revela..." ou "A expressão original indica...".
-            3. ECONOMIA DE PALAVRAS: Não use frases de transição vazias ou introduções sociais ("Enfeitar o pavão"). Vá direto ao que de fato importa.
+            --- REGRAS DE INÍCIO (RIGOROSO) ---
+            1. INÍCIO OBRIGATÓRIO: Todo comentário DEVE começar EXATAMENTE com a frase: "Este versículo revela...".
+            2. ZERO SAUDAÇÕES: É PROIBIDO começar com "Olá", "Queridos alunos", "Paz do Senhor" ou qualquer introdução social.
 
-            --- OBJETIVO SUPREMO: O EFEITO "AH! ENTENDI!" ---
+            --- OBJETIVO SUPREMO: O EFEITO "AH! ENTENDI!" (CLAREZA TOTAL) ---
             1. O aluno deve terminar a leitura e pensar: "Ah! Agora tudo faz sentido!".
-            2. NÃO seja genérico. Traga DETALHES que iluminam o texto (costumes da época, geografia, ou o sentido exato de uma palavra original que muda tudo).
-            3. Explique de forma INDUBITÁVEL. O texto deve eliminar as dúvidas, não criar novas. Descomplique o difícil.
+            2. VOCABULÁRIO ACESSÍVEL:
+               - EVITE palavras arcaicas, difíceis ou pouco usuais. Se houver um sinônimo comum, USE O SINÔNIMO. O texto deve ser compreendido instantaneamente.
+               - TERMOS TÉCNICOS (Ex: Teofania, Antropopatismo, Soteriologia) são permitidos, mas OBRIGATORIAMENTE devem vir seguidos de sua definição simples entre parênteses. Ex: "Vemos aqui uma Teofania (uma aparição visível de Deus)..." ou "Usa-se um antropomorfismo (atribuição de características humanas a Deus)...".
+            3. NÃO seja genérico. Traga DETALHES que iluminam o texto (costumes da época, geografia, ou o sentido exato de uma palavra original que muda tudo).
+            4. Explique de forma INDUBITÁVEL. Descomplique o difícil.
 
             --- PROTOCOLO DE SEGURANÇA HERMENÊUTICA (PRIORIDADE TOTAL) ---
             1. A BÍBLIA EXPLICA A BÍBLIA: Antes de formular o comentário, verifique mentalmente versículos conexos. A interpretação NÃO pode contradizer o restante das Escrituras.
@@ -314,7 +316,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
 
             --- LINGUAGEM E TOM ---
             1. PÚBLICO: Alunos de 16 a 76 anos, escolaridade média.
-            2. CLAREZA: Profundo, mas simples e didático. Sem "teologês" desnecessário.
+            2. CLAREZA: Profundo, mas simples e didático. Sem "teologês" solto. O texto deve ser fluído e natural.
             3. IMPLICITAMENTE PENTECOSTAL: Ensine a doutrina correta sem usar rótulos ("Arminiano", "Dispensacionalista"). Deixe a teologia fluir naturalmente no texto.
 
             --- USO DOS ORIGINAIS ---
