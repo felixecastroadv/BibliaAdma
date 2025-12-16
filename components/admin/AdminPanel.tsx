@@ -229,38 +229,41 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           }
 
           // 2. Restaurar Conteúdos (EBD, Comentários, Dicionários, Devocionais)
-          setProcessStatus("Restaurando Conteúdos Gerados (EBD, Comentários)...");
+          setProcessStatus("Sincronizando Conteúdos (EBD, Comentários)...");
+          
+          // O método .list() do database.ts já faz o sync local automaticamente ao baixar da nuvem.
           
           // EBD Panorama
           const ebds = await db.entities.PanoramaBiblico.list();
           if (ebds && ebds.length) {
-             setProcessStatus(`Restaurando ${ebds.length} Estudos de EBD...`);
-             // O método .list() do database.ts já faz o sync local automaticamente, mas vamos garantir.
-             onShowToast(`${ebds.length} Estudos EBD recuperados.`, 'info');
+             setProcessStatus(`Recuperados ${ebds.length} Estudos EBD.`);
+             await new Promise(r => setTimeout(r, 500));
           }
 
           // Comentários
           const commentaries = await db.entities.Commentary.list();
           if (commentaries && commentaries.length) {
-              setProcessStatus(`Restaurando ${commentaries.length} Comentários...`);
+              setProcessStatus(`Recuperados ${commentaries.length} Comentários.`);
+              await new Promise(r => setTimeout(r, 500));
           }
 
           // Dicionários
           const dicts = await db.entities.Dictionary.list();
           if (dicts && dicts.length) {
-              setProcessStatus(`Restaurando ${dicts.length} Dicionários...`);
+              setProcessStatus(`Recuperados ${dicts.length} Dicionários.`);
+              await new Promise(r => setTimeout(r, 500));
           }
 
           // Devocionais
           const devotionals = await db.entities.Devotional.list();
           if (devotionals && devotionals.length) {
-              setProcessStatus(`Restaurando ${devotionals.length} Devocionais...`);
+              setProcessStatus(`Recuperados ${devotionals.length} Devocionais.`);
           }
           
           setProgress(100);
           setOfflineCount(await bibleStorage.count());
           
-          onShowToast(`Restauração Completa! Dados sincronizados do Supabase.`, "success");
+          onShowToast(`Restauração Completa! ${totalRestored} capítulos e todos os conteúdos sincronizados.`, "success");
 
       } catch (e: any) {
           console.error(e);
