@@ -60,9 +60,9 @@ export const generateContent = async (
             return processResponse(response.response.text(), jsonSchema);
         } 
         
-        // --- MODO SERVER (Com Streaming para Long Output) ---
+        // --- MODO SERVER (Com Streaming e Retry no Backend) ---
         const controller = new AbortController();
-        // Timeout generoso de 5 minutos, mas o streaming previne o corte do servidor
+        // Timeout generoso de 5 minutos
         const timeoutMs = 300000; 
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -94,7 +94,7 @@ export const generateContent = async (
             }
             
             if (!fullText || fullText.trim().length === 0) {
-                 throw new Error("A resposta da IA veio vazia.");
+                 throw new Error("Conexão estabelecida, mas a IA não enviou texto. Possível bloqueio de segurança ou sobrecarga.");
             }
             return fullText;
         }
@@ -111,7 +111,7 @@ export const generateContent = async (
         }
         
         const msg = error.message || "";
-        if (msg.includes("429")) throw new Error("Muitas pessoas usando o app agora. Tente em 1 minuto.");
+        if (msg.includes("429")) throw new Error("Sistema sobrecarregado. Aguarde 1 minuto.");
         
         throw new Error(msg || "Não foi possível gerar o conteúdo.");
     }
