@@ -6,6 +6,9 @@ export const config = {
   supportsResponseStreaming: true, 
 };
 
+// Função de espera para não bombardear a API
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export default async function handler(request, response) {
   response.setHeader('Access-Control-Allow-Credentials', true);
   response.setHeader('Access-Control-Allow-Origin', '*');
@@ -30,14 +33,6 @@ export default async function handler(request, response) {
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
     // --- 1. COLETA E CATEGORIZAÇÃO DE CHAVES ---
-    // Estratégia de Alocação (Baseada na solicitação):
-    // 1-5: Comentários (Professor)
-    // 6-8: Dicionário
-    // 9: Devocional
-    // 10-14: EBD (Panorama)
-    // 15: Metadados (Epígrafes)
-    // 16-17 + Named: Geral (Chat, Builder, Fallback)
-
     const keyPools = {
         commentary: [], // 1-5
         dictionary: [], // 6-8
@@ -47,39 +42,28 @@ export default async function handler(request, response) {
         general: []     // 16-17 + Extras
     };
 
-    // Processa chaves numeradas (1 a 50)
     for (let i = 1; i <= 50; i++) {
         const keyName = `API_KEY_${i}`;
         const val = process.env[keyName];
-        
         if (val && val.trim().length > 20) {
             const key = val.trim();
-            
-            // Distribuição Lógica
             if (i >= 1 && i <= 5) keyPools.commentary.push(key);
             else if (i >= 6 && i <= 8) keyPools.dictionary.push(key);
             else if (i === 9) keyPools.devotional.push(key);
             else if (i >= 10 && i <= 14) keyPools.ebd.push(key);
             else if (i === 15) keyPools.metadata.push(key);
-            else if (i >= 16 && i <= 17) keyPools.general.push(key);
-            // Chaves extras (18-50) vão para o pool geral como reforço
             else keyPools.general.push(key); 
         }
     }
 
-    // Adiciona chaves nomeadas ao pool Geral
     if (process.env.API_KEY) keyPools.general.push(process.env.API_KEY);
     if (process.env.Biblia_ADMA_API) keyPools.general.push(process.env.Biblia_ADMA_API);
 
-    // Remove duplicatas dentro de cada pool (sanidade)
-    Object.keys(keyPools).forEach(k => {
-        keyPools[k] = [...new Set(keyPools[k])];
-    });
+    // Remove duplicatas
+    Object.keys(keyPools).forEach(k => { keyPools[k] = [...new Set(keyPools[k])]; });
 
-    // --- 2. SELEÇÃO DO POOL ---
+    // Seleção de Pool
     let targetPool = [];
-    
-    // Define qual pool usar baseado no taskType enviado pelo frontend
     switch (taskType) {
         case 'commentary': targetPool = keyPools.commentary; break;
         case 'dictionary': targetPool = keyPools.dictionary; break;
@@ -89,42 +73,38 @@ export default async function handler(request, response) {
         default: targetPool = keyPools.general; break;
     }
 
-    // FALLBACK INTELIGENTE:
-    // Se o pool específico estiver vazio (ex: usuário não configurou a chave 9),
-    // usa o pool 'general' para não quebrar o app.
-    if (targetPool.length === 0) {
-        console.warn(`Pool '${taskType}' vazio. Usando General.`);
-        targetPool = keyPools.general;
-    }
-    
-    // Se ainda assim estiver vazio, tenta pegar QUALQUER chave disponível no sistema
-    if (targetPool.length === 0) {
-        const all = Object.values(keyPools).flat();
-        targetPool = all;
-    }
+    // Fallback de pool se vazio
+    if (targetPool.length === 0) targetPool = keyPools.general;
+    if (targetPool.length === 0) targetPool = Object.values(keyPools).flat();
 
     if (targetPool.length === 0) {
          return response.status(500).json({ error: 'SERVER CONFIG ERROR: Nenhuma chave de API válida encontrada.' });
     }
 
-    // Embaralha as chaves do pool selecionado
+    // Embaralha chaves
     const shuffledKeys = targetPool.sort(() => 0.5 - Math.random());
 
-    // --- 3. EXECUÇÃO DA IA (COM RETRY) ---
-    // Streaming (EBD) ou Standard
-    if (isLongOutput && !schema) {
-        // MODO STREAMING (EBD)
-        let lastError = null;
-        // Tenta até 3 chaves do pool selecionado
-        const keysToTry = shuffledKeys.slice(0, 3);
+    // --- ESTRATÉGIA DE MODELOS ---
+    // Se o principal falhar, tenta o experimental que costuma estar menos cheio
+    const MODELS = ["gemini-2.5-flash", "gemini-2.0-flash-exp"];
 
-        for (const apiKey of keysToTry) {
+    // --- 3. EXECUÇÃO DA IA (COM RETRY INTELIGENTE) ---
+    
+    // MODO STREAMING (Textos Longos: EBD, Comentário)
+    if (isLongOutput && !schema) {
+        let lastError = null;
+        // Tenta até 4 chaves/modelos diferentes
+        const attempts = Math.min(shuffledKeys.length, 4);
+
+        for (let i = 0; i < attempts; i++) {
+            const apiKey = shuffledKeys[i];
+            // Alterna modelo baseado na tentativa (par/impar) para aumentar chance
+            const modelId = MODELS[i % MODELS.length]; 
+
             try {
                 const ai = new GoogleGenAI({ apiKey });
-                const modelId = "gemini-2.5-flash"; 
-
                 const aiConfig = {
-                    temperature: 0.8,
+                    temperature: 0.7, // Reduzi levemente para estabilidade
                     topP: 0.95,
                     topK: 40,
                     maxOutputTokens: 8192,
@@ -139,7 +119,6 @@ export default async function handler(request, response) {
                 response.setHeader('Content-Type', 'text/plain; charset=utf-8');
                 response.setHeader('Transfer-Encoding', 'chunked');
 
-                // Correct iteration for @google/genai stream
                 for await (const chunk of result) {
                     const chunkText = chunk.text;
                     if (chunkText) {
@@ -148,33 +127,40 @@ export default async function handler(request, response) {
                 }
                 
                 response.end();
-                return; 
+                return; // Sucesso
 
             } catch (streamError) {
-                console.error(`Stream Error (${taskType}):`, streamError.message);
+                console.error(`Stream Error (${taskType}) [Key ${i}]:`, streamError.message);
                 lastError = streamError;
+                
+                // Se já enviou headers, não tem como recuperar
                 if (response.headersSent) { response.end(); return; }
-                await new Promise(r => setTimeout(r, 1000)); 
+                
+                // Se erro for 503 (Overloaded) ou 429 (Quota), espera um pouco antes de tentar a próxima chave
+                if (streamError.message.includes('503') || streamError.message.includes('429')) {
+                    await delay(1500 * (i + 1)); // Backoff: 1.5s, 3s, 4.5s...
+                }
             }
         }
         
+        // Se falhou todas
         const msg = lastError?.message || 'Erro desconhecido';
-        if (msg.includes('429')) return response.status(429).json({ error: 'Cotas excedidas para esta funcionalidade. Tente mais tarde.' });
-        return response.status(500).json({ error: `Falha na geração: ${msg}` });
+        return response.status(503).json({ error: `Servidores do Google sobrecarregados (503). Tente novamente em alguns segundos. Detalhe: ${msg}` });
     }
 
-    // MODO PADRÃO (JSON/Short Text)
+    // MODO PADRÃO (JSON/Curto: Dicionário, Devocional, Chat)
     let successResponse = null;
     let lastError = null;
-    const shortKeysToTry = shuffledKeys.slice(0, 3);
+    const shortAttempts = Math.min(shuffledKeys.length, 4);
 
-    for (const apiKey of shortKeysToTry) {
+    for (let i = 0; i < shortAttempts; i++) {
+        const apiKey = shuffledKeys[i];
+        const modelId = MODELS[i % MODELS.length];
+
         try {
             const ai = new GoogleGenAI({ apiKey });
-            const modelId = "gemini-2.5-flash"; 
-            
             const aiConfig = {
-                temperature: 0.7,
+                temperature: 0.6, // Mais conservador para JSON
                 topP: 0.95,
                 topK: 40,
             };
@@ -190,13 +176,15 @@ export default async function handler(request, response) {
                 config: aiConfig
             });
             
-            // Correct usage for @google/genai standard response
             successResponse = result.text;
-            break; 
+            break; // Sucesso
 
         } catch (error) {
             lastError = error;
-            if (error.message.includes('429')) await new Promise(r => setTimeout(r, 1000));
+            console.error(`Standard Error [Key ${i}]:`, error.message);
+            if (error.message.includes('503') || error.message.includes('429')) {
+                await delay(1000 * (i + 1));
+            }
         }
     }
 
@@ -204,13 +192,10 @@ export default async function handler(request, response) {
         return response.status(200).json({ text: successResponse });
     } else {
         const msg = lastError?.message || '';
-        if (msg.includes('429')) {
-             return response.status(429).json({ error: 'Muitas requisições nesta funcionalidade. Tente novamente em 1 minuto.' });
-        }
-        return response.status(500).json({ error: `Erro na geração: ${msg}` });
+        return response.status(503).json({ error: `Instabilidade na IA (Google 503). Por favor, clique em tentar novamente. (${msg})` });
     }
 
   } catch (error) {
-    return response.status(500).json({ error: 'Erro interno crítico.' });
+    return response.status(500).json({ error: 'Erro interno crítico no servidor ADMA.' });
   }
 }

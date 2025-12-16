@@ -16,14 +16,17 @@ export const clearStoredApiKey = () => {
 };
 
 function processResponse(text: string | undefined, jsonSchema: any) {
+    if (!text) throw new Error("A IA retornou uma resposta vazia.");
+    
     if (jsonSchema) {
       let cleanText = text || "{}";
+      // Limpeza agressiva de Markdown
       cleanText = cleanText.replace(/```json/g, '').replace(/```/g, '').trim();
       try {
         return JSON.parse(cleanText);
       } catch (e) {
-        console.error("JSON Parse Error:", cleanText);
-        throw new Error("A IA não retornou um JSON válido. Tente novamente.");
+        console.error("JSON Parse Error. Raw text:", text);
+        throw new Error("Erro de formatação da IA. Tente novamente (JSON inválido).");
       }
     }
     return text;
@@ -36,7 +39,7 @@ export const generateContent = async (
   prompt: string, 
   jsonSchema?: any,
   isLongOutput: boolean = false,
-  taskType: TaskType = 'general' // Novo parâmetro com default
+  taskType: TaskType = 'general'
 ) => {
     try {
         const adminKey = getStoredApiKey();
@@ -61,12 +64,12 @@ export const generateContent = async (
                 config: config
             });
             
-            // Fixed: use response.text directly instead of response.response.text()
             return processResponse(response.text, jsonSchema);
         } 
         
         // --- MODO SERVER (Com Roteamento de Chaves) ---
         const controller = new AbortController();
+        // Aumentei o timeout para 5 minutos para aguentar os retries do backend
         const timeoutMs = 300000; 
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -77,7 +80,7 @@ export const generateContent = async (
                 prompt, 
                 schema: jsonSchema, 
                 isLongOutput,
-                taskType // Envia o tipo para o backend escolher o pool
+                taskType
             }),
             signal: controller.signal
         });
@@ -86,7 +89,15 @@ export const generateContent = async (
 
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
-            throw new Error(errData.error || `Erro (${response.status}): Falha na comunicação com a IA.`);
+            const errMsg = errData.error || `Erro HTTP ${response.status}`;
+            
+            if (response.status === 503) {
+                throw new Error("Muitos acessos simultâneos. Aguarde 5 segundos e tente novamente.");
+            }
+            if (response.status === 429) {
+                throw new Error("Limite de uso atingido. Tente mais tarde.");
+            }
+            throw new Error(errMsg);
         }
 
         // SE FOR STREAMING (Long Output)
@@ -116,12 +127,9 @@ export const generateContent = async (
         console.error("Gemini Service Error:", error);
         
         if (error.name === 'AbortError') {
-             throw new Error("A conexão expirou. A internet pode estar instável.");
+             throw new Error("A conexão expirou. A internet pode estar lenta ou a IA demorou muito.");
         }
         
-        const msg = error.message || "";
-        if (msg.includes("429")) throw new Error("Sistema sobrecarregado. Aguarde 1 minuto.");
-        
-        throw new Error(msg || "Não foi possível gerar o conteúdo.");
+        throw new Error(error.message || "Não foi possível gerar o conteúdo.");
     }
 };
