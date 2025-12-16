@@ -7,7 +7,7 @@ export const config = {
 };
 
 export default async function handler(request, response) {
-  // Configuração de CORS
+  // CORS Headers
   response.setHeader('Access-Control-Allow-Credentials', true);
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -25,25 +25,28 @@ export default async function handler(request, response) {
   }
 
   try {
-    // --- 1. COLETA MASSIVA DE CHAVES (POOL) ---
+    // --- 1. COLETA ROBUSTA DE CHAVES (POOL) ---
     const allKeys = [];
 
+    // Adiciona chaves principais se existirem
     if (process.env.API_KEY) allKeys.push(process.env.API_KEY);
     if (process.env.Biblia_ADMA_API) allKeys.push(process.env.Biblia_ADMA_API);
 
+    // Adiciona chaves numeradas (API_KEY_1 ... API_KEY_50)
     for (let i = 1; i <= 50; i++) {
         const keyName = `API_KEY_${i}`;
         const val = process.env[keyName];
-        if (val && val.length > 10) {
-            allKeys.push(val);
+        if (val && val.trim().length > 20) { 
+            allKeys.push(val.trim());
         }
     }
 
-    const validKeys = [...new Set(allKeys)].filter(k => k && !k.startsWith('vck_'));
+    // Filtra chaves válidas e remove duplicatas
+    const validKeys = [...new Set(allKeys)].filter(k => k && !k.startsWith('vck_') && !k.includes('YOUR_API'));
 
     if (validKeys.length === 0) {
          return response.status(500).json({ 
-             error: 'CONFIGURAÇÃO PENDENTE: Nenhuma Chave de API válida encontrada (API_KEY_1...50).' 
+             error: 'SERVER CONFIG ERROR: Nenhuma chave de API válida encontrada.' 
          });
     }
 
@@ -59,23 +62,28 @@ export default async function handler(request, response) {
     const { prompt, schema } = body || {};
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
-    // --- 3. LOOP DE ROTAÇÃO DE CHAVES (FAILOVER INTELIGENTE) ---
-    const shuffledKeys = validKeys.sort(() => 0.5 - Math.random());
+    // --- 3. LOOP DE REVEZAMENTO OTIMIZADO (Load Balancer) ---
+    // Algoritmo Fisher-Yates Shuffle para garantir aleatoriedade real na escolha da chave
+    const shuffledKeys = [...validKeys];
+    for (let i = shuffledKeys.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledKeys[i], shuffledKeys[j]] = [shuffledKeys[j], shuffledKeys[i]];
+    }
     
     let lastError = null;
     let successResponse = null;
     let attempts = 0;
 
+    // Tenta cada chave da lista embaralhada
     for (const apiKey of shuffledKeys) {
         attempts++;
+        
         try {
             const ai = new GoogleGenAI({ apiKey });
-            
-            const modelId = "gemini-2.5-flash"; 
+            const modelId = "gemini-2.5-flash"; // Modelo padrão rápido e eficiente
 
-            // Configuração otimizada para velocidade
             const aiConfig = {
-                temperature: 0.4, // Mais baixo = Mais rápido e determinístico
+                temperature: 0.5, 
                 topP: 0.95,
                 topK: 40,
                 safetySettings: [
@@ -91,29 +99,41 @@ export default async function handler(request, response) {
                 aiConfig.responseSchema = schema;
             }
 
-            const aiResponse = await ai.models.generateContent({
+            // Implementa Timeout por Tentativa (12s) para não travar o loop se uma chave congelar
+            const generatePromise = ai.models.generateContent({
                 model: modelId,
                 contents: [{ parts: [{ text: prompt }] }],
                 config: aiConfig
             });
 
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error("TIMEOUT_KEY_RETRY")), 12000)
+            );
+
+            const aiResponse = await Promise.race([generatePromise, timeoutPromise]);
+
             if (!aiResponse.text) {
-                throw new Error(aiResponse.candidates?.[0]?.finishReason || "EMPTY_RESPONSE_RETRY");
+                throw new Error("EMPTY_RESPONSE");
             }
 
             successResponse = aiResponse.text;
-            break; 
+            break; // SUCESSO - Interrompe o loop
 
         } catch (error) {
             lastError = error;
             const msg = error.message || '';
             
-            const isQuotaError = msg.includes('429') || msg.includes('Quota') || msg.includes('Too Many Requests') || msg.includes('Exhausted');
-            const isServerError = msg.includes('503') || msg.includes('500') || msg.includes('Overloaded') || msg.includes('EMPTY_RESPONSE');
+            // Verificações de erro para decidir se tenta a próxima chave
+            const isQuota = msg.includes('429') || msg.includes('Quota') || msg.includes('Exhausted') || msg.includes('Too Many Requests');
+            const isServer = msg.includes('503') || msg.includes('500') || msg.includes('Overloaded');
+            const isTimeout = msg.includes('TIMEOUT_KEY_RETRY') || msg.includes('fetch failed');
+            const isKeyError = msg.includes('API key not valid') || msg.includes('API_KEY_INVALID');
 
-            if (isQuotaError || isServerError) {
+            // Se for erro de limite, servidor, rede ou chave inválida -> TENTA A PRÓXIMA
+            if (isQuota || isServer || isTimeout || isKeyError) {
                 continue; 
             } else {
+                // Erros de lógica (400 Bad Request, etc) não adiantam trocar a chave
                 break; 
             }
         }
@@ -127,14 +147,16 @@ export default async function handler(request, response) {
         
         if (errorMsg.includes('429') || errorMsg.includes('Quota')) {
             return response.status(429).json({ 
-                error: 'SISTEMA SOBRECARREGADO: Todas as chaves de API atingiram o limite simultaneamente. Tente novamente em 2 minutos.' 
+                error: 'TRÁFEGO INTENSO: Todas as chaves de API estão ocupadas no momento. Tente novamente em 1 minuto.' 
             });
         }
         
-        return response.status(500).json({ error: `Erro na geração: ${errorMsg}` });
+        return response.status(500).json({ 
+            error: `Não foi possível gerar conteúdo após ${attempts} tentativas. Detalhe: ${errorMsg}` 
+        });
     }
 
   } catch (error) {
-    return response.status(500).json({ error: 'Erro interno crítico no servidor.' });
+    return response.status(500).json({ error: 'Erro interno no servidor de IA.' });
   }
 }
