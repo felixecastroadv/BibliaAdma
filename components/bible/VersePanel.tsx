@@ -293,10 +293,26 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
     try {
         const prompt = `
             ATUE COMO: Professor Michel Felix.
-            TAREFA: Escrever um comentário EXEGÉTICO para um aluno estudioso da Bíblia.
-            TEXTO BÍBLICO: "${verse}"
+            CONTEXTO: Teologia Ortodoxa, Assembleiana, Bíblica.
+            VERSÍCULO ALVO: "${book} ${chapter}:${verseNumber} - ${verse}"
+
+            TAREFA: Escrever uma explicação profunda sobre a intenção original do autor bíblico.
+            
+            REGRAS DE ESTRUTURA (RIGOROSAS):
+            1. O texto deve ter EXATAMENTE 3 parágrafos. Nem mais, nem menos.
+            2. Tamanho total: Entre 200 a 250 palavras.
+            3. SEM SAUDAÇÕES: Não use "Olá", "Prezado", "Querido aluno". Comece direto na explicação.
+            4. SEM TÍTULOS: Apenas o texto corrido dos parágrafos.
+            5. "A BÍBLIA EXPLICA A BÍBLIA": Use referências cruzadas para validar a interpretação.
+
+            CONTEÚDO:
+            - Parágrafos 1 e 2 (Exegese): Explique o significado do texto no original, a intenção do autor e o contexto teológico. Sem polêmicas, sem apócrifos, sem cultura extra-bíblica desnecessária.
+            - Parágrafo 3 (Aplicação - Max 15%): Uma aplicação prática curta e forte. O momento "Ah! Entendi!".
+
+            ESTILO:
+            - Linguagem culta, porém clara e direta.
+            - Use negrito (**palavra**) APENAS para destacar termos chave ou palavras no original (transliteradas).
             ${customPromptAddon}
-            ... (Instruções detalhadas mantidas) ...
         `;
         
         const text = await generateContent(prompt, null, false, 'commentary');
