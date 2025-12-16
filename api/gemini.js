@@ -3,7 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 
 // Configuração para Vercel Serverless Functions
 export const config = {
-  maxDuration: 60, // Tempo máximo absoluto da Vercel
+  maxDuration: 60, // Limite absoluto da Vercel (Pro/Hobby pode variar, 60s é o teto seguro)
 };
 
 export default async function handler(request, response) {
@@ -27,7 +27,7 @@ export default async function handler(request, response) {
   try {
     const startTime = Date.now();
 
-    // --- 1. COLETA ROBUSTA DE CHAVES (POOL) ---
+    // --- 1. COLETA DE CHAVES ---
     const allKeys = [];
     if (process.env.API_KEY) allKeys.push(process.env.API_KEY);
     if (process.env.Biblia_ADMA_API) allKeys.push(process.env.Biblia_ADMA_API);
@@ -46,7 +46,7 @@ export default async function handler(request, response) {
          return response.status(500).json({ error: 'SERVER CONFIG ERROR: Nenhuma chave de API válida encontrada.' });
     }
 
-    // --- 2. PREPARAÇÃO DO BODY ---
+    // --- 2. PREPARAÇÃO DO BODY E MODO DE OPERAÇÃO ---
     let body = request.body;
     if (typeof body === 'string') {
         try {
@@ -55,10 +55,16 @@ export default async function handler(request, response) {
             return response.status(400).json({ error: 'Invalid JSON body' });
         }
     }
-    const { prompt, schema } = body || {};
+    const { prompt, schema, isLongOutput } = body || {};
+    
+    // SISTEMÁTICA DE TEMPO:
+    // Se for EBD (isLongOutput), damos 55s (quase estourando a Vercel) para garantir que a IA termine.
+    // Se for Versículo, damos 20s para ser ágil e rotacionar rápido se travar.
+    const TIMEOUT_MS = isLongOutput ? 55000 : 20000; 
+
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
-    // --- 3. LOOP DE REVEZAMENTO OTIMIZADO (Qualidade > Quantidade) ---
+    // --- 3. LOOP DE REVEZAMENTO INTELIGENTE ---
     // Embaralha as chaves
     const shuffledKeys = [...validKeys];
     for (let i = shuffledKeys.length - 1; i > 0; i--) {
@@ -70,15 +76,15 @@ export default async function handler(request, response) {
     let successResponse = null;
     let attempts = 0;
     
-    // IMPORTANTE: Limita a 3 tentativas robustas para caber nos 60s da Vercel
-    // (3 tentativas x 18s de média = 54s). Tentar 18 chaves causaria timeout da função.
-    const maxAttempts = Math.min(3, shuffledKeys.length); 
+    // Se for tarefa longa, tentamos menos chaves porque cada tentativa gasta muito tempo
+    const maxAttempts = isLongOutput ? 2 : 3;
     const selectedKeys = shuffledKeys.slice(0, maxAttempts);
 
     for (const apiKey of selectedKeys) {
-        // Verificação de segurança de tempo total (Vercel mata com 60s)
+        // Se já passou de 50s de execução total, a Vercel vai matar o processo em breve.
+        // Melhor parar e retornar erro do que deixar a Vercel cortar bruscamente.
         if (Date.now() - startTime > 50000) {
-            console.log("Tempo limite da função aproximando-se. Abortando retries.");
+            console.log("Tempo limite da função (Vercel) atingido. Abortando.");
             break; 
         }
 
@@ -86,13 +92,10 @@ export default async function handler(request, response) {
         
         try {
             const ai = new GoogleGenAI({ apiKey });
-            
-            // Se falhou antes com 503, tenta o modelo 'flash-lite' ou mantém 'flash'
-            // O modelo 2.5 flash é o mais rápido, mantemos ele.
             const modelId = "gemini-2.5-flash"; 
 
             const aiConfig = {
-                temperature: 0.7, 
+                temperature: isLongOutput ? 0.8 : 0.7, // Mais criativo para textos longos
                 topP: 0.95,
                 topK: 40,
             };
@@ -101,9 +104,6 @@ export default async function handler(request, response) {
                 aiConfig.responseMimeType = "application/json";
                 aiConfig.responseSchema = schema;
             }
-
-            // AUMENTADO PARA 25 SEGUNDOS (O Google está demorando quando sobrecarregado)
-            const TIMEOUT_MS = 25000; 
 
             const generatePromise = ai.models.generateContent({
                 model: modelId,
@@ -127,14 +127,19 @@ export default async function handler(request, response) {
         } catch (error) {
             lastError = error;
             const msg = error.message || '';
-            console.log(`Tentativa ${attempts} falhou: ${msg}`);
+            console.log(`Tentativa ${attempts} falhou (${isLongOutput ? 'Long' : 'Short'}): ${msg}`);
 
-            // Se for erro de servidor (503) ou Cota (429), dá uma pequena pausa antes da próxima chave
+            // Se for tarefa longa e deu TIMEOUT, não adianta tentar outra chave correndo, 
+            // pois o tempo da Vercel já foi quase todo gasto.
+            if (isLongOutput && msg.includes('TIMEOUT_KEY_RETRY')) {
+                break; // Sai do loop e reporta erro para o usuário tentar de novo manualmente
+            }
+
+            // Se for erro rápido (429/503), espera um pouco e tenta a próxima chave
             if (msg.includes('503') || msg.includes('429') || msg.includes('Overloaded')) {
-                await new Promise(r => setTimeout(r, 2000)); // Espera 2s para o servidor respirar
+                await new Promise(r => setTimeout(r, 2000));
             }
             
-            // Continua para a próxima chave do loop
             continue; 
         }
     }
@@ -145,25 +150,30 @@ export default async function handler(request, response) {
     } else {
         const errorMsg = lastError?.message || 'Erro desconhecido.';
         
-        // Mensagem amigável para o usuário final
+        if (errorMsg.includes('TIMEOUT_KEY_RETRY') && isLongOutput) {
+             return response.status(504).json({ 
+                error: 'O conteúdo é muito complexo e o servidor demorou para responder. Por favor, tente novamente (isso acontece com estudos profundos).' 
+            });
+        }
+
         if (errorMsg.includes('503') || errorMsg.includes('Overloaded')) {
              return response.status(503).json({ 
-                error: 'Instabilidade momentânea nos servidores do Google (IA Sobrecarregada). Tente novamente em 30 segundos.' 
+                error: 'Servidores do Google sobrecarregados. Aguarde 30s e tente novamente.' 
             });
         }
 
         if (errorMsg.includes('429') || errorMsg.includes('Quota')) {
             return response.status(429).json({ 
-                error: 'Alto tráfego. Todas as chaves disponíveis estão ocupadas no momento.' 
+                error: 'Todas as chaves de API estão ocupadas no momento.' 
             });
         }
         
         return response.status(500).json({ 
-            error: `Falha após ${attempts} tentativas. Último erro: ${errorMsg}` 
+            error: `Não foi possível gerar. Tente novamente.` 
         });
     }
 
   } catch (error) {
-    return response.status(500).json({ error: 'Erro interno crítico.' });
+    return response.status(500).json({ error: 'Erro interno.' });
   }
 }

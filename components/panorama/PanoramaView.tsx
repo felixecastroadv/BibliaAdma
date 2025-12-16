@@ -380,7 +380,9 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         `OBJETIVO: MANUAL DO PROFESSOR para ${book} ${chapter}. ${WRITING_STYLE} ${instructions} ${mode === 'continue' ? continuationInstructions : 'INÍCIO DO ESTUDO COMPLETO.'}`;
 
     try {
-        const result = await generateContent(specificPrompt);
+        // ATIVAÇÃO DO MODO LONGO: Passamos true como terceiro argumento
+        const result = await generateContent(specificPrompt, null, true);
+        
         if (!result || result.trim() === 'undefined' || result.length < 50) throw new Error("A IA retornou vazio.");
         
         let separator = '';
