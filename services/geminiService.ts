@@ -68,8 +68,7 @@ export const generateContent = async (
         
         // --- MODO SERVER (Com Roteamento de Chaves) ---
         const controller = new AbortController();
-        // Timeout de 5 minutos para permitir os múltiplos retries do backend
-        const timeoutMs = 300000; 
+        const timeoutMs = 60000; // 60s timeout (razoável para user experience)
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         const response = await fetch('/api/gemini', {
@@ -88,16 +87,17 @@ export const generateContent = async (
 
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
-            const errMsg = errData.error || `Erro HTTP ${response.status}`;
+            // Pega a mensagem detalhada do backend se existir
+            const detail = errData.error || `Status ${response.status}`;
             
             if (response.status === 503) {
-                // Mensagem amigável para o "Red Toast"
-                throw new Error("Alta demanda nos servidores. O sistema tentou conectar 12 vezes sem sucesso. Por favor, aguarde 30 segundos e tente novamente.");
+                // Se tiver detalhe do erro (ex: quota), mostra ele. Senão, mensagem genérica.
+                throw new Error(detail.includes('Detalhe:') ? detail : "Servidores ocupados. Tente novamente em instantes.");
             }
             if (response.status === 429) {
-                throw new Error("Cota de uso excedida globalmente. Tente novamente em breve.");
+                throw new Error("Cota excedida. Aguarde um momento.");
             }
-            throw new Error(errMsg);
+            throw new Error(`Erro na IA: ${detail}`);
         }
 
         // SE FOR STREAMING (Long Output)
@@ -114,7 +114,7 @@ export const generateContent = async (
             }
             
             if (!fullText || fullText.trim().length === 0) {
-                 throw new Error("Conexão estabelecida, mas a IA não enviou texto.");
+                 throw new Error("A IA conectou mas não enviou resposta.");
             }
             return fullText;
         }
@@ -127,9 +127,9 @@ export const generateContent = async (
         console.error("Gemini Service Error:", error);
         
         if (error.name === 'AbortError') {
-             throw new Error("O servidor demorou muito para responder (Timeout). A internet pode estar lenta.");
+             throw new Error("Tempo limite excedido. Verifique sua internet.");
         }
         
-        throw new Error(error.message || "Não foi possível gerar o conteúdo.");
+        throw error; // Repassa o erro original para o Toast
     }
 };

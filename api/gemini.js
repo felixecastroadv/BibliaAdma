@@ -2,26 +2,21 @@
 import { GoogleGenAI } from "@google/genai";
 
 export const config = {
-  maxDuration: 300, 
+  maxDuration: 60, // Limite padrão da Vercel (evita segurar conexões mortas)
   supportsResponseStreaming: true, 
 };
 
-// Função de espera para não bombardear a API
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default async function handler(request, response) {
+  // Configuração CORS
   response.setHeader('Access-Control-Allow-Credentials', true);
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
   response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (request.method === 'OPTIONS') {
-    return response.status(200).end();
-  }
-
-  if (request.method !== 'POST') {
-    return response.status(405).json({ error: 'Method not allowed' });
-  }
+  if (request.method === 'OPTIONS') return response.status(200).end();
+  if (request.method !== 'POST') return response.status(405).json({ error: 'Method not allowed' });
 
   try {
     let body = request.body;
@@ -32,16 +27,12 @@ export default async function handler(request, response) {
 
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
-    // --- 1. COLETA E CATEGORIZAÇÃO DE CHAVES ---
+    // --- 1. POOL DE CHAVES ---
     const keyPools = {
-        commentary: [], // 1-5
-        dictionary: [], // 6-8
-        devotional: [], // 9
-        ebd: [],        // 10-14
-        metadata: [],   // 15
-        general: []     // 16-17 + Extras
+        commentary: [], dictionary: [], devotional: [], ebd: [], metadata: [], general: []
     };
 
+    // Coleta chaves do ENV
     for (let i = 1; i <= 50; i++) {
         const keyName = `API_KEY_${i}`;
         const val = process.env[keyName];
@@ -59,10 +50,7 @@ export default async function handler(request, response) {
     if (process.env.API_KEY) keyPools.general.push(process.env.API_KEY);
     if (process.env.Biblia_ADMA_API) keyPools.general.push(process.env.Biblia_ADMA_API);
 
-    // Remove duplicatas
-    Object.keys(keyPools).forEach(k => { keyPools[k] = [...new Set(keyPools[k])]; });
-
-    // Seleção de Pool
+    // Seleção Inteligente de Pool
     let targetPool = [];
     switch (taskType) {
         case 'commentary': targetPool = keyPools.commentary; break;
@@ -73,128 +61,100 @@ export default async function handler(request, response) {
         default: targetPool = keyPools.general; break;
     }
 
-    // Fallback de pool se vazio
+    // Fallbacks
     if (targetPool.length === 0) targetPool = keyPools.general;
-    // Fallback Supremo: Pega TUDO o que tiver
     if (targetPool.length === 0) targetPool = Object.values(keyPools).flat();
+    
+    // Remove duplicatas e embaralha
+    targetPool = [...new Set(targetPool)].sort(() => 0.5 - Math.random());
 
     if (targetPool.length === 0) {
-         return response.status(500).json({ error: 'SERVER CONFIG ERROR: Nenhuma chave de API válida encontrada.' });
+         return response.status(500).json({ error: 'CONFIG ERROR: Nenhuma chave de API disponível.' });
     }
 
-    // Embaralha chaves
-    const shuffledKeys = targetPool.sort(() => 0.5 - Math.random());
+    // --- 2. ESTRATÉGIA DE MODELOS ---
+    // 2.5 Flash: Melhor qualidade (Principal)
+    // 1.5 Flash: Maior estabilidade e velocidade (Backup Imediato)
+    const MODELS = ["gemini-2.5-flash", "gemini-1.5-flash"];
 
-    // --- ESTRATÉGIA DE MODELOS (CAMADAS DE DEFESA) ---
-    // 1. Principal: 2.5 Flash (Melhor Raciocínio)
-    // 2. Backup: 2.0 Flash Exp (Muitas vezes livre quando o 2.5 cai)
-    // OBS: 1.5 foi removido conforme diretrizes
-    const MODELS = ["gemini-2.5-flash", "gemini-2.0-flash-exp"];
+    // --- 3. EXECUÇÃO ---
+    // Reduzimos tentativas para 3 para evitar Timeout da Vercel (10s limit no plano Hobby)
+    const MAX_ATTEMPTS = 3; 
+    let lastError = null;
 
-    // --- 3. EXECUÇÃO DA IA (FORÇA BRUTA INTELIGENTE) ---
-    
-    // MODO STREAMING (Textos Longos: EBD, Comentário)
+    // --- MODO STREAMING (EBD, Comentário) ---
     if (isLongOutput && !schema) {
-        let lastError = null;
-        // Tenta MUITAS vezes (até 12 tentativas distribuídas entre chaves e modelos)
-        const maxAttempts = Math.min(shuffledKeys.length * 2, 12); 
-
-        for (let i = 0; i < maxAttempts; i++) {
-            // Rotaciona chaves e modelos
-            const apiKey = shuffledKeys[i % shuffledKeys.length];
-            const modelId = MODELS[i % MODELS.length]; 
+        for (let i = 0; i < MAX_ATTEMPTS; i++) {
+            const apiKey = targetPool[i % targetPool.length];
+            const modelId = MODELS[i % MODELS.length];
 
             try {
                 const ai = new GoogleGenAI({ apiKey });
-                const aiConfig = {
-                    temperature: 0.7, 
-                    topP: 0.95,
-                    topK: 40,
-                    maxOutputTokens: 8192,
-                };
-
-                const result = await ai.models.generateContentStream({
+                const streamResult = await ai.models.generateContentStream({
                     model: modelId,
                     contents: [{ parts: [{ text: prompt }] }],
-                    config: aiConfig
+                    config: {
+                        temperature: 0.7,
+                        topP: 0.95,
+                        maxOutputTokens: 8192,
+                    }
                 });
 
                 response.setHeader('Content-Type', 'text/plain; charset=utf-8');
                 response.setHeader('Transfer-Encoding', 'chunked');
 
-                // CORREÇÃO CRÍTICA: Iterar sobre result diretamente e usar .text (propriedade)
-                for await (const chunk of result) {
-                    const chunkText = chunk.text;
-                    if (chunkText) {
-                        response.write(chunkText);
-                    }
+                for await (const chunk of streamResult) {
+                    const txt = chunk.text; 
+                    if (txt) response.write(txt);
                 }
                 
                 response.end();
-                return; // Sucesso Absoluto
+                return; // Sucesso
 
-            } catch (streamError) {
-                console.warn(`Stream Fail [Attempt ${i+1}/${maxAttempts}] (${modelId}):`, streamError.message.substring(0, 50));
-                lastError = streamError;
-                
+            } catch (err) {
+                console.warn(`Stream Error [${i}] (${modelId}):`, err.message);
+                lastError = err;
                 if (response.headersSent) { response.end(); return; }
-                
-                // Backoff progressivo (1s, 2s, 3s...)
-                await delay(1000 + (i * 500));
+                // Delay pequeno apenas para não bater taxa instantânea
+                if (i < MAX_ATTEMPTS - 1) await delay(500);
             }
         }
-        
-        const msg = lastError?.message || 'Erro desconhecido';
-        return response.status(503).json({ error: `Sistema sobrecarregado após várias tentativas. Tente novamente em 1 minuto. (${msg})` });
+        return response.status(503).json({ error: `Falha na IA após ${MAX_ATTEMPTS} tentativas. Último erro: ${lastError?.message}` });
     }
 
-    // MODO PADRÃO (JSON/Curto: Dicionário, Devocional, Chat)
-    let successResponse = null;
-    let lastError = null;
-    const shortAttempts = Math.min(shuffledKeys.length * 2, 12); 
-
-    for (let i = 0; i < shortAttempts; i++) {
-        const apiKey = shuffledKeys[i % shuffledKeys.length];
+    // --- MODO PADRÃO (JSON, Chat) ---
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+        const apiKey = targetPool[i % targetPool.length];
         const modelId = MODELS[i % MODELS.length];
 
         try {
             const ai = new GoogleGenAI({ apiKey });
-            const aiConfig = {
-                temperature: 0.6,
-                topP: 0.95,
-                topK: 40,
-            };
-
+            const config = { temperature: 0.6 };
+            
             if (schema) {
-                aiConfig.responseMimeType = "application/json";
-                aiConfig.responseSchema = schema;
+                config.responseMimeType = "application/json";
+                config.responseSchema = schema;
             }
 
             const result = await ai.models.generateContent({
                 model: modelId,
                 contents: [{ parts: [{ text: prompt }] }],
-                config: aiConfig
+                config: config
             });
-            
-            // CORREÇÃO CRÍTICA: Usar .text (propriedade)
-            successResponse = result.text;
-            break; // Sucesso
 
-        } catch (error) {
-            lastError = error;
-            console.warn(`Standard Fail [Attempt ${i+1}/${shortAttempts}] (${modelId}):`, error.message.substring(0, 50));
-            await delay(800 + (i * 400));
+            // Sucesso
+            return response.status(200).json({ text: result.text });
+
+        } catch (err) {
+            console.warn(`Standard Error [${i}] (${modelId}):`, err.message);
+            lastError = err;
+            if (i < MAX_ATTEMPTS - 1) await delay(500);
         }
     }
 
-    if (successResponse) {
-        return response.status(200).json({ text: successResponse });
-    } else {
-        const msg = lastError?.message || '';
-        return response.status(503).json({ error: `Instabilidade momentânea na IA. Clique em tentar novamente. (${msg})` });
-    }
+    return response.status(503).json({ error: `Serviço indisponível. Detalhe: ${lastError?.message || 'Timeout'}` });
 
   } catch (error) {
-    return response.status(500).json({ error: 'Erro interno crítico no servidor ADMA.' });
+    return response.status(500).json({ error: `Erro Interno: ${error.message}` });
   }
 }
