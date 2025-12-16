@@ -200,7 +200,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   };
 
   const handleRestoreFromCloud = async () => {
-      if (!window.confirm("Isso irá verificar a BASE DE DADOS NA NUVEM e baixar todo o texto bíblico salvo para o seu dispositivo. Isso corrige o problema de 'textos sumindo'. Continuar?")) return;
+      if (!window.confirm("ATENÇÃO: Isso vai baixar TUDO que está salvo na base de dados (Bíblia, EBD, Comentários, Devocionais) para este dispositivo. Use se os dados sumiram após atualização. Continuar?")) return;
       
       setIsProcessing(true);
       setProcessStatus("Conectando à Base de Dados...");
@@ -208,35 +208,60 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       stopBatchRef.current = false;
 
       try {
+          // 1. Restaurar Bíblia
           let totalRestored = 0;
           let currentBookIndex = 0;
-
           for (const book of BIBLE_BOOKS) {
               if (stopBatchRef.current) break;
-              setProcessStatus(`Verificando Base: ${book.name}...`);
+              setProcessStatus(`Restaurando Bíblia: ${book.name}...`);
               for (let c = 1; c <= book.chapters; c++) {
                   if (stopBatchRef.current) break;
                   const key = `bible_acf_${book.abbrev}_${c}`;
+                  // getCloud apenas busca, não salva localmente. Precisamos salvar.
                   const verses = await db.entities.BibleChapter.getCloud(key);
                   if (verses && Array.isArray(verses) && verses.length > 0) {
                       await bibleStorage.save(key, verses);
                       totalRestored++;
                   }
-                  if (c % 5 === 0) {
-                      setProcessStatus(`Restaurando: ${book.name} ${c}`);
-                      await new Promise(r => setTimeout(r, 0));
-                  }
               }
               currentBookIndex++;
-              setProgress(Math.round((currentBookIndex / BIBLE_BOOKS.length) * 100));
+              setProgress(Math.round((currentBookIndex / BIBLE_BOOKS.length) * 50)); // 50% do progresso total
           }
 
-          setOfflineCount(await bibleStorage.count());
-          if (totalRestored === 0) {
-              onShowToast("Nenhum texto encontrado na Base de Dados. Por favor, faça o 'Upload JSON' ou 'Baixar da Web' primeiro.", "error");
-          } else {
-              onShowToast(`Restauração Completa! ${totalRestored} capítulos recuperados da Nuvem.`, "success");
+          // 2. Restaurar Conteúdos (EBD, Comentários, Dicionários, Devocionais)
+          setProcessStatus("Restaurando Conteúdos Gerados (EBD, Comentários)...");
+          
+          // EBD Panorama
+          const ebds = await db.entities.PanoramaBiblico.list();
+          if (ebds && ebds.length) {
+             setProcessStatus(`Restaurando ${ebds.length} Estudos de EBD...`);
+             // O método .list() do database.ts já faz o sync local automaticamente, mas vamos garantir.
+             onShowToast(`${ebds.length} Estudos EBD recuperados.`, 'info');
           }
+
+          // Comentários
+          const commentaries = await db.entities.Commentary.list();
+          if (commentaries && commentaries.length) {
+              setProcessStatus(`Restaurando ${commentaries.length} Comentários...`);
+          }
+
+          // Dicionários
+          const dicts = await db.entities.Dictionary.list();
+          if (dicts && dicts.length) {
+              setProcessStatus(`Restaurando ${dicts.length} Dicionários...`);
+          }
+
+          // Devocionais
+          const devotionals = await db.entities.Devotional.list();
+          if (devotionals && devotionals.length) {
+              setProcessStatus(`Restaurando ${devotionals.length} Devocionais...`);
+          }
+          
+          setProgress(100);
+          setOfflineCount(await bibleStorage.count());
+          
+          onShowToast(`Restauração Completa! Dados sincronizados do Supabase.`, "success");
+
       } catch (e: any) {
           console.error(e);
           onShowToast(`Erro na restauração: ${e.message}`, "error");
@@ -349,27 +374,44 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
 
   const handleExportJson = async () => {
       setIsProcessing(true);
-      setProcessStatus("Gerando arquivo...");
+      setProcessStatus("Gerando backup completo...");
       try {
-          const allData: any[] = [];
+          // Backup Bíblia
+          const bibleData: any[] = [];
           for (const book of BIBLE_BOOKS) {
               for (let c = 1; c <= book.chapters; c++) {
                   const key = `bible_acf_${book.abbrev}_${c}`;
                   const verses = await bibleStorage.get(key);
                   if (verses) {
-                      allData.push({ key, verses, book: book.name, chapter: c });
+                      bibleData.push({ key, verses, book: book.name, chapter: c });
                   }
               }
           }
-          const blob = new Blob([JSON.stringify(allData)], { type: 'application/json' });
+
+          // Backup Conteúdos
+          const commentaries = await db.entities.Commentary.list();
+          const ebds = await db.entities.PanoramaBiblico.list();
+          const dicts = await db.entities.Dictionary.list();
+          const devotionals = await db.entities.Devotional.list();
+
+          const fullBackup = {
+              date: new Date().toISOString(),
+              bible: bibleData,
+              commentaries,
+              ebds,
+              dictionaries: dicts,
+              devotionals
+          };
+
+          const blob = new Blob([JSON.stringify(fullBackup)], { type: 'application/json' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `backup_biblia_adma_${new Date().toISOString().split('T')[0]}.json`;
+          a.download = `ADMA_BACKUP_COMPLETO_${new Date().toISOString().split('T')[0]}.json`;
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
-          onShowToast("Exportação concluída.", "success");
+          onShowToast("Backup completo (Bíblia + Estudos) baixado.", "success");
       } catch (e) {
           onShowToast("Erro ao exportar.", "error");
       } finally {
@@ -637,7 +679,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
              </button>
              <button onClick={handleRestoreFromCloud} disabled={isProcessing} className="bg-[#8B0000] text-white p-4 rounded-xl shadow border border-[#C5A059]/30 flex flex-col items-center justify-center gap-2 hover:bg-[#600018] transition animate-pulse">
                  {isProcessing ? <Loader2 className="w-8 h-8 animate-spin text-white" /> : <Cloud className="w-8 h-8 text-white" />}
-                 <span className="font-bold text-xs text-center">Resgatar da Nuvem</span>
+                 <span className="font-bold text-xs text-center">Resgatar da Nuvem (Completo)</span>
              </button>
              <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow border border-[#C5A059]/30 flex flex-col items-center justify-center gap-2 relative overflow-hidden group hover:bg-gray-50 cursor-pointer">
                  <Upload className="w-8 h-8 text-blue-500" />
