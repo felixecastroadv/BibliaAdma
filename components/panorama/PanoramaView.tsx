@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+// Componente de Visualização do Panorama Bíblico
 import { ChevronLeft, GraduationCap, Lock, BookOpen, ChevronRight, Volume2, Sparkles, Loader2, Book, Trash2, Edit, Save, X, CheckCircle, Pause, Play, Settings, FastForward } from 'lucide-react';
 import { db } from '../../services/database';
 import { BIBLE_BOOKS, generateChapterKey } from '../../constants';
