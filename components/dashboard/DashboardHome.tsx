@@ -248,8 +248,8 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                     whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.96 }}
                     onClick={() => onNavigate(item.id, { module: (item as any).module })} 
                     className="relative overflow-hidden group bg-white dark:bg-[#1E1E1E] p-6 rounded-[24px] text-left h-40 flex flex-col justify-between border transition-all duration-300 
-                    border-gray-100 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.12)]
-                    dark:border-white/5 dark:shadow-[0_0_15px_-3px_rgba(255,255,255,0.05)] dark:hover:shadow-[0_0_25px_-5px_rgba(197,160,89,0.25)]"
+                    border-gray-200 shadow-lg hover:shadow-2xl hover:border-[#8B0000]/30 
+                    dark:border-white/15 dark:shadow-[0_10px_30px_-10px_rgba(0,0,0,0.8)] dark:hover:shadow-[0_0_30px_-5px_rgba(197,160,89,0.4)] dark:hover:border-[#C5A059]/60"
                 >
                     <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center shadow-md text-white mb-2`}>
                         <item.icon className="w-6 h-6" />
@@ -265,7 +265,7 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                 <motion.button 
                     onClick={() => onNavigate('admin')} 
                     className="col-span-2 bg-[#1a0f0f] dark:bg-black text-[#C5A059] p-5 rounded-3xl flex items-center justify-center gap-4 group mt-4 relative overflow-hidden border border-[#C5A059]/30 
-                    shadow-[0_10px_30px_-5px_rgba(0,0,0,0.3)] hover:shadow-[0_15px_40px_-5px_rgba(197,160,89,0.2)]"
+                    shadow-[0_10px_30px_-5px_rgba(0,0,0,0.3)] hover:shadow-[0_0_25px_-5px_rgba(197,160,89,0.3)] hover:border-[#C5A059]/50 transition-all duration-300"
                 >
                     <ShieldCheck className="w-6 h-6 group-hover:rotate-12 transition-transform" />
                     <div className="text-left relative z-10">
