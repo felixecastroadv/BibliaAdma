@@ -3,7 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 
 // Configuração para Vercel Serverless Functions
 export const config = {
-  maxDuration: 60, // Tempo máximo de execução (segundos)
+  maxDuration: 60, // Tempo máximo absoluto da Vercel
 };
 
 export default async function handler(request, response) {
@@ -25,14 +25,13 @@ export default async function handler(request, response) {
   }
 
   try {
+    const startTime = Date.now();
+
     // --- 1. COLETA ROBUSTA DE CHAVES (POOL) ---
     const allKeys = [];
-
-    // Adiciona chaves principais se existirem
     if (process.env.API_KEY) allKeys.push(process.env.API_KEY);
     if (process.env.Biblia_ADMA_API) allKeys.push(process.env.Biblia_ADMA_API);
 
-    // Adiciona chaves numeradas (API_KEY_1 ... API_KEY_50)
     for (let i = 1; i <= 50; i++) {
         const keyName = `API_KEY_${i}`;
         const val = process.env[keyName];
@@ -41,13 +40,10 @@ export default async function handler(request, response) {
         }
     }
 
-    // Filtra chaves válidas e remove duplicatas
     const validKeys = [...new Set(allKeys)].filter(k => k && !k.startsWith('vck_') && !k.includes('YOUR_API'));
 
     if (validKeys.length === 0) {
-         return response.status(500).json({ 
-             error: 'SERVER CONFIG ERROR: Nenhuma chave de API válida encontrada.' 
-         });
+         return response.status(500).json({ error: 'SERVER CONFIG ERROR: Nenhuma chave de API válida encontrada.' });
     }
 
     // --- 2. PREPARAÇÃO DO BODY ---
@@ -62,8 +58,8 @@ export default async function handler(request, response) {
     const { prompt, schema } = body || {};
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
-    // --- 3. LOOP DE REVEZAMENTO OTIMIZADO (Load Balancer) ---
-    // Algoritmo Fisher-Yates Shuffle para garantir aleatoriedade real na escolha da chave
+    // --- 3. LOOP DE REVEZAMENTO OTIMIZADO (Qualidade > Quantidade) ---
+    // Embaralha as chaves
     const shuffledKeys = [...validKeys];
     for (let i = shuffledKeys.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -73,25 +69,32 @@ export default async function handler(request, response) {
     let lastError = null;
     let successResponse = null;
     let attempts = 0;
+    
+    // IMPORTANTE: Limita a 3 tentativas robustas para caber nos 60s da Vercel
+    // (3 tentativas x 18s de média = 54s). Tentar 18 chaves causaria timeout da função.
+    const maxAttempts = Math.min(3, shuffledKeys.length); 
+    const selectedKeys = shuffledKeys.slice(0, maxAttempts);
 
-    // Tenta cada chave da lista embaralhada
-    for (const apiKey of shuffledKeys) {
+    for (const apiKey of selectedKeys) {
+        // Verificação de segurança de tempo total (Vercel mata com 60s)
+        if (Date.now() - startTime > 50000) {
+            console.log("Tempo limite da função aproximando-se. Abortando retries.");
+            break; 
+        }
+
         attempts++;
         
         try {
             const ai = new GoogleGenAI({ apiKey });
-            const modelId = "gemini-2.5-flash"; // Modelo padrão rápido e eficiente
+            
+            // Se falhou antes com 503, tenta o modelo 'flash-lite' ou mantém 'flash'
+            // O modelo 2.5 flash é o mais rápido, mantemos ele.
+            const modelId = "gemini-2.5-flash"; 
 
             const aiConfig = {
-                temperature: 0.5, 
+                temperature: 0.7, 
                 topP: 0.95,
                 topK: 40,
-                safetySettings: [
-                    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-                    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-                    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-                    { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-                ],
             };
 
             if (schema) {
@@ -99,7 +102,9 @@ export default async function handler(request, response) {
                 aiConfig.responseSchema = schema;
             }
 
-            // Implementa Timeout por Tentativa (12s) para não travar o loop se uma chave congelar
+            // AUMENTADO PARA 25 SEGUNDOS (O Google está demorando quando sobrecarregado)
+            const TIMEOUT_MS = 25000; 
+
             const generatePromise = ai.models.generateContent({
                 model: modelId,
                 contents: [{ parts: [{ text: prompt }] }],
@@ -107,7 +112,7 @@ export default async function handler(request, response) {
             });
 
             const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error("TIMEOUT_KEY_RETRY")), 12000)
+                setTimeout(() => reject(new Error("TIMEOUT_KEY_RETRY")), TIMEOUT_MS)
             );
 
             const aiResponse = await Promise.race([generatePromise, timeoutPromise]);
@@ -117,25 +122,20 @@ export default async function handler(request, response) {
             }
 
             successResponse = aiResponse.text;
-            break; // SUCESSO - Interrompe o loop
+            break; // SUCESSO
 
         } catch (error) {
             lastError = error;
             const msg = error.message || '';
-            
-            // Verificações de erro para decidir se tenta a próxima chave
-            const isQuota = msg.includes('429') || msg.includes('Quota') || msg.includes('Exhausted') || msg.includes('Too Many Requests');
-            const isServer = msg.includes('503') || msg.includes('500') || msg.includes('Overloaded');
-            const isTimeout = msg.includes('TIMEOUT_KEY_RETRY') || msg.includes('fetch failed');
-            const isKeyError = msg.includes('API key not valid') || msg.includes('API_KEY_INVALID');
+            console.log(`Tentativa ${attempts} falhou: ${msg}`);
 
-            // Se for erro de limite, servidor, rede ou chave inválida -> TENTA A PRÓXIMA
-            if (isQuota || isServer || isTimeout || isKeyError) {
-                continue; 
-            } else {
-                // Erros de lógica (400 Bad Request, etc) não adiantam trocar a chave
-                break; 
+            // Se for erro de servidor (503) ou Cota (429), dá uma pequena pausa antes da próxima chave
+            if (msg.includes('503') || msg.includes('429') || msg.includes('Overloaded')) {
+                await new Promise(r => setTimeout(r, 2000)); // Espera 2s para o servidor respirar
             }
+            
+            // Continua para a próxima chave do loop
+            continue; 
         }
     }
 
@@ -145,18 +145,25 @@ export default async function handler(request, response) {
     } else {
         const errorMsg = lastError?.message || 'Erro desconhecido.';
         
+        // Mensagem amigável para o usuário final
+        if (errorMsg.includes('503') || errorMsg.includes('Overloaded')) {
+             return response.status(503).json({ 
+                error: 'Instabilidade momentânea nos servidores do Google (IA Sobrecarregada). Tente novamente em 30 segundos.' 
+            });
+        }
+
         if (errorMsg.includes('429') || errorMsg.includes('Quota')) {
             return response.status(429).json({ 
-                error: 'TRÁFEGO INTENSO: Todas as chaves de API estão ocupadas no momento. Tente novamente em 1 minuto.' 
+                error: 'Alto tráfego. Todas as chaves disponíveis estão ocupadas no momento.' 
             });
         }
         
         return response.status(500).json({ 
-            error: `Não foi possível gerar conteúdo após ${attempts} tentativas. Detalhe: ${errorMsg}` 
+            error: `Falha após ${attempts} tentativas. Último erro: ${errorMsg}` 
         });
     }
 
   } catch (error) {
-    return response.status(500).json({ error: 'Erro interno no servidor de IA.' });
+    return response.status(500).json({ error: 'Erro interno crítico.' });
   }
 }
