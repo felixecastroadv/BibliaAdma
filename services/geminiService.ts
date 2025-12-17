@@ -30,30 +30,28 @@ export const generateContent = async (
   systemInstruction?: string
 ) => {
     try {
-        const isPanorama = taskType === 'ebd' || prompt.includes('PANORÂMA');
+        const isPanorama = taskType === 'ebd' || prompt.includes('PANORÂMA') || prompt.includes('MICROSCOPIA');
         const adminKey = getStoredApiKey();
         
-        // Se houver chave manual, usa o SDK diretamente
         if (adminKey) {
             const ai = new GoogleGenAI({ apiKey: adminKey });
-            const model = isPanorama ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
+            const model = 'gemini-3-flash-preview';
             
             const response = await ai.models.generateContent({
                 model: model,
                 contents: [{ parts: [{ text: prompt }] }],
                 config: {
                     temperature: isPanorama ? 1.0 : 0.7,
+                    maxOutputTokens: 8192,
                     systemInstruction: systemInstruction || "Você é o Professor Michel Felix.",
-                    ...(isPanorama ? { thinkingConfig: { thinkingBudget: 32768 } } : {}),
                     ...(jsonSchema ? { responseMimeType: "application/json", responseSchema: jsonSchema } : {})
                 }
             });
             return processResponse(response.text, jsonSchema);
         } 
         
-        // Caso contrário, usa a API da Vercel/Backend
         const controller = new AbortController();
-        const timeoutMs = isPanorama ? 400000 : 60000; // 7 minutos para o Pro Thinking
+        const timeoutMs = 180000; // 3 minutos para permitir o texto longo de Microscopia
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         const response = await fetch('/api/gemini', {
@@ -78,7 +76,7 @@ export const generateContent = async (
         return processResponse(data.text, jsonSchema);
 
     } catch (error: any) {
-        if (error.name === 'AbortError') throw new Error("A IA está demorando para pensar no estudo profundo. Tente novamente em instantes.");
+        if (error.name === 'AbortError') throw new Error("A conexão demorou muito. Tente gerar novamente.");
         throw error; 
     }
 };
