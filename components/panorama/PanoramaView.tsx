@@ -244,7 +244,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
       if (!userProgress || isRead) return;
       const newReadList = [...(userProgress.ebd_read || []), studyKey];
       const newTotal = (userProgress.total_ebd_read || 0) + 1;
-      const updated = await db.entities.ReadingProgress.update(userProgress.id!, {
+      const updated = await db.entities.ReadingProgress.update(userProgress.id, {
           ebd_read: newReadList,
           total_ebd_read: newTotal
       });
@@ -384,38 +384,36 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         ? "2. INTRODUÇÃO GERAL:\n           Texto rico contextualizando O LIVRO (autor, data, propósito) e o cenário deste primeiro capítulo."
         : `2. INTRODUÇÃO DO CAPÍTULO:\n           FOCAR EXCLUSIVAMENTE no contexto imediato do capítulo ${chapter}. NÃO repita a introdução geral do livro de ${book} (autoria, data, etc), pois já foi dado nos capítulos anteriores. Vá direto ao ponto do enredo atual.`;
 
-    // SYSTEM IDENTITY (REINFORCED)
-    const SYSTEM_IDENTITY = `
+    const WRITING_STYLE_IDENTITY = `
         ATUE COMO: Professor Michel Felix.
-        PERFIL: PhD em Teologia Bíblica, Pentecostal Clássico, Arminiano e Erudito.
+        PERFIL: Teólogo Pentecostal Clássico, Arminiano, Erudito e Assembleiano.
         TOM: Magistral, Vibrante e extremamente detalhista.
 
-        --- REGRAS DE OURO (OBRIGATÓRIO) ---
-        1. OBJETIVO SUPREMO: CONTEÚDO COMPLETO E DENSO. Proibido resumos.
-        2. DENSIDADE: Cada página/bloco gerado deve ter aproximadamente 600 PALAVRAS. Se o conteúdo for curto, expanda a exegese, história e aplicação.
-        3. PROTOCOLO DE SEGURANÇA: Verifique o contexto imediato e remoto. Ortodoxia total em temas polêmicos (Ex: Linhagem de Sete, Jefté, Anjos).
+        --- OBJETIVO SUPREMO: CONTEÚDO COMPLETO E DENSO (600 PALAVRAS POR PÁGINA) ---
+        1. NÃO RESUMA. Explique CADA versículo ou grupo de versículos com profundidade máxima.
+        2. DENSIDADE: Cada página/bloco gerado deve ter aproximadamente 600 PALAVRAS.
+        3. PROTOCOLO DE SEGURANÇA: Verifique o contexto imediato e remoto. Ortodoxia total em temas polêmicos.
         4. DIDÁTICA: Explique termos técnicos entre parênteses. Ex: "Teofania (aparição de Deus)".
         5. ORIGINAIS: Use Hebraico/Grego transliterado para iluminar significados ocultos.
-        6. SEÇÕES FINAIS: Todo estudo deve terminar com "### TIPOLOGIA: CONEXÃO COM CRISTO" e "### CURIOSIDADES E ARQUEOLOGIA".
     `;
 
-    const PROMPT_TASK = `
+    const TASK_PROMPT = `
         TAREFA: Gerar ${target === 'student' ? 'AULA DO ALUNO' : 'MANUAL DO PROFESSOR'} para ${book} ${chapter}.
         ESTADO: ${mode === 'continue' ? 'CONTINUAÇÃO' : 'INÍCIO DO ESTUDO'}.
-        
-        --- ESTRUTURA VISUAL ---
+
+        --- ESTRUTURA VISUAL OBRIGATÓRIA ---
         1. TÍTULO: PANORÂMA BÍBLICO - ${book.toUpperCase()} ${chapter} (PROF. MICHEL FELIX)
         2. INTRODUÇÃO: Se for início, gere uma introdução densa (mínimo 600 palavras) unida ao primeiro tópico.
-        3. TÓPICOS: Numeração (1., 2., 3...).
-        4. PAGINAÇÃO: Use <hr class="page-break"> apenas após blocos densos (>3500 caracteres).
-        
-        ${mode === 'continue' ? `REGRAS DE CONTINUAÇÃO: Comece exatamente após: "...${cleanContext.slice(-500)}...". Não repita o título nem a introdução.` : ''}
-        ${customInstructions ? `INSTRUÇÕES ADICIONAIS: ${customInstructions}` : ''}
+        3. TÓPICOS: Numeração (1., 2., 3...). Use <hr class="page-break"> apenas após blocos densos (>3500 caracteres).
+        4. SEÇÕES FINAIS: Todo estudo deve terminar com "### TIPOLOGIA: CONEXÃO COM CRISTO" e "### CURIOSIDADES E ARQUEOLOGIA".
+
+        ${mode === 'continue' ? `REGRAS DE CONTINUAÇÃO: Comece exatamente após: "...${cleanContext.slice(-500)}...". Não repita o título.` : ''}
+        ${customInstructions ? `INSTRUÇÕES EXTRAS: ${customInstructions}` : ''}
     `;
 
     try {
-        const result = await generateContent(PROMPT_TASK, null, true, 'ebd', SYSTEM_IDENTITY);
-        if (!result || result.trim() === 'undefined' || result.length < 50) throw new Error("IA falhou.");
+        const result = await generateContent(TASK_PROMPT, null, true, 'ebd', WRITING_STYLE_IDENTITY);
+        if (!result || result.trim() === 'undefined' || result.length < 50) throw new Error("A IA retornou vazio.");
         
         let separator = '';
         if (mode === 'continue' && currentText.length > 0 && !currentText.trim().endsWith('>')) {
@@ -445,11 +443,16 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     }
   };
 
+  // --- CORREÇÃO DO BOTÃO APAGAR ---
   const handleDeletePage = async () => {
     if (!window.confirm("Tem certeza que deseja apagar o conteúdo DESTA página?")) return;
     if (!content) return;
 
+    // Cria uma nova lista de páginas removendo a atual
+    // Essa é a maneira mais segura: reconstruir o texto baseando-se no que sobrou
     const updatedPages = pages.filter((_, index) => index !== currentPage);
+    
+    // Reconstrói o conteúdo total juntando as páginas restantes com o separador padrão de quebra
     const newContent = updatedPages.join('<hr class="page-break">');
 
     const data = {
@@ -460,11 +463,18 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
     try {
         if (content.id) await db.entities.PanoramaBiblico.update(content.id, data);
+        
+        // Atualiza estado local imediatamente para feedback visual
         setPages(updatedPages);
+        
+        // Ajusta a página atual se estivermos na última
         if (currentPage >= updatedPages.length) {
             setCurrentPage(Math.max(0, updatedPages.length - 1));
         }
+
+        // Recarrega do banco para garantir sincronia
         await loadContent();
+        
         onShowToast('Página apagada com sucesso.', 'success');
     } catch (e) {
         onShowToast('Erro ao apagar página.', 'error');
@@ -479,16 +489,16 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         onTouchEnd={onTouchEnd}
     >
         <div className="sticky top-0 z-30 bg-gradient-to-r from-[#600018] to-[#400010] text-white p-4 shadow-lg flex justify-between items-center">
-            <button onClick={onBack} className="p-2"><ChevronLeft /></button>
-            <h2 className="font-cinzel font-bold text-sm tracking-widest uppercase text-[#C5A059]">Panorama EBD</h2>
+            <button onClick={onBack}><ChevronLeft /></button>
+            <h2 className="font-cinzel font-bold">Panorama EBD</h2>
             <div className="flex gap-2">
                 {isAdmin && !isEditing && content && (
                     <button onClick={handleStartEditing} title="Editar Texto Manualmente" className="p-2 hover:bg-white/10 rounded-full">
                         <Edit className="w-5 h-5 text-[#C5A059]" />
                     </button>
                 )}
-                <button onClick={() => setShowAudioSettings(!showAudioSettings)} title="Opções de Áudio" className="p-2">
-                    <Volume2 className={isPlaying ? "text-green-400 animate-pulse" : "w-6 h-6"} />
+                <button onClick={() => setShowAudioSettings(!showAudioSettings)} title="Opções de Áudio">
+                    <Volume2 className={isPlaying ? "text-green-400 animate-pulse" : ""} />
                 </button>
             </div>
         </div>
@@ -536,7 +546,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
              <select value={book} onChange={e => setBook(e.target.value)} className="flex-1 p-2 border rounded font-cinzel dark:bg-gray-800 dark:text-white">
                 {BIBLE_BOOKS.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
              </select>
-             <input type="number" value={chapter} onChange={e => setChapter(Number(e.target.value))} className="w-20 p-2 border rounded font-cinzel dark:bg-gray-800 dark:text-white text-center" min={1} />
+             <input type="number" value={chapter} onChange={e => setChapter(Number(e.target.value))} className="w-20 p-2 border rounded font-cinzel dark:bg-gray-800 dark:text-white" min={1} />
         </div>
 
         <div className="flex bg-[#F5F5DC] dark:bg-black">
@@ -557,7 +567,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         {isAdmin && !isEditing && (
             <div className="bg-[#1a0f0f] text-[#C5A059] p-4 shadow-inner sticky top-[130px] z-20 border-b-4 border-[#8B0000]">
                 <div className="flex items-center justify-between mb-2">
-                    <span className="font-cinzel text-xs flex items-center gap-2 font-bold"><Sparkles className="w-4 h-4" /> EDITOR CHEFE (3.0 PRO)</span>
+                    <span className="font-cinzel text-xs flex items-center gap-2 font-bold"><Sparkles className="w-4 h-4" /> EDITOR CHEFE ({activeTab.toUpperCase()})</span>
                     <button onClick={() => setShowInstructions(!showInstructions)} className="text-xs underline hover:text-white">
                         {showInstructions ? 'Ocultar Instruções' : 'Adicionar Instruções'}
                     </button>
@@ -567,10 +577,10 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                 )}
                 <div className="flex gap-2">
                     <button onClick={() => handleGenerate('start')} disabled={isGenerating} className="flex-1 px-3 py-2 border border-[#C5A059] rounded text-xs hover:bg-[#C5A059] hover:text-[#1a0f0f] transition disabled:opacity-50 font-bold">
-                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'INÍCIO (Estudo Longo)'}
+                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'INÍCIO (Padrão EBD)'}
                     </button>
                     <button onClick={() => handleGenerate('continue')} disabled={isGenerating} className="flex-1 px-3 py-2 bg-[#C5A059] text-[#1a0f0f] font-bold rounded text-xs hover:bg-white transition disabled:opacity-50">
-                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'CONTINUAR'}
+                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'CONTINUAR (+ Conteúdo)'}
                     </button>
                     {pages.length > 0 && (
                         <button onClick={handleDeletePage} className="px-3 py-2 bg-red-900 text-white rounded hover:bg-red-700 transition" title="Apagar esta página"><Trash2 className="w-4 h-4" /></button>
@@ -600,6 +610,10 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                             </button>
                         </div>
                      </div>
+                     <p className="text-xs text-gray-500 mb-2 font-montserrat">
+                        Use <code>__CONTINUATION_MARKER__</code> (em uma nova linha) para criar separadores visuais sem quebrar a página.
+                        Use <code>&lt;hr class="page-break"&gt;</code> para forçar nova página.
+                     </p>
                      <textarea 
                         value={editValue} 
                         onChange={e => setEditValue(e.target.value)} 
@@ -607,7 +621,15 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                      />
                  </div>
             ) : content && pages.length > 0 ? (
-                <div className="bg-white dark:bg-dark-card shadow-2xl p-8 md:p-16 min-h-[600px] border border-[#C5A059]/20 relative rounded-[2rem]">
+                <div className="bg-white dark:bg-dark-card shadow-2xl p-8 md:p-16 min-h-[600px] border border-[#C5A059]/20 relative">
+                     {(!content.student_content.includes('PANORÂMA') && currentPage === 0) && (
+                         <div className="mb-8 text-center border-b-2 border-[#8B0000] dark:border-[#ff6b6b] pb-4 pt-2">
+                            <h1 className="font-cinzel font-bold text-2xl md:text-3xl text-[#8B0000] dark:text-[#ff6b6b] uppercase tracking-widest drop-shadow-sm">
+                                PANORÂMA BÍBLICO - {content.book} {content.chapter}
+                            </h1>
+                        </div>
+                     )}
+                     
                      <div className="space-y-6">
                         {renderFormattedText(pages[currentPage])}
                      </div>
@@ -630,6 +652,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                                  {isRead ? <CheckCircle className="w-6 h-6" /> : <GraduationCap className="w-6 h-6" />}
                                  {isRead ? 'ESTUDO CONCLUÍDO' : 'CONCLUIR ESTUDO'}
                              </button>
+                             {isRead && <p className="text-xs text-green-600 mt-2 font-bold">Registrado no Ranking de EBD</p>}
                          </div>
                      )}
                 </div>
@@ -652,7 +675,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                     <ChevronLeft /> Anterior
                 </button>
                 <span className="font-cinzel font-bold text-[#1a0f0f] dark:text-white text-sm md:text-base">
-                    Página {currentPage + 1} de {pages.length}
+                    {currentPage + 1} / {pages.length}
                 </span>
                 <button 
                     onClick={() => setCurrentPage(Math.min(pages.length - 1, currentPage + 1))} 
