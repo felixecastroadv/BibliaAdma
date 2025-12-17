@@ -33,7 +33,7 @@ export const generateContent = async (
         const isPanorama = taskType === 'ebd' || prompt.includes('PANORÂMA') || prompt.includes('MICROSCOPIA');
         const adminKey = getStoredApiKey();
         
-        // MODELO FIXO CONFORME SOLICITADO: GEMINI 2.5 FLASH
+        // MODELO FIXO: GEMINI 2.5 FLASH (Versão preferida pelo usuário)
         const model = 'gemini-2.5-flash-preview-09-2025';
 
         if (adminKey) {
@@ -46,6 +46,7 @@ export const generateContent = async (
                     temperature: isPanorama ? 1.0 : 0.7,
                     maxOutputTokens: 8192,
                     systemInstruction: systemInstruction || "Você é o Professor Michel Felix.",
+                    // Thinking Budget ativado para garantir completude em estudos longos
                     ...(isPanorama ? { thinkingConfig: { thinkingBudget: 24576 } } : {}),
                     ...(jsonSchema ? { responseMimeType: "application/json", responseSchema: jsonSchema } : {})
                 }
@@ -54,7 +55,7 @@ export const generateContent = async (
         } 
         
         const controller = new AbortController();
-        // Aumentado para 5 minutos para suportar o raciocínio completo da Microscopia
+        // Aumentado para 5 minutos (300s) para permitir que a IA gere até 8 páginas de Microscopia
         const timeoutMs = isPanorama ? 300000 : 120000; 
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -80,7 +81,9 @@ export const generateContent = async (
         return processResponse(data.text, jsonSchema);
 
     } catch (error: any) {
-        if (error.name === 'AbortError') throw new Error("A IA está processando um estudo muito longo e profundo. Por favor, aguarde e tente 'Continuar' se o texto parar.");
+        if (error.name === 'AbortError') {
+            throw new Error("A IA está processando um estudo exaustivo. Por favor, aguarde e use o botão 'Continuar' se necessário.");
+        }
         throw error; 
     }
 };

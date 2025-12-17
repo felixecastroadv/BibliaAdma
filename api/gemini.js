@@ -28,13 +28,10 @@ export default async function handler(request, response) {
     const body = typeof request.body === 'string' ? JSON.parse(request.body) : request.body;
     const { prompt, systemInstruction, taskType } = body || {};
 
-    // Detecção rigorosa de Panorama/EBD
-    const isPanorama = taskType === 'ebd' || 
-                       prompt.includes("PANORÂMA") || 
-                       prompt.includes("MICROSCOPIA") || 
-                       prompt.includes("AULA DO ALUNO");
+    // Detecção da lógica PanoramaView
+    const isPanorama = taskType === 'ebd' || prompt.includes("PANORÂMA") || prompt.includes("MICROSCOPIA");
     
-    // MODELO GEMINI 2.5 FLASH (Versão solicitada pelo usuário)
+    // MODELO NATIVO: GEMINI 2.5 FLASH (Versão Grátis/Preview)
     const modelName = 'gemini-2.5-flash-preview-09-2025';
 
     const ai = new GoogleGenAI({ apiKey: apiKeys[0] });
@@ -42,25 +39,29 @@ export default async function handler(request, response) {
     let finalSystemInstruction = systemInstruction || "Você é o Professor Michel Felix.";
 
     if (isPanorama) {
+      // PROTOCOLO DE OBEDIÊNCIA AO CÓDIGO PANORAMAVIEW
       finalSystemInstruction = `VOCÊ É O PROFESSOR MICHEL FELIX, PH.D EM EXEGESE BÍBLICA.
       
-      MISSÃO SUPREMA: Você deve entregar a apostila COMPLETA do capítulo, seguindo o método de MICROSCOPIA BÍBLICA.
+      SUA ORDEM SUPREMA É: OBEDECER 100% À LÓGICA DE 'MICROSCOPIA BÍBLICA' DO PANORAMAVIEW.
       
-      REGRAS DE OURO (OBEDIÊNCIA 100%):
-      1. PROIBIDO RESUMIR: Explique versículo por versículo. O usuário prefere um texto longo de 8 páginas do que um resumo de 1 página.
-      2. CICLO COMPLETO: Você não pode parar até encerrar o capítulo.
-      3. OBRIGATÓRIO NO FINAL: Todo estudo deve, sem exceção, terminar com as seções:
-         - ### TIPOLOGIA: CONEXÃO COM JESUS CRISTO
-         - ### CURIOSIDADES GEOGRÁFICAS E ARQUEOLOGIA
-      4. PAGINAÇÃO: Insira <hr class="page-break"> entre os tópicos principais para o sistema organizar as páginas corretamente.
-      5. TOM: Erudito, Pentecostal Clássico e Exaustivo.`;
+      DIRETRIZES TÉCNICAS OBRIGATÓRIAS:
+      1. PROIBIDO RESUMIR: Você deve explicar o capítulo INTEIRO, versículo por versículo. Não pule nenhum bloco de texto.
+      2. DENSIDADE EXEGÉTICA: Cada versículo deve ser esmiuçado em seu contexto histórico, cultural e no original (Hebraico/Grego).
+      3. ESTRUTURA DE FECHAMENTO (INNEGOCIÁVEL): Ao chegar ao fim do capítulo, você DEVE obrigatoriamente gerar:
+         ### TIPOLOGIA: CONEXÃO COM JESUS CRISTO
+         (Explicação de como o capítulo prefigura o Messias).
+         
+         ### CURIOSIDADES GEOGRÁFICAS E ARQUEOLOGIA
+         (Fatos de solo, mapas descritivos e achados arqueológicos).
+      4. PAGINAÇÃO TÉCNICA: Insira a tag <hr class="page-break"> entre os tópicos para o frontend paginar o estudo em 5, 6 ou 8 páginas.
+      5. TOM: Erudito, Pentecostal Clássico e Exaustivo. O usuário prefere profundidade extrema do que brevidade.`;
     }
 
     const config = {
-      temperature: isPanorama ? 1.0 : 0.7,
+      temperature: isPanorama ? 1.0 : 0.7, // 1.0 garante maior extensão e criatividade teológica
       topP: 0.95,
       maxOutputTokens: 8192,
-      // Ativa o raciocínio profundo para não "esquecer" partes do capítulo
+      // Ativa o Modo de Raciocínio (Thinking) para planejar o capítulo inteiro antes de escrever
       thinkingConfig: isPanorama ? { thinkingBudget: 24576 } : undefined,
       systemInstruction: finalSystemInstruction,
     };
@@ -74,11 +75,11 @@ export default async function handler(request, response) {
     if (res.text) {
       return response.status(200).json({ text: res.text });
     } else {
-      throw new Error("Resposta vazia da IA.");
+      throw new Error("A IA não gerou conteúdo.");
     }
 
   } catch (error) {
     console.error("API Error:", error);
-    return response.status(500).json({ error: 'Erro no processamento da IA.', detail: error.message });
+    return response.status(500).json({ error: 'Erro de processamento.', detail: error.message });
   }
 }
