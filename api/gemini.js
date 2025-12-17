@@ -25,14 +25,11 @@ export default async function handler(request, response) {
 
   try {
     // --- 1. COLETA E ORDENAÇÃO SEQUENCIAL DE CHAVES ---
-    // Estrutura: { key: string, index: number }
     const allKeys = [];
 
-    // Prioridade 0: Chaves principais
     if (process.env.API_KEY) allKeys.push({ k: process.env.API_KEY, i: 0 });
     if (process.env.Biblia_ADMA_API) allKeys.push({ k: process.env.Biblia_ADMA_API, i: 0.1 });
 
-    // Prioridade 1 a 50: Chaves numeradas
     for (let i = 1; i <= 50; i++) {
         const keyName = `API_KEY_${i}`;
         const val = process.env[keyName];
@@ -47,10 +44,8 @@ export default async function handler(request, response) {
          });
     }
 
-    // ORDENAÇÃO: Garante que API_KEY_1 venha antes de API_KEY_2, etc.
     const sortedKeys = allKeys.sort((a, b) => a.i - b.i).map(item => item.k);
 
-    // --- 2. PREPARAÇÃO DO BODY ---
     let body = request.body;
     if (typeof body === 'string') {
         try {
@@ -62,14 +57,8 @@ export default async function handler(request, response) {
     const { prompt, schema } = body || {};
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
-    // --- 3. LOOP DE TENTATIVA SEQUENCIAL ---
-    // Começa sempre da primeira. Se falhar (cota), vai para a próxima.
-    
     let lastError = null;
     let successResponse = null;
-    
-    // Tenta no máximo 15 chaves em sequência por requisição para não estourar tempo limite de conexão
-    // Se as 15 primeiras estiverem esgotadas, provavelmente o sistema todo está sob ataque ou carga extrema
     const keysToTry = sortedKeys.slice(0, 15);
 
     for (const apiKey of keysToTry) {
@@ -80,9 +69,9 @@ export default async function handler(request, response) {
                 temperature: 0.5, 
                 topP: 0.95,
                 topK: 40,
-                maxOutputTokens: 8192, // Tokens máximos para EBD completa
+                maxOutputTokens: 4096, // Reduzido de 8192 para 4096 (Alvo: ~2.500 palavras)
                 safetySettings: [
-                    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_HATE_SHEECH', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
@@ -94,7 +83,6 @@ export default async function handler(request, response) {
                 aiConfig.responseSchema = schema;
             }
 
-            // FORÇA O USO DO GEMINI 2.5 FLASH
             const aiResponse = await ai.models.generateContent({
                 model: "gemini-2.5-flash",
                 contents: [{ parts: [{ text: prompt }] }],
@@ -106,36 +94,27 @@ export default async function handler(request, response) {
             }
 
             successResponse = aiResponse.text;
-            break; // SUCESSO! Para o loop e retorna.
+            break; 
 
         } catch (error) {
             lastError = error;
             const msg = error.message || '';
-            
-            // Se for erro de formato (400), não adianta trocar de chave, o prompt está ruim.
             if (msg.includes('400') || msg.includes('INVALID_ARGUMENT')) {
                 return response.status(400).json({ error: `Erro no formato da requisição: ${msg}` });
             }
-
-            // Se for erro de Cota (429) ou Server (500/503), continua o loop para a próxima chave
-            // Pequena pausa de 200ms para dar fôlego à rede
             await new Promise(resolve => setTimeout(resolve, 200));
         }
     }
 
-    // --- 4. RESPOSTA FINAL ---
     if (successResponse) {
         return response.status(200).json({ text: successResponse });
     } else {
         const errorMsg = lastError?.message || 'Erro desconhecido.';
-        console.error("Todas as chaves sequenciais falharam. Último erro:", errorMsg);
-        
         if (errorMsg.includes('429') || errorMsg.includes('Quota')) {
             return response.status(429).json({ 
-                error: 'SISTEMA OCUPADO: As primeiras chaves estão congestionadas. Aguarde 30 segundos para o reset automático.' 
+                error: 'SISTEMA OCUPADO: As primeiras chaves estão congestionadas. Aguarde 30 segundos.' 
             });
         }
-        
         return response.status(500).json({ error: `Falha na geração: ${errorMsg}` });
     }
 
