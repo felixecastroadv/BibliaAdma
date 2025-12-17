@@ -8,7 +8,7 @@ import DevotionalView from './components/devotional/DevotionalView';
 import PlansView from './components/plans/PlansView';
 import RankingView from './components/ranking/RankingView';
 import MessagesView from './components/messages/MessagesView';
-import DynamicModuleViewer from './components/dynamic/DynamicModuleViewer'; // Novo
+import DynamicModuleViewer from './components/dynamic/DynamicModuleViewer';
 import AdminPasswordModal from './components/modals/AdminPasswordModal';
 import Toast from './components/ui/Toast';
 import BottomNav from './components/ui/BottomNav';
