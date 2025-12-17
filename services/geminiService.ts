@@ -23,8 +23,8 @@ function processResponse(text: string | undefined, jsonSchema: any) {
       try {
         return JSON.parse(cleanText);
       } catch (e) {
-        console.error("JSON Parse Error. Raw text:", text);
-        throw new Error("Erro de formatação da IA. Tente novamente (JSON inválido).");
+        console.error("JSON Parse Error:", text);
+        throw new Error("Erro de formatação JSON. Tente novamente.");
       }
     }
     return text;
@@ -40,14 +40,17 @@ export const generateContent = async (
   systemInstruction?: string
 ) => {
     try {
+        // Detecção forçada para garantir sincronia com PanoramaView
+        const effectiveTaskType = (prompt.includes('PANORÂMA') || prompt.includes('Panorama') || prompt.includes('MICROSCOPIA')) ? 'ebd' : taskType;
+        
         const adminKey = getStoredApiKey();
         
         if (adminKey) {
             const ai = new GoogleGenAI({ apiKey: adminKey });
             const config: any = {
-                temperature: 0.7, 
+                temperature: effectiveTaskType === 'ebd' ? 1.0 : 0.7, 
                 topP: 0.95,
-                topK: 40,
+                maxOutputTokens: 8192,
                 systemInstruction: systemInstruction || "Você é o Professor Michel Felix."
             };
 
@@ -66,7 +69,7 @@ export const generateContent = async (
         } 
         
         const controller = new AbortController();
-        const timeoutMs = 300000; 
+        const timeoutMs = 300000; // 5 minutos para suportar as 600+ palavras por página
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         const response = await fetch('/api/gemini', {
@@ -75,8 +78,8 @@ export const generateContent = async (
             body: JSON.stringify({ 
                 prompt, 
                 schema: jsonSchema, 
-                isLongOutput,
-                taskType,
+                isLongOutput: true,
+                taskType: effectiveTaskType,
                 systemInstruction
             }),
             signal: controller.signal
@@ -86,9 +89,7 @@ export const generateContent = async (
 
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
-            const detail = errData.error || `Status ${response.status}`;
-            const techDetail = errData.detail ? ` (${errData.detail})` : '';
-            throw new Error(`${detail}${techDetail}`);
+            throw new Error(errData.error || `Status ${response.status}`);
         }
 
         const data = await response.json();
@@ -96,9 +97,7 @@ export const generateContent = async (
 
     } catch (error: any) {
         console.error("Gemini Service Error:", error);
-        if (error.name === 'AbortError') {
-             throw new Error("A geração demorou muito e excedeu 5 minutos.");
-        }
+        if (error.name === 'AbortError') throw new Error("Tempo esgotado. A IA está gerando um conteúdo muito grande, tente novamente.");
         throw error; 
     }
 };
