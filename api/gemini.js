@@ -68,9 +68,8 @@ export default async function handler(request, response) {
                 temperature: 0.7, 
                 topP: 0.95,
                 topK: 40,
-                // O modelo PRO permite mais tokens de saída, ideal para estudos longos
                 maxOutputTokens: 8192, 
-                systemInstruction: systemInstruction || "Você é um assistente teológico especializado.",
+                systemInstruction: systemInstruction || "Você é o Professor Michel Felix, teólogo Pentecostal Clássico e erudito.",
                 safetySettings: [
                     { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
@@ -84,7 +83,6 @@ export default async function handler(request, response) {
                 aiConfig.responseSchema = schema;
             }
 
-            // Upgrade para gemini-3-pro-preview para tarefas de texto complexas e persona rigorosa
             const aiResponse = await ai.models.generateContent({
                 model: "gemini-3-pro-preview",
                 contents: [{ parts: [{ text: prompt }] }],
