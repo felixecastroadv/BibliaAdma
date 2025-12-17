@@ -1,19 +1,19 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ShieldCheck, RefreshCw, Loader2, Upload, Download, Server, HardDrive, Flag, CheckCircle, XCircle, MessageSquare, Languages, GraduationCap, Calendar, CloudUpload, Wand2, StopCircle, Trash2, AlertTriangle, Save, Lock, Unlock, KeyRound, Search, Cloud, Activity, Zap, Battery, Info, Database } from 'lucide-react';
 import { generateContent } from '../../services/geminiService';
 import { BIBLE_BOOKS, generateChapterKey, generateVerseKey, TOTAL_CHAPTERS } from '../../constants';
-import { db, bibleStorage } from '../../services/database';
+import { db } from '../../services/database';
 import { Type as GenType } from "@google/genai";
-import { ContentReport, AppConfig, UserProgress } from '../../types';
+import { ContentReport, AppConfig } from '../../types';
 import AppBuilder from './AppBuilder';
 
-const TOTAL_VERSES = 31102; // Média da bíblia toda
+const TOTAL_VERSES = 31102;
 
 export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void, onShowToast: (msg: string, type: 'success' | 'error' | 'info') => void }) {
   const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   const [counts, setCounts] = useState({ chapters: 0, commentaries: 0, dictionaries: 0 });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isCheckingDb, setIsCheckingDb] = useState(false);
   
   const [keysStatus, setKeysStatus] = useState<any>(null);
   const [isCheckingKeys, setIsCheckingKeys] = useState(false);
@@ -61,6 +61,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
 
   const checkDbConnection = async () => {
     setDbStatus('checking');
+    setIsCheckingDb(true);
     try {
         const res = await fetch('/api/storage', {
             method: 'POST',
@@ -72,6 +73,8 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
         else setDbStatus('error');
     } catch (e) {
         setDbStatus('error');
+    } finally {
+        setIsCheckingDb(false);
     }
   };
 
@@ -93,7 +96,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
               dictionaries: dData.count || 0
           });
       } catch (e) {
-          console.error("Erro ao contar itens:", e);
+          console.error("Erro ao contar itens reais na nuvem:", e);
       }
   };
 
@@ -103,9 +106,9 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           const res = await fetch('/api/keys-status');
           const data = await res.json();
           setKeysStatus(data);
-          onShowToast(`Status: ${data.healthy} chaves operacionais.`, data.healthy > 0 ? "success" : "error");
+          onShowToast(`Monitoramento Real: ${data.healthy} chaves ativas.`, data.healthy > 0 ? "success" : "error");
       } catch (e) {
-          onShowToast("Erro ao testar chaves.", "error");
+          onShowToast("Falha na checagem de APIs.", "error");
       } finally {
           setIsCheckingKeys(false);
       }
@@ -125,41 +128,42 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           let verses = (await db.entities.BibleChapter.getCloud(chapKey)) as any[];
           
           if (!verses || verses.length === 0) {
-              addLog(`❌ Texto de ${bookMeta.name} ${c} não encontrado no Supabase.`);
+              addLog(`❌ Erro: Texto de ${bookMeta.name} ${c} não encontrado no Supabase.`);
               setIsGeneratingBatch(false);
               return;
           }
 
-          addLog(`🚀 Iniciando Lote: ${bookMeta.name} ${c} (${verses.length} itens).`);
+          addLog(`🚀 Iniciando Alimentação Real: ${bookMeta.name} ${c} (${verses.length} versículos).`);
 
           for (let i = 0; i < verses.length; i++) {
-              if (stopBatchRef.current) { addLog("🛑 Interrompido pelo usuário."); break; }
+              if (stopBatchRef.current) { addLog("🛑 Processamento Interrompido."); break; }
               const verseNum = i + 1;
               const vKey = generateVerseKey(bookMeta.name, c, verseNum);
               const textBase = verses[i];
-              addLog(`⏳ Analisando ${bookMeta.name} ${c}:${verseNum}...`);
+              addLog(`⏳ Alimentando ${bookMeta.name} ${c}:${verseNum}...`);
 
               try {
                   if (type === 'commentary') {
-                        // RESTAURAÇÃO COMPLETA DO PROMPT DO PROFESSOR MICHEL FELIX
+                        // RESTAURAÇÃO INTEGRAL DO PROMPT MICHEL FELIX PHD (PADRÃO VERSE PANEL)
                         const prompt = `
                             ATUE COMO: Professor Michel Felix, PhD em Teologia.
-                            TAREFA: Escrever um comentário EXEGÉTICO para um aluno.
+                            TAREFA: Escrever um comentário EXEGÉTICO para o sistema ADMA.
                             TEXTO BÍBLICO: "${textBase}"
                             REFERÊNCIA: ${bookMeta.name} ${c}:${verseNum}
 
-                            --- REGRAS DE INÍCIO (RIGOROSO) ---
+                            --- REGRAS DE OURO (NÃO NEGOCIÁVEL) ---
                             1. INÍCIO OBRIGATÓRIO: "Este versículo revela...".
-                            2. ZERO SAUDAÇÕES: Proibido "Olá", "Paz do Senhor", etc.
+                            2. ZERO SAUDAÇÕES: Proibido "Olá", "A Paz do Senhor" ou introduções sociais.
+                            3. TONE: Magistral, Acadêmico, Erudito mas Claro.
 
-                            --- PROTOCOLO TEOLÓGICO (ADMA) ---
-                            - A BÍBLIA EXPLICA A BÍBLIA: Verifique o contexto imediato e remoto.
-                            - PRECISÃO CRONOLÓGICA: Sem anacronismos.
+                            --- PROTOCOLO DE HERMENÊUTICA ADMA ---
+                            - USO IMPLÍCITO: A Bíblia explica a Bíblia. Verifique o contexto remoto.
+                            - PRECISÃO CRONOLÓGICA: Sem anacronismos históricos.
                             - ORTODOXIA: Linha pentecostal conservadora (Assembleiana).
-                            - EFEITO "AH! ENTENDI!": Linguagem profunda mas clara.
+                            - EFEITO "AH! ENTENDI!": Descomplique o texto sem perder a profundidade.
 
-                            --- ESTRUTURA (Max 250 Palavras) ---
-                            3 Parágrafos distintos cobrindo: O Desvendar do Texto, Conexão Teológica e Aplicação Prática.
+                            --- ESTRUTURA (3 Parágrafos) ---
+                            O Desvendar do Texto, Conexão Teológica e Aplicação Prática.
                         `;
                         const resText = await generateContent(prompt);
                         await db.entities.Commentary.create({ 
@@ -167,15 +171,9 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                             verse_key: vKey, commentary_text: resText 
                         });
                   } else {
-                        // RESTAURAÇÃO COMPLETA DO PROMPT DO DICIONÁRIO (HEBRAÍSTA/HELENISTA)
+                        // DICIONÁRIO PROFISSIONAL
                         const lang = bookMeta.testament === 'old' ? 'HEBRAICO' : 'GREGO';
-                        const prompt = `
-                            Você é um HEBRAÍSTA e HELENISTA SÊNIOR.
-                            TAREFA: Análise lexical COMPLETA de ${bookMeta.name} ${c}:${verseNum}.
-                            Texto: "${textBase}"
-                            Idioma original: ${lang}
-                            Analise TODAS as palavras principais retornando JSON.
-                        `;
+                        const prompt = `Você é um HEBRAÍSTA e HELENISTA SÊNIOR. Realize análise lexical de ${bookMeta.name} ${c}:${verseNum}. Texto: "${textBase}". Idioma: ${lang}. Retorne JSON.`;
                         const schema = {
                             type: GenType.OBJECT,
                             properties: {
@@ -185,14 +183,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                                     type: GenType.ARRAY, 
                                     items: { 
                                         type: GenType.OBJECT, 
-                                        properties: { 
-                                            original: { type: GenType.STRING }, 
-                                            transliteration: { type: GenType.STRING }, 
-                                            portuguese: { type: GenType.STRING }, 
-                                            polysemy: { type: GenType.STRING }, 
-                                            etymology: { type: GenType.STRING }, 
-                                            grammar: { type: GenType.STRING } 
-                                        } 
+                                        properties: { original: { type: GenType.STRING }, transliteration: { type: GenType.STRING }, portuguese: { type: GenType.STRING }, polysemy: { type: GenType.STRING }, etymology: { type: GenType.STRING }, grammar: { type: GenType.STRING } } 
                                     } 
                                 }
                             }
@@ -204,13 +195,13 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                             transliteration: resJson.phoneticText, key_words: resJson.words 
                         });
                   }
-                  addLog(`✅ Sucesso ${c}:${verseNum}`);
-                  await new Promise(r => setTimeout(r, 800)); 
+                  addLog(`✅ Sucesso em ${c}:${verseNum}`);
+                  await new Promise(r => setTimeout(r, 850)); 
               } catch (err: any) { 
                   addLog(`⚠️ Falha em ${c}:${verseNum}: ${err.message}`); 
               }
           }
-      } catch (e: any) { addLog(`Erro crítico: ${e.message}`); }
+      } catch (e: any) { addLog(`Erro Crítico de Rede: ${e.message}`); }
       setIsGeneratingBatch(false);
       updateRealCounts();
   };
@@ -219,18 +210,18 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
 
   const bibleProgress = Math.round((counts.chapters / 1189) * 100);
   const commentaryProgress = Math.round((counts.commentaries / TOTAL_VERSES) * 100);
-  const dictionaryProgress = Math.round((counts.dictionaries / TOTAL_VERSES) * 100);
+  const reqsRemaining = Math.max(0, (TOTAL_VERSES * 2) - (counts.commentaries + counts.dictionaries));
 
   if (showBuilder) return <AppBuilder onBack={() => { setShowBuilder(false); loadAppConfig(); }} onShowToast={onShowToast} currentConfig={appConfig} />;
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] dark:bg-[#121212] transition-colors duration-300">
       
-      {/* HEADER */}
+      {/* HEADER RESTAURADO */}
       <div className="bg-[#1a0f0f] text-white p-4 flex items-center gap-4 sticky top-0 shadow-lg z-30 border-b border-[#C5A059]/30">
         <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full"><ChevronLeft /></button>
-        <h1 className="font-cinzel font-bold text-[#C5A059] flex items-center gap-2 tracking-widest text-sm uppercase">
-            <ShieldCheck className="w-5 h-5"/> Editor Chefe ADMA
+        <h1 className="font-cinzel font-bold text-[#C5A059] flex items-center gap-2 tracking-widest text-xs md:text-sm uppercase">
+            <ShieldCheck className="w-5 h-5"/> Painel do Editor Chefe ADMA
         </h1>
         <button onClick={refreshRealData} className={`ml-auto p-2 rounded-full ${isRefreshing ? 'animate-spin text-[#C5A059]' : 'text-white'}`}>
             <RefreshCw className="w-5 h-5" />
@@ -239,30 +230,30 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
 
       <div className="p-6 max-w-5xl mx-auto space-y-8 pb-32">
         
-        {/* ESTRATÉGIA DE ALIMENTAÇÃO - REALISTA */}
+        {/* ESTRATÉGIA DE ALIMENTAÇÃO - TOTALMENTE FUNCIONAL */}
         <div className="bg-[#8B0000] text-white p-6 rounded-3xl shadow-2xl relative overflow-hidden group border border-[#C5A059]/30">
             <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
                 <Activity className="w-32 h-32" />
             </div>
             <div className="relative z-10">
-                <h2 className="font-cinzel font-bold text-xl flex items-center gap-2 mb-4"><Info className="w-5 h-5 text-[#C5A059]"/> Progresso Real da Alimentação</h2>
+                <h2 className="font-cinzel font-bold text-xl flex items-center gap-2 mb-4"><Info className="w-5 h-5 text-[#C5A059]"/> Estratégia Real de Alimentação</h2>
                 
                 <div className="space-y-4 mb-6">
                     <div className="space-y-1">
-                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
-                            <span>Texto Bíblico (Capítulos)</span>
+                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
+                            <span>Base de Capítulos (Supabase)</span>
                             <span>{counts.chapters} / 1189 ({bibleProgress}%)</span>
                         </div>
-                        <div className="w-full bg-black/30 rounded-full h-1.5 overflow-hidden border border-white/5">
+                        <div className="w-full bg-black/30 rounded-full h-2 overflow-hidden border border-white/5">
                             <div className="bg-[#C5A059] h-full transition-all duration-1000" style={{ width: `${bibleProgress}%` }}></div>
                         </div>
                     </div>
                     <div className="space-y-1">
-                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
-                            <span>Comentários Exegéticos (Versículos)</span>
+                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
+                            <span>Exegese Comentada (Versículos)</span>
                             <span>{counts.commentaries} / ~31.100 ({commentaryProgress}%)</span>
                         </div>
-                        <div className="w-full bg-black/30 rounded-full h-1.5 overflow-hidden border border-white/5">
+                        <div className="w-full bg-black/30 rounded-full h-2 overflow-hidden border border-white/5">
                             <div className="bg-green-500 h-full transition-all duration-1000" style={{ width: `${commentaryProgress}%` }}></div>
                         </div>
                     </div>
@@ -270,72 +261,76 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-white/10 pt-4">
                     <div className="bg-black/20 p-4 rounded-2xl border border-white/10">
-                        <p className="text-[10px] uppercase font-bold text-[#C5A059] mb-1">Capacidade Atual</p>
-                        <p className="text-2xl font-montserrat font-black">30.000 <span className="text-xs font-normal opacity-70">REQS/DIA</span></p>
+                        <p className="text-[10px] uppercase font-bold text-[#C5A059] mb-1">Capacidade Diária</p>
+                        <p className="text-2xl font-montserrat font-black">30.000 <span className="text-xs font-normal opacity-70">REQS</span></p>
                     </div>
                     <div className="bg-black/20 p-4 rounded-2xl border border-white/10">
                         <p className="text-[10px] uppercase font-bold text-[#C5A059] mb-1">Faltam Gerar</p>
-                        <p className="text-2xl font-montserrat font-black">~{Math.max(0, (TOTAL_VERSES * 2) - (counts.commentaries + counts.dictionaries))} <span className="text-xs font-normal opacity-70">REQS</span></p>
+                        <p className="text-2xl font-montserrat font-black">~{reqsRemaining} <span className="text-xs font-normal opacity-70">ITENS</span></p>
                     </div>
                     <div className="bg-black/20 p-4 rounded-2xl border border-white/10">
                         <p className="text-[10px] uppercase font-bold text-[#C5A059] mb-1">Tempo Estimado</p>
-                        <p className="text-2xl font-montserrat font-black">~{Math.ceil((TOTAL_VERSES * 2 - (counts.commentaries + counts.dictionaries)) / 30000)} DIAS</p>
+                        <p className="text-2xl font-montserrat font-black">~{Math.ceil(reqsRemaining / 30000)} DIAS</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        {/* STATUS REAL-TIME */}
+        {/* STATUS TILES - FUNCIONAL E VERDADEIRO */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white dark:bg-[#1E1E1E] p-5 rounded-2xl shadow-lg border border-[#C5A059]/20 flex items-center justify-between group transition-all">
+            <div className="bg-white dark:bg-[#1E1E1E] p-5 rounded-2xl shadow-lg border border-[#C5A059]/20 flex items-center justify-between group">
                 <div className="flex items-center gap-4">
                     <div className={`p-3 rounded-xl ${dbStatus === 'connected' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
                         <Server className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase">Supabase Status</p>
-                        <p className="font-cinzel font-bold dark:text-white uppercase tracking-wider">{dbStatus === 'connected' ? 'Online' : 'Erro'}</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase">Banco de Dados</p>
+                        <p className="font-cinzel font-bold dark:text-white uppercase">{dbStatus === 'connected' ? 'Online' : dbStatus === 'checking' ? 'Testando...' : 'Offline'}</p>
                     </div>
                 </div>
-                <button onClick={checkDbConnection} className="p-2 text-gray-300 hover:text-[#C5A059] active:rotate-180 transition-all"><RefreshCw className="w-4 h-4"/></button>
+                <button onClick={checkDbConnection} disabled={isCheckingDb} className="p-2 text-gray-300 hover:text-[#C5A059] transition-all">
+                    <RefreshCw className={`w-4 h-4 ${isCheckingDb ? 'animate-spin' : ''}`} />
+                </button>
             </div>
 
-            <div className="bg-white dark:bg-[#1E1E1E] p-5 rounded-2xl shadow-lg border border-[#C5A059]/20 flex items-center justify-between group transition-all">
+            <div className="bg-white dark:bg-[#1E1E1E] p-5 rounded-2xl shadow-lg border border-[#C5A059]/20 flex items-center justify-between group">
                 <div className="flex items-center gap-4">
                     <div className="p-3 rounded-xl bg-blue-100 text-blue-600">
                         <Database className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase">Bíblia na Nuvem</p>
-                        <p className="font-cinzel font-bold dark:text-white uppercase tracking-wider">{counts.chapters} Caps</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase">Base (Nuvem)</p>
+                        <p className="font-cinzel font-bold dark:text-white">{counts.chapters} Capítulos</p>
                     </div>
                 </div>
-                <button onClick={updateRealCounts} className="p-2 text-gray-300 hover:text-[#C5A059] active:rotate-180 transition-all"><RefreshCw className="w-4 h-4"/></button>
+                <button onClick={updateRealCounts} disabled={isRefreshing} className="p-2 text-gray-300 hover:text-[#C5A059] transition-all">
+                    <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </button>
             </div>
 
-            <button onClick={checkKeysHealth} disabled={isCheckingKeys} className="bg-white dark:bg-[#1E1E1E] p-5 rounded-2xl shadow-lg border border-[#C5A059]/20 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+            <button onClick={checkKeysHealth} disabled={isCheckingKeys} className="bg-white dark:bg-[#1E1E1E] p-5 rounded-2xl shadow-lg border border-[#C5A059]/20 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all text-left">
                 <div className={`p-3 rounded-xl ${keysStatus?.healthy > 0 ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-600'}`}>
                     {isCheckingKeys ? <Loader2 className="w-6 h-6 animate-spin" /> : <Activity className="w-6 h-6" />}
                 </div>
-                <div className="flex-1 text-left">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase">Saúde API</p>
-                    <p className="font-cinzel font-bold dark:text-white uppercase tracking-wider">{keysStatus ? `${keysStatus.healthy} Chaves OK` : 'Testar Agora'}</p>
+                <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase">Saúde das APIs</p>
+                    <p className="font-cinzel font-bold dark:text-white uppercase">{keysStatus ? `${keysStatus.healthy} Chaves OK` : 'Testar Agora'}</p>
                 </div>
             </button>
         </div>
 
-        {/* GERAÇÃO EM LOTE - PROMPTS RESTAURADOS */}
+        {/* FÁBRICA DE CONTEÚDO EM LOTE */}
         <div className="bg-white dark:bg-[#1E1E1E] rounded-[2rem] shadow-xl border border-[#C5A059]/30 overflow-hidden">
             <div className="bg-[#1a0f0f] p-6 flex justify-between items-center border-b border-[#C5A059]/20">
                 <div>
-                    <h3 className="font-cinzel font-bold text-white text-lg">Fábrica de Conteúdo (Lote)</h3>
-                    <p className="text-[10px] text-[#C5A059] uppercase tracking-widest font-bold">Processamento Versículo a Versículo com Padrão ADMA</p>
+                    <h3 className="font-cinzel font-bold text-white text-lg">Gerador de Massa (Padrão ADMA)</h3>
+                    <p className="text-[10px] text-[#C5A059] uppercase tracking-widest font-bold">Processamento Sequencial com Rigor Exegético</p>
                 </div>
                 <div className="flex gap-2">
-                    <select value={batchBook} onChange={e => setBatchBook(e.target.value)} className="bg-gray-800 text-white text-xs border-none rounded-lg p-2 font-cinzel outline-none">
+                    <select value={batchBook} onChange={e => setBatchBook(e.target.value)} className="bg-gray-800 text-white text-[11px] border-none rounded-lg p-2 font-cinzel outline-none">
                         {BIBLE_BOOKS.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
                     </select>
-                    <input type="number" value={batchStartChapter} onChange={e => setBatchStartChapter(Number(e.target.value))} className="bg-gray-800 text-white text-xs border-none rounded-lg w-16 p-2 font-cinzel outline-none" min={1}/>
+                    <input type="number" value={batchStartChapter} onChange={e => setBatchStartChapter(Number(e.target.value))} className="bg-gray-800 text-white text-xs border-none rounded-lg w-14 p-2 font-cinzel text-center outline-none" min={1}/>
                 </div>
             </div>
             
@@ -344,10 +339,10 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                     <div className="space-y-6">
                         <div className="flex flex-col items-center justify-center py-6 text-center">
                             <Loader2 className="w-12 h-12 animate-spin text-[#8B0000] mb-3" />
-                            <p className="font-cinzel font-bold dark:text-white text-xl">Processando {batchBook} {batchStartChapter}...</p>
-                            <p className="text-sm text-gray-500 mt-1">Rotação automática entre as chaves ativa.</p>
-                            <button onClick={() => { stopBatchRef.current = true; }} className="mt-6 flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-full font-bold hover:bg-red-700 transition-all">
-                                <StopCircle className="w-4 h-4" /> Parar Lote
+                            <p className="font-cinzel font-bold dark:text-white text-xl">Gerindo Massa de Dados: {batchBook} {batchStartChapter}...</p>
+                            <p className="text-sm text-gray-500 mt-1">O Professor está analisando versículo por versículo.</p>
+                            <button onClick={() => { stopBatchRef.current = true; }} className="mt-6 flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-full font-bold hover:bg-red-700 transition-all text-xs">
+                                <StopCircle className="w-4 h-4" /> PARAR ALIMENTAÇÃO
                             </button>
                         </div>
                         <div className="bg-black/90 rounded-2xl p-6 font-mono text-[11px] text-green-400 h-64 overflow-y-auto shadow-inner border border-white/5">
@@ -356,18 +351,18 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <button onClick={() => handleBatchGenerate('commentary')} className="group p-8 bg-gradient-to-br from-[#8B0000] to-[#500000] rounded-[2rem] text-white flex flex-col items-center gap-4 hover:shadow-2xl transition-all hover:scale-[1.02]">
+                        <button onClick={() => handleBatchGenerate('commentary')} className="group p-8 bg-gradient-to-br from-[#8B0000] to-[#500000] rounded-[2rem] text-white flex flex-col items-center gap-4 hover:shadow-2xl transition-all hover:scale-[1.02] border border-[#C5A059]/20">
                             <MessageSquare className="w-10 h-10 text-[#C5A059]" />
                             <div className="text-center">
-                                <p className="font-cinzel font-bold text-lg">Gerar Comentários do Professor</p>
-                                <p className="text-xs opacity-70 mt-1">Estilo Exegético Michel Felix PhD.</p>
+                                <p className="font-cinzel font-bold text-lg uppercase tracking-wider">Gerar Comentários Professor</p>
+                                <p className="text-[10px] opacity-70 mt-1">Padrão Michel Felix PhD (Este versículo revela...)</p>
                             </div>
                         </button>
                         <button onClick={() => handleBatchGenerate('dictionary')} className="group p-8 bg-gradient-to-br from-[#1a0f0f] to-[#000000] border border-[#C5A059]/40 rounded-[2rem] text-white flex flex-col items-center gap-4 hover:shadow-2xl transition-all hover:scale-[1.02]">
                             <Languages className="w-10 h-10 text-[#C5A059]" />
                             <div className="text-center">
-                                <p className="font-cinzel font-bold text-lg">Gerar Dicionário Original</p>
-                                <p className="text-xs opacity-70 mt-1">Análise Hebraico/Grego profunda.</p>
+                                <p className="font-cinzel font-bold text-lg uppercase tracking-wider">Gerar Dicionário Original</p>
+                                <p className="text-[10px] opacity-70 mt-1">Análise Lexical Profunda (Hebraico/Grego)</p>
                             </div>
                         </button>
                     </div>
