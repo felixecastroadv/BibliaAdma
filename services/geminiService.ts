@@ -44,7 +44,7 @@ export const generateContent = async (
         if (adminKey) {
             const ai = new GoogleGenAI({ apiKey: adminKey });
             const config: any = {
-                temperature: 0.7, 
+                temperature: 0.75, 
                 topP: 0.95,
                 topK: 40,
             };
@@ -55,7 +55,7 @@ export const generateContent = async (
             }
 
             const response = await ai.models.generateContent({
-                model: "gemini-2.0-flash",
+                model: "gemini-2.5-flash-preview",
                 contents: [{ parts: [{ text: prompt }] }],
                 config: config
             });
