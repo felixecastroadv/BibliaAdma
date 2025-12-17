@@ -184,7 +184,12 @@ export default function App() {
         case 'ranking':
             return <RankingView onBack={() => setView('dashboard')} />;
         case 'messages':
-            return <MessagesView onBack={() => setView('dashboard')} isAdmin={isAdmin} user={user} />;
+            return <MessagesView 
+                onBack={() => setView('dashboard')} 
+                isAdmin={isAdmin} 
+                user={user} 
+                onShowToast={showToast}
+            />;
         case 'dynamic_module':
             return activeModule ? <DynamicModuleViewer module={activeModule} onBack={() => setView('dashboard')} /> : <div>Módulo não encontrado</div>;
         default:
