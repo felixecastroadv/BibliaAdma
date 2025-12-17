@@ -6,25 +6,15 @@ export const getStoredApiKey = (): string | null => {
   return localStorage.getItem(STORAGE_KEY_API);
 };
 
-export const setStoredApiKey = (key: string) => {
-  localStorage.setItem(STORAGE_KEY_API, key);
-};
-
-export const clearStoredApiKey = () => {
-  localStorage.removeItem(STORAGE_KEY_API);
-};
-
 function processResponse(text: string | undefined, jsonSchema: any) {
     if (!text) throw new Error("A IA retornou uma resposta vazia.");
     
     if (jsonSchema) {
-      let cleanText = text || "{}";
-      cleanText = cleanText.replace(/```json/g, '').replace(/```/g, '').trim();
+      let cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
       try {
         return JSON.parse(cleanText);
       } catch (e) {
-        console.error("JSON Parse Error:", text);
-        throw new Error("Erro de formatação JSON. Tente novamente.");
+        throw new Error("Erro de formatação JSON.");
       }
     }
     return text;
@@ -40,35 +30,30 @@ export const generateContent = async (
   systemInstruction?: string
 ) => {
     try {
-        const effectiveTaskType = (prompt.includes('PANORÂMA') || prompt.includes('Panorama') || prompt.includes('MICROSCOPIA')) ? 'ebd' : taskType;
-        
+        const isPanorama = taskType === 'ebd' || prompt.includes('PANORÂMA');
         const adminKey = getStoredApiKey();
         
+        // Se houver chave manual, usa o SDK diretamente
         if (adminKey) {
             const ai = new GoogleGenAI({ apiKey: adminKey });
-            const config: any = {
-                temperature: effectiveTaskType === 'ebd' ? 1.0 : 0.7, 
-                topP: 0.95,
-                maxOutputTokens: 8192,
-                systemInstruction: systemInstruction || "Você é o Professor Michel Felix."
-            };
-
-            if (jsonSchema) {
-                config.responseMimeType = "application/json";
-                config.responseSchema = jsonSchema;
-            }
-
-            const response = await ai.models.generateContent({
-                model: effectiveTaskType === 'ebd' ? "gemini-3-pro-preview" : "gemini-3-flash-preview",
-                contents: [{ parts: [{ text: prompt }] }],
-                config: config
-            });
+            const model = isPanorama ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
             
+            const response = await ai.models.generateContent({
+                model: model,
+                contents: [{ parts: [{ text: prompt }] }],
+                config: {
+                    temperature: isPanorama ? 1.0 : 0.7,
+                    systemInstruction: systemInstruction || "Você é o Professor Michel Felix.",
+                    ...(isPanorama ? { thinkingConfig: { thinkingBudget: 32768 } } : {}),
+                    ...(jsonSchema ? { responseMimeType: "application/json", responseSchema: jsonSchema } : {})
+                }
+            });
             return processResponse(response.text, jsonSchema);
         } 
         
+        // Caso contrário, usa a API da Vercel/Backend
         const controller = new AbortController();
-        const timeoutMs = 400000; // Aumentado para ~7 minutos (Processamento PRO é mais lento e denso)
+        const timeoutMs = isPanorama ? 400000 : 60000; // 7 minutos para o Pro Thinking
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         const response = await fetch('/api/gemini', {
@@ -76,9 +61,7 @@ export const generateContent = async (
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 prompt, 
-                schema: jsonSchema, 
-                isLongOutput: true,
-                taskType: effectiveTaskType,
+                taskType: isPanorama ? 'ebd' : taskType,
                 systemInstruction
             }),
             signal: controller.signal
@@ -88,15 +71,14 @@ export const generateContent = async (
 
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
-            throw new Error(errData.error || `Status ${response.status}`);
+            throw new Error(errData.error || `Erro ${response.status}`);
         }
 
         const data = await response.json();
         return processResponse(data.text, jsonSchema);
 
     } catch (error: any) {
-        console.error("Gemini Service Error:", error);
-        if (error.name === 'AbortError') throw new Error("Tempo esgotado. O modelo PRO está gerando um estudo muito denso, aguarde um pouco e tente novamente.");
+        if (error.name === 'AbortError') throw new Error("A IA está demorando para pensar no estudo profundo. Tente novamente em instantes.");
         throw error; 
     }
 };

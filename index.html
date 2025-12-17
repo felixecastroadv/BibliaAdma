@@ -7,16 +7,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Bíblia ADMA">
-    <meta name="description" content="Bíblia de Estudo ADMA - Prof. Michel Felix. App cristão com recursos offline.">
     
     <title>Bíblia ADMA - Prof. Michel Felix</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://bible-api.com">
-
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-    <link rel="manifest" href="/manifest.json?v=8" />
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -28,60 +23,34 @@
               primary: '#8B0000',
               secondary: '#C5A059',
               background: '#F5F5DC',
-              dark: '#0a0a0a', 
-              'dark-bg': '#121212', 
-              'dark-card': '#1E1E1E'
+              dark: {
+                DEFAULT: '#0a0a0a',
+                bg: '#121212',
+                card: '#1E1E1E',
+                accent: '#ff6b6b'
+              }
             },
             fontFamily: {
               cinzel: ['Cinzel', 'serif'],
               cormorant: ['Cormorant Garamond', 'serif'],
               montserrat: ['Montserrat', 'sans-serif'],
-            },
-            padding: {
-                'safe': 'env(safe-area-inset-bottom)'
             }
           }
         }
       }
     </script>
 
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;800&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet">
     
     <style>
       html { scroll-behavior: smooth; -webkit-tap-highlight-color: transparent; }
-      body { background-color: #F5F5DC; }
-      .paper-texture { background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E"); }
+      body { background-color: #F5F5DC; transition: background-color 0.3s ease; }
       .dark body { background-color: #121212; }
+      .paper-texture { background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E"); }
       .dark .paper-texture { background-image: none; }
-      .scrollbar-hide::-webkit-scrollbar { display: none; }
-      .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-      ::selection { background: rgba(197, 160, 89, 0.3); color: #8B0000; }
-      .dark ::selection { background: rgba(197, 160, 89, 0.3); color: #ff6b6b; }
-      input:focus, textarea:focus, select:focus { outline: none; }
+      ::-webkit-scrollbar { display: none; }
     </style>
     
-    <script>
-      (function() {
-        function setIcon(url) {
-            var links = document.querySelectorAll("link[rel*='icon']");
-            links.forEach(l => l.parentNode.removeChild(l));
-            var link = document.createElement('link');
-            link.type = 'image/png'; link.rel = 'icon'; link.href = url;
-            document.head.appendChild(link);
-        }
-        var iconCanvas = document.createElement('canvas');
-        iconCanvas.width = 512; iconCanvas.height = 512;
-        var ctx = iconCanvas.getContext('2d');
-        var img = new Image();
-        img.crossOrigin = "Anonymous";
-        img.src = '/icon.svg'; 
-        img.onload = function() {
-            ctx.fillStyle = '#8B0000'; ctx.fillRect(0, 0, 512, 512);
-            ctx.drawImage(img, 0, 0, 512, 512);
-            setIcon(iconCanvas.toDataURL('image/png'));
-        };
-      })();
-    </script>
     <script type="importmap">
 {
   "imports": {
@@ -92,25 +61,18 @@
     "date-fns": "https://esm.sh/date-fns@^4.1.0",
     "framer-motion": "https://esm.sh/framer-motion@^12.23.26",
     "lucide-react": "https://esm.sh/lucide-react@^0.561.0",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
     "vite": "https://esm.sh/vite@^7.3.0",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "url": "https://esm.sh/url@^0.11.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "path": "https://esm.sh/path@^0.12.7",
-    "url": "https://esm.sh/url@^0.11.4"
+    "react/": "https://esm.sh/react@^19.2.3/"
   }
 }
 </script>
-</head>
-  <body class="transition-colors duration-500 paper-texture antialiased selection:bg-[#C5A059]/30">
+  </head>
+  <body class="paper-texture antialiased">
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW failed', err));
-        });
-      }
-    </script>
   </body>
 </html>
