@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 // Componente de Visualização do Panorama Bíblico
 import { ChevronLeft, GraduationCap, Lock, BookOpen, ChevronRight, Volume2, Sparkles, Loader2, Book, Trash2, Edit, Save, X, CheckCircle, Pause, Play, Settings, FastForward } from 'lucide-react';
@@ -39,40 +40,31 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
   useEffect(() => { loadContent(); }, [book, chapter]);
 
-  // Carregamento inteligente de vozes com prioridade
   useEffect(() => {
     const loadVoices = () => {
         let available = window.speechSynthesis.getVoices().filter(v => v.lang.includes('pt'));
-        
-        // ORDENAÇÃO DE VOZES MAIS HUMANIZADAS
         available.sort((a, b) => {
             const getScore = (v: SpeechSynthesisVoice) => {
                 let score = 0;
-                // Prioriza vozes da Google e Microsoft (geralmente melhores)
                 if (v.name.includes('Google')) score += 5;
                 if (v.name.includes('Microsoft')) score += 4;
-                if (v.name.includes('Luciana')) score += 3; // iOS
-                if (v.name.includes('Joana')) score += 3; // iOS
+                if (v.name.includes('Luciana')) score += 3;
+                if (v.name.includes('Joana')) score += 3;
                 return score;
             };
             return getScore(b) - getScore(a);
         });
-
         setVoices(available);
         if(available.length > 0 && !selectedVoice) setSelectedVoice(available[0].name);
     };
-    
     loadVoices();
-    // Alguns navegadores carregam vozes assincronamente
     if (window.speechSynthesis.onvoiceschanged !== undefined) {
         window.speechSynthesis.onvoiceschanged = loadVoices;
     }
-    
     return () => { window.speechSynthesis.cancel(); }
   }, []);
 
   useEffect(() => {
-    // Parar áudio se mudar a página, livro ou capítulo
     window.speechSynthesis.cancel();
     setIsPlaying(false);
   }, [currentPage, book, chapter, activeTab]);
@@ -80,11 +72,10 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   useEffect(() => {
     if (isPlaying) {
         window.speechSynthesis.cancel();
-        speakText(); // Reinicia com nova velocidade/voz
+        speakText();
     }
   }, [playbackRate, selectedVoice]);
 
-  // SWIPE HANDLERS
   const onTouchStart = (e: React.TouchEvent) => {
     setTouchEnd(null);
     setTouchStart(e.targetTouches[0].clientX);
@@ -95,7 +86,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     const distance = touchStart - touchEnd;
     const isLeftSwipe = distance > minSwipeDistance;
     const isRightSwipe = distance < -minSwipeDistance;
-
     if (isLeftSwipe && currentPage < pages.length - 1) setCurrentPage(p => p + 1);
     if (isRightSwipe && currentPage > 0) setCurrentPage(p => p - 1);
   };
@@ -126,39 +116,31 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     return text.trim();
   };
 
-  // --- PAGINAÇÃO HÍBRIDA (Corrigida para evitar apenas uma página) ---
+  // --- PAGINAÇÃO HÍBRIDA OTIMIZADA PARA ~600 PALAVRAS (3500-4000 CARACTERES) ---
   const processAndPaginate = (html: string) => {
     if (!html) { setPages([]); return; }
     
+    // Divide pelo marcador de quebra forçada ou de continuação visual
     let rawSegments = html.split(/<hr[^>]*>|__CONTINUATION_MARKER__/i)
                           .map(s => cleanText(s))
-                          .filter(s => s.length > 50);
+                          .filter(s => s.length > 30);
 
-    // Divisão forçada se for um bloco gigante único (Acima de 3500 caracteres)
-    if (rawSegments.length === 1 && rawSegments[0].length > 3500) {
-        const bigText = rawSegments[0];
-        // Tenta quebrar em novos parágrafos de tópicos (### ou Numeração)
-        const forcedSegments = bigText.split(/(?=\n### |^\s*[IVX]+\.|^\s*\d+\.\s+[A-Z])/gm);
-        if (forcedSegments.length > 1) {
-            rawSegments = forcedSegments.map(s => cleanText(s)).filter(s => s.length > 50);
-        }
-    }
-    
     const finalPages: string[] = [];
     let currentBuffer = "";
-    // Limite reduzido para 2000 para garantir que o conteúdo seja paginado com mais facilidade
-    const CHAR_LIMIT_MIN = 2000; 
+    // 3500 caracteres é a média ideal para 600 palavras (contando espaços e formatação)
+    const TARGET_CHAR_LIMIT = 3500; 
 
     for (let i = 0; i < rawSegments.length; i++) {
         const segment = rawSegments[i];
         if (!currentBuffer) {
             currentBuffer = segment;
         } else {
-            // Se o conteúdo acumulado já for razoável, começa nova página em vez de "colar"
-            if ((currentBuffer.length + segment.length) < (CHAR_LIMIT_MIN)) {
+            // Se o conteúdo atual + o novo segmento NÃO exceder muito o limite, junta eles.
+            // Isso evita que a introdução fique sozinha na página 1 se for curta.
+            if ((currentBuffer.length + segment.length) < (TARGET_CHAR_LIMIT * 1.3)) {
                 currentBuffer += "\n\n__CONTINUATION_MARKER__\n\n" + segment;
             } else {
-                // Força nova página se o buffer atual já for grande o suficiente
+                // Se já atingiu o tamanho ideal, fecha a página
                 finalPages.push(currentBuffer);
                 currentBuffer = segment;
             }
@@ -171,62 +153,45 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
   const hasAccess = isAdmin || activeTab === 'student'; 
 
-  // --- NOVA LÓGICA DE ÁUDIO (ROBUSTA) ---
   const speakText = () => {
     if (!pages[currentPage]) return;
-    window.speechSynthesis.cancel(); // Garante limpeza prévia
-
-    // 1. Limpeza Profunda de HTML para Texto Puro
+    window.speechSynthesis.cancel();
     const tempDiv = document.createElement("div");
     tempDiv.innerHTML = pages[currentPage]
         .replace(/__CONTINUATION_MARKER__/g, '. ')
         .replace(/<br>/g, '. ')
-        .replace(/<\/p>/g, '. '); // Substitui quebras visuais por pausas de fala
+        .replace(/<\/p>/g, '. ');
     
     let textToSpeak = tempDiv.textContent || tempDiv.innerText || "";
-    // Remove caracteres markdown que sobram
     textToSpeak = textToSpeak.replace(/\*/g, '').replace(/#/g, '').trim();
-
     if (!textToSpeak) return;
 
-    // 2. Chunking (Divisão em frases) para evitar travar em textos longos
     const sentences = textToSpeak.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [textToSpeak];
-    
     let currentSentenceIndex = 0;
-
     const speakNextChunk = () => {
         if (currentSentenceIndex >= sentences.length) {
             setIsPlaying(false);
             return;
         }
-
         const chunk = sentences[currentSentenceIndex];
         if (!chunk.trim()) {
             currentSentenceIndex++;
             speakNextChunk();
             return;
         }
-
         const utter = new SpeechSynthesisUtterance(chunk);
         utter.lang = 'pt-BR';
         utter.rate = playbackRate;
         const voice = voices.find(v => v.name === selectedVoice);
         if (voice) utter.voice = voice;
-
         utter.onend = () => {
             currentSentenceIndex++;
             speakNextChunk();
         };
-
-        utter.onerror = (e) => {
-            console.error("Erro na fala:", e);
-            setIsPlaying(false);
-        };
-
+        utter.onerror = () => setIsPlaying(false);
         speechRef.current = utter;
         window.speechSynthesis.speak(utter);
     };
-
     setIsPlaying(true);
     speakNextChunk();
   };
@@ -267,12 +232,10 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
   const renderFormattedText = (text: string) => {
     const lines = text.split('\n').filter(b => b.trim().length > 0);
-    
     return (
         <div>
             {lines.map((line, lineIdx) => {
                 const trimmed = line.trim();
-
                 if (trimmed === '__CONTINUATION_MARKER__') {
                     return (
                         <div key={lineIdx} className="my-12 flex items-center justify-center select-none animate-in fade-in duration-500">
@@ -282,7 +245,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                         </div>
                     );
                 }
-
                 if (trimmed.includes('PANORÂMA BÍBLICO') || trimmed.includes('PANORAMA BÍBLICO')) {
                     return (
                         <div key={lineIdx} className="mb-10 text-center border-b-2 border-[#8B0000] dark:border-[#ff6b6b] pb-6 pt-2">
@@ -321,18 +283,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                                     {parseInlineStyles(textPart)}
                                 </p>
                             </div>
-                        </div>
-                    );
-                }
-                if (trimmed.toUpperCase().includes('CURIOSIDADE') || trimmed.toUpperCase().includes('ATENÇÃO:') || trimmed.endsWith('?')) {
-                    return (
-                        <div key={lineIdx} className="my-8 mx-2 font-cormorant text-lg text-[#1a0f0f] dark:text-gray-200 font-medium italic bg-[#C5A059]/10 dark:bg-[#C5A059]/5 p-6 rounded-xl border border-[#C5A059]/30 shadow-sm text-justify relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-1 h-full bg-[#C5A059]"></div>
-                            <div className="flex items-center gap-2 mb-3 text-[#C5A059]">
-                                <Sparkles className="w-5 h-5" />
-                                <span className="text-xs font-bold uppercase tracking-wider font-montserrat">Destaque</span>
-                            </div>
-                            <div>{parseInlineStyles(trimmed)}</div>
                         </div>
                     );
                 }
@@ -375,70 +325,26 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     const studyKey = generateChapterKey(book, chapter);
     const existing = (await db.entities.PanoramaBiblico.filter({ study_key: studyKey }))[0] || {};
     const currentText = target === 'student' ? (existing.student_content || '') : (existing.teacher_content || '');
-    
-    // Pega contexto limpo (sem marcadores internos)
-    const cleanContext = currentText.replace(/__CONTINUATION_MARKER__/g, ' ').slice(-3000);
-
-    const isFirstChapter = chapter === 1;
-    const introInstruction = isFirstChapter 
-        ? "2. INTRODUÇÃO GERAL:\n           Texto rico contextualizando O LIVRO (autor, data, propósito) e o cenário deste primeiro capítulo."
-        : `2. INTRODUÇÃO DO CAPÍTULO:\n           FOCAR EXCLUSIVAMENTE no contexto imediato do capítulo ${chapter}. NÃO repita a introdução geral do livro de ${book} (autoria, data, etc), pois já foi dado nos capítulos anteriores. Vá direto ao ponto do enredo atual.`;
+    const cleanContext = currentText.replace(/__CONTINUATION_MARKER__/g, ' ').slice(-3500);
 
     const WRITING_STYLE = `
         ATUE COMO: Professor Michel Felix.
         PERFIL: Teólogo Pentecostal Clássico, Arminiano, Erudito e Assembleiano.
 
-        --- OBJETIVO SUPREMO: O EFEITO "AH! ENTENDI!" (CLAREZA E PROFUNDIDADE) ---
-        1. LINGUAGEM: O texto deve ser PROFUNDO, mas EXTREMAMENTE CLARO. O aluno (seja jovem ou idoso) deve ler e entender instantaneamente.
-        2. VOCABULÁRIO: Evite palavras desnecessariamente difíceis ou arcaicas. Se houver um sinônimo simples, USE-O.
-        3. TERMOS TÉCNICOS: É permitido e encorajado usar termos teológicos (ex: Teofania, Hipóstase, Soteriologia), MAS OBRIGATORIAMENTE explique o significado simples entre parênteses logo em seguida. Ex: "Vemos aqui uma Teofania (uma aparição visível de Deus)..." ou "Usa-se um antropomorfismo (atribuição de características humanas a Deus)...".
-        4. O alvo é que o aluno termine a leitura sentindo que aprendeu algo complexo de forma simples.
-
-        --- PROTOCOLO DE SEGURANÇA TEOLÓGICA E DIDÁTICA (NÍVEL MÁXIMO - IMPLÍCITO) ---
-        1. A BÍBLIA EXPLICA A BÍBLIA: Antes de formular o comentário, verifique MENTALMENTE e RIGOROSAMENTE o CONTEXTO IMEDIATO (capítulo) e o CONTEXTO REMOTO (livros históricos paralelos, profetas contemporâneos, Novo Testamento) para garantir a coerência.
-        2. PRECISÃO CRONOLÓGICA E CONTEXTUAL: Ao explicar, evite anacronismos (ex: confundir reis, datas ou eventos que ainda não ocorreram na narrativa).
-        3. FOCO NA INTENÇÃO ORIGINAL: O que o autor sagrado quis ensinar sobre Deus e o homem? Fique nisso.
-
-        3. DIDÁTICA DOS TEXTOS POLÊMICOS E DIFÍCEIS:
-           - É EXCELENTE, DIDÁTICO e RECOMENDADO citar as principais correntes interpretativas divergentes para enriquecer a cultura do aluno.
-           - CONTUDO, APÓS ELENCAR as visões, você deve OBRIGATORIAMENTE concluir defendendo a interpretação Ortodoxa e Biblicamente coerente.
+        --- OBJETIVO SUPREMO: CONTEÚDO COMPLETO E DENSO (ESTILO GEMINI 2.5) ---
+        1. NÃO RESUMA. O objetivo é explicar CADA versículo ou grupo de versículos com profundidade máxima.
+        2. TAMANHO DA PÁGINA: Escreva blocos longos de aproximadamente 600 PALAVRAS por tópico.
+        3. PAGINAÇÃO: Use obrigatoriamente a tag <hr class="page-break"> APENAS após atingir um volume denso de texto (mínimo 3000 caracteres).
+        4. TERMOS TÉCNICOS: Explique o significado entre parênteses. Ex: "Usa-se um antropomorfismo (atribuição de características humanas a Deus)...".
         
-        4. TOM: Magistral, Impessoal, Acadêmico, Vibrante e Ortodoxo.
-
-        --- METODOLOGIA DE ENSINO (MICROSCOPIA BÍBLICA) ---
-        1. CHEGA DE RESUMOS: O aluno precisa entender o texto COMPLETAMENTE. Não faça explicações genéricas que cobrem 10 versículos de uma vez.
-        2. DENSIDADE: Extraia todo o suco do texto. Se houver uma lista de nomes, explique a relevância. Se houver uma ação detalhada, explique o motivo.
-        3. PROIBIDO TRANSCREVER O TEXTO BÍBLICO: O aluno já tem a Bíblia. NÃO escreva o versículo por extenso. Cite apenas a referência.
-
-        --- IDIOMAS ORIGINAIS E ETIMOLOGIA (INDISPENSÁVEL) ---
-        1. PALAVRAS-CHAVE: Cite os termos originais (Hebraico no AT / Grego no NT) transliterados quando relevante para explicar o sentido profundo.
-        2. SIGNIFICADOS DE NOMES: Sempre traga o significado etimológico de nomes de pessoas e lugares.
-
-        --- ESTRUTURA VISUAL OBRIGATÓRIA (BASEADA NO MODELO ADMA) ---
-        Use EXATAMENTE esta estrutura de tópicos.
-
-        1. TÍTULO PRINCIPAL:
-           PANORÂMA BÍBLICO - ${book.toUpperCase()} ${chapter} (PROF. MICHEL FELIX)
-
-        ${introInstruction}
-
-        3. TÓPICOS DO ESTUDO (Use Numeração 1., 2., 3...):
-           Exemplo:
-           1. TÍTULO DO TÓPICO EM MAIÚSCULO (Referência: Gn X:Y-Z)
-           (Explicação detalhada versículo por versículo).
-
-        4. SEÇÕES FINAIS OBRIGATÓRIAS (No final do estudo):
-           ### TIPOLOGIA: CONEXÃO COM JESUS CRISTO
-           ### CURIOSIDADES E ARQUEOLOGIA
-
-        --- INSTRUÇÕES DE PAGINAÇÃO ---
-        1. GERE CONTEÚDO LONGO E DETALHADO (Aprox. 600-800 palavras).
-        2. Insira OBRIGATORIAMENTE <hr class="page-break"> entre os tópicos principais para dividir as páginas.
-        3. Se for CONTINUAÇÃO, continue a explicação detalhada do versículo onde parou.
+        --- ESTRUTURA VISUAL OBRIGATÓRIA ---
+        1. TÍTULO: PANORÂMA BÍBLICO - ${book.toUpperCase()} ${chapter} (PROF. MICHEL FELIX)
+        2. INTRODUÇÃO: Texto rico contextualizando o capítulo. Junte a introdução com o primeiro tópico para não criar páginas vazias.
+        3. TÓPICOS: Use numeração (1., 2., 3...) e insira <hr class="page-break"> somente se o tópico for muito longo ou mudar drasticamente o assunto.
     `;
     
     const instructions = customInstructions ? `\nINSTRUÇÕES EXTRAS: ${customInstructions}` : "";
-    const continuationInstructions = `MODO CONTINUAÇÃO. O texto anterior terminou assim: "...${cleanContext.slice(-400)}...". Continue o raciocínio detalhado. Se já cobriu todo o texto bíblico, GERE AS SEÇÕES FINAIS (Tipologia e Arqueologia).`;
+    const continuationInstructions = `MODO CONTINUAÇÃO. Continue de onde parou: "...${cleanContext.slice(-500)}...". Continue a explicação DETALHADA dos versículos seguintes de ${book} ${chapter}. Mantenha a densidade de 600 palavras.`;
 
     let specificPrompt = target === 'student' ? 
         `OBJETIVO: AULA DO ALUNO para ${book} ${chapter}. ${WRITING_STYLE} ${instructions} ${mode === 'continue' ? continuationInstructions : 'INÍCIO DO ESTUDO COMPLETO.'}` : 
@@ -466,9 +372,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         else await db.entities.PanoramaBiblico.create(data);
 
         await loadContent();
-        onShowToast('Conteúdo gerado no Padrão ADMA!', 'success');
-        if (mode === 'continue') setTimeout(() => setCurrentPage(pages.length), 500); 
-
+        onShowToast('Conteúdo gerado no Padrão Profundo ADMA!', 'success');
     } catch (e: any) {
         onShowToast(`Erro: ${e.message}`, 'error');
     } finally {
@@ -476,40 +380,24 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     }
   };
 
-  // --- CORREÇÃO DO BOTÃO APAGAR ---
   const handleDeletePage = async () => {
-    if (!window.confirm("Tem certeza que deseja apagar o conteúdo DESTA página?")) return;
+    if (!window.confirm("Apagar esta página?")) return;
     if (!content) return;
-
-    // Cria uma nova lista de páginas removendo a atual
     const updatedPages = pages.filter((_, index) => index !== currentPage);
-    
-    // Reconstrói o conteúdo total juntando as páginas restantes com o separador padrão de quebra
     const newContent = updatedPages.join('<hr class="page-break">');
-
     const data = {
         ...content,
         student_content: activeTab === 'student' ? newContent : content.student_content,
         teacher_content: activeTab === 'teacher' ? newContent : content.teacher_content,
     };
-
     try {
         if (content.id) await db.entities.PanoramaBiblico.update(content.id, data);
-        
-        // Atualiza estado local imediatamente para feedback visual
         setPages(updatedPages);
-        
-        // Ajusta a página atual se estivermos na última
-        if (currentPage >= updatedPages.length) {
-            setCurrentPage(Math.max(0, updatedPages.length - 1));
-        }
-
-        // Recarrega do banco para garantir sincronia
+        if (currentPage >= updatedPages.length) setCurrentPage(Math.max(0, updatedPages.length - 1));
         await loadContent();
-        
-        onShowToast('Página apagada com sucesso.', 'success');
+        onShowToast('Página apagada.', 'success');
     } catch (e) {
-        onShowToast('Erro ao apagar página.', 'error');
+        onShowToast('Erro ao apagar.', 'error');
     }
   };
 
@@ -522,14 +410,14 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     >
         <div className="sticky top-0 z-30 bg-gradient-to-r from-[#600018] to-[#400010] text-white p-4 shadow-lg flex justify-between items-center">
             <button onClick={onBack} className="p-2"><ChevronLeft /></button>
-            <h2 className="font-cinzel font-bold text-sm md:text-base tracking-widest uppercase">Panorama EBD</h2>
+            <h2 className="font-cinzel font-bold text-sm tracking-widest uppercase text-[#C5A059]">Panorama EBD</h2>
             <div className="flex gap-2">
                 {isAdmin && !isEditing && content && (
-                    <button onClick={handleStartEditing} title="Editar Texto Manualmente" className="p-2 hover:bg-white/10 rounded-full">
+                    <button onClick={handleStartEditing} title="Editar" className="p-2 hover:bg-white/10 rounded-full">
                         <Edit className="w-5 h-5 text-[#C5A059]" />
                     </button>
                 )}
-                <button onClick={() => setShowAudioSettings(!showAudioSettings)} title="Opções de Áudio" className="p-2">
+                <button onClick={() => setShowAudioSettings(!showAudioSettings)} title="Áudio" className="p-2">
                     <Volume2 className={isPlaying ? "text-green-400 animate-pulse" : "w-6 h-6"} />
                 </button>
             </div>
@@ -540,35 +428,15 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                 <div className="flex flex-col gap-3">
                     <div className="flex items-center justify-between">
                         <span className="font-bold text-sm text-[#1a0f0f] dark:text-white">Leitura de Áudio</span>
-                        <button 
-                            onClick={togglePlay}
-                            className="bg-[#C5A059] text-white px-4 py-2 rounded-full font-bold flex items-center gap-2 hover:bg-[#a88645]"
-                        >
-                            {isPlaying ? <Pause className="w-4 h-4"/> : <Play className="w-4 h-4"/>} 
-                            {isPlaying ? 'Pausar' : 'Ouvir Página'}
+                        <button onClick={togglePlay} className="bg-[#C5A059] text-white px-4 py-2 rounded-full font-bold flex items-center gap-2 hover:bg-[#a88645]">
+                            {isPlaying ? <Pause className="w-4 h-4"/> : <Play className="w-4 h-4"/>} {isPlaying ? 'Pausar' : 'Ouvir'}
                         </button>
                     </div>
                     <div>
-                        <label className="text-xs font-bold text-gray-500 dark:text-gray-400">Voz:</label>
+                        <label className="text-xs font-bold text-gray-500">Voz:</label>
                         <select className="w-full p-1 text-sm border rounded mt-1 dark:bg-gray-800 dark:text-white" value={selectedVoice} onChange={e => setSelectedVoice(e.target.value)}>
                             {voices.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
                         </select>
-                    </div>
-                    <div>
-                        <span className="text-xs font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1 mb-1">
-                            <FastForward className="w-3 h-3" /> Velocidade:
-                        </span>
-                        <div className="flex gap-2">
-                            {[0.75, 1, 1.25, 1.5, 2].map(rate => (
-                                <button 
-                                    key={rate}
-                                    onClick={() => setPlaybackRate(rate)}
-                                    className={`flex-1 py-1 text-xs font-bold rounded border ${playbackRate === rate ? 'bg-[#8B0000] text-white border-[#8B0000]' : 'bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600'}`}
-                                >
-                                    {rate}x
-                                </button>
-                            ))}
-                        </div>
                     </div>
                 </div>
             </div>
@@ -582,16 +450,10 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         </div>
 
         <div className="flex bg-[#F5F5DC] dark:bg-black">
-            <button 
-                onClick={() => setActiveTab('student')}
-                className={`flex-1 py-4 font-cinzel font-bold flex justify-center gap-2 transition-all ${activeTab === 'student' ? 'bg-[#600018] text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-[#600018]/10'}`}
-            >
+            <button onClick={() => setActiveTab('student')} className={`flex-1 py-4 font-cinzel font-bold flex justify-center gap-2 transition-all ${activeTab === 'student' ? 'bg-[#600018] text-white shadow-inner' : 'text-gray-600 dark:text-gray-400'}`}>
                 <BookOpen className="w-5 h-5" /> Aluno
             </button>
-            <button 
-                onClick={() => setActiveTab('teacher')}
-                className={`flex-1 py-4 font-cinzel font-bold flex justify-center gap-2 transition-all ${activeTab === 'teacher' ? 'bg-[#600018] text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-[#600018]/10'}`}
-            >
+            <button onClick={() => setActiveTab('teacher')} className={`flex-1 py-4 font-cinzel font-bold flex justify-center gap-2 transition-all ${activeTab === 'teacher' ? 'bg-[#600018] text-white shadow-inner' : 'text-gray-600 dark:text-gray-400'}`}>
                 {isAdmin ? <GraduationCap className="w-5 h-5" /> : <Lock className="w-5 h-5" />} Professor
             </button>
         </div>
@@ -599,23 +461,23 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         {isAdmin && !isEditing && (
             <div className="bg-[#1a0f0f] text-[#C5A059] p-4 shadow-inner sticky top-[130px] z-20 border-b-4 border-[#8B0000]">
                 <div className="flex items-center justify-between mb-2">
-                    <span className="font-cinzel text-xs flex items-center gap-2 font-bold"><Sparkles className="w-4 h-4" /> EDITOR CHEFE ({activeTab.toUpperCase()})</span>
-                    <button onClick={() => setShowInstructions(!showInstructions)} className="text-xs underline hover:text-white">
-                        {showInstructions ? 'Ocultar Instruções' : 'Adicionar Instruções'}
+                    <span className="font-cinzel text-xs flex items-center gap-2 font-bold"><Sparkles className="w-4 h-4" /> EDITOR CHEFE (2.5 FLASH)</span>
+                    <button onClick={() => setShowInstructions(!showInstructions)} className="text-xs underline">
+                        {showInstructions ? 'Ocultar' : 'Instruções'}
                     </button>
                 </div>
                 {showInstructions && (
-                    <textarea value={customInstructions} onChange={(e) => setCustomInstructions(e.target.value)} placeholder="Instruções..." className="w-full p-2 text-xs text-black rounded mb-2 font-montserrat" rows={2} />
+                    <textarea value={customInstructions} onChange={(e) => setCustomInstructions(e.target.value)} placeholder="Instruções..." className="w-full p-2 text-xs text-black rounded mb-2" rows={2} />
                 )}
                 <div className="flex gap-2">
                     <button onClick={() => handleGenerate('start')} disabled={isGenerating} className="flex-1 px-3 py-2 border border-[#C5A059] rounded text-xs hover:bg-[#C5A059] hover:text-[#1a0f0f] transition disabled:opacity-50 font-bold">
-                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'INÍCIO (Padrão EBD)'}
+                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'INÍCIO (ESTUDO LONGO)'}
                     </button>
                     <button onClick={() => handleGenerate('continue')} disabled={isGenerating} className="flex-1 px-3 py-2 bg-[#C5A059] text-[#1a0f0f] font-bold rounded text-xs hover:bg-white transition disabled:opacity-50">
-                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'CONTINUAR (+ Conteúdo)'}
+                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'CONTINUAR'}
                     </button>
                     {pages.length > 0 && (
-                        <button onClick={handleDeletePage} className="px-3 py-2 bg-red-900 text-white rounded hover:bg-red-700 transition" title="Apagar esta página"><Trash2 className="w-4 h-4" /></button>
+                        <button onClick={handleDeletePage} className="px-3 py-2 bg-red-900 text-white rounded hover:bg-red-700 transition" title="Apagar Página"><Trash2 className="w-4 h-4" /></button>
                     )}
                 </div>
             </div>
@@ -628,89 +490,52 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                     <p className="font-cinzel text-xl">Conteúdo Restrito ao Admin/Professor</p>
                 </div>
             ) : isEditing ? (
-                 <div className="bg-white dark:bg-dark-card shadow-2xl p-4 rounded-lg border border-[#C5A059] relative animate-in slide-in-from-bottom-5">
+                 <div className="bg-white dark:bg-dark-card shadow-2xl p-4 rounded-lg border border-[#C5A059] relative">
                      <div className="flex justify-between items-center mb-4 border-b border-[#C5A059]/30 pb-2">
-                        <h3 className="font-cinzel font-bold text-[#8B0000] dark:text-[#ff6b6b] flex items-center gap-2">
-                            <Edit className="w-5 h-5" /> Modo de Edição Manual
-                        </h3>
+                        <h3 className="font-cinzel font-bold text-[#8B0000] dark:text-[#ff6b6b] flex items-center gap-2">Modo Edição Manual</h3>
                         <div className="flex gap-2">
-                            <button onClick={() => setIsEditing(false)} className="px-3 py-1 text-sm border border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded flex items-center gap-1 transition-colors">
-                                <X className="w-4 h-4"/> Cancelar
-                            </button>
-                            <button onClick={handleSaveManualEdit} className="px-3 py-1 text-sm bg-green-600 text-white hover:bg-green-700 rounded flex items-center gap-1 transition-colors shadow-sm">
-                                <Save className="w-4 h-4"/> Salvar Alterações
-                            </button>
+                            <button onClick={() => setIsEditing(false)} className="px-3 py-1 text-sm border border-red-500 text-red-500 rounded flex items-center gap-1">Cancelar</button>
+                            <button onClick={handleSaveManualEdit} className="px-3 py-1 text-sm bg-green-600 text-white hover:bg-green-700 rounded flex items-center gap-1 shadow-sm"><Save className="w-4 h-4"/> Salvar</button>
                         </div>
                      </div>
-                     <textarea 
-                        value={editValue} 
-                        onChange={e => setEditValue(e.target.value)} 
-                        className="w-full h-[600px] p-4 font-mono text-sm border border-gray-300 rounded focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] outline-none dark:bg-gray-800 dark:text-white dark:border-gray-700" 
-                     />
+                     <textarea value={editValue} onChange={e => setEditValue(e.target.value)} className="w-full h-[600px] p-4 font-mono text-sm border rounded dark:bg-gray-800 dark:text-white outline-none" />
                  </div>
             ) : content && pages.length > 0 ? (
                 <div className="bg-white dark:bg-dark-card shadow-2xl p-8 md:p-16 min-h-[600px] border border-[#C5A059]/20 relative rounded-[2rem]">
-                     {(!content.student_content.includes('PANORÂMA') && currentPage === 0) && (
-                         <div className="mb-8 text-center border-b-2 border-[#8B0000] dark:border-[#ff6b6b] pb-4 pt-2">
-                            <h1 className="font-cinzel font-bold text-2xl md:text-3xl text-[#8B0000] dark:text-[#ff6b6b] uppercase tracking-widest drop-shadow-sm">
-                                PANORÂMA BÍBLICO - {content.book} {content.chapter}
-                            </h1>
-                        </div>
-                     )}
-                     
                      <div className="space-y-6">
                         {renderFormattedText(pages[currentPage])}
                      </div>
-                     
                      <div className="absolute bottom-4 right-8 text-[#C5A059] font-cinzel text-sm">
                         {currentPage + 1} / {pages.length}
                      </div>
-
                      {currentPage === pages.length - 1 && userProgress && (
                          <div className="mt-12 text-center">
-                             <button
-                                onClick={handleMarkAsRead}
-                                disabled={isRead}
-                                className={`px-8 py-4 rounded-full font-cinzel font-bold text-lg shadow-lg flex items-center justify-center gap-2 mx-auto transition-all transform hover:scale-105 ${
-                                    isRead 
-                                    ? 'bg-green-600 text-white cursor-default'
-                                    : 'bg-gradient-to-r from-[#C5A059] to-[#8B0000] text-white hover:shadow-xl animate-pulse'
-                                }`}
-                             >
+                             <button onClick={handleMarkAsRead} disabled={isRead} className={`px-8 py-4 rounded-full font-cinzel font-bold text-lg shadow-lg flex items-center justify-center gap-2 mx-auto transition-all transform hover:scale-105 ${isRead ? 'bg-green-600 text-white' : 'bg-gradient-to-r from-[#C5A059] to-[#8B0000] text-white animate-pulse'}`}>
                                  {isRead ? <CheckCircle className="w-6 h-6" /> : <GraduationCap className="w-6 h-6" />}
                                  {isRead ? 'ESTUDO CONCLUÍDO' : 'CONCLUIR ESTUDO'}
                              </button>
-                             {isRead && <p className="text-xs text-green-600 mt-2 font-bold">Registrado no Ranking de EBD</p>}
                          </div>
                      )}
                 </div>
             ) : (
                 <div className="text-center py-20 text-gray-500 dark:text-gray-400">
                     <Book className="w-16 h-16 mx-auto mb-4 text-[#C5A059] opacity-50"/>
-                    <p className="font-cinzel text-lg">Conteúdo em Preparação</p>
-                    {isAdmin && <p className="text-sm mt-2 text-[#600018] dark:text-[#ff6b6b] animate-pulse">Use o Editor Chefe acima para gerar.</p>}
+                    <p className="font-cinzel text-lg">Nenhum estudo disponível ainda.</p>
+                    {isAdmin && <p className="text-sm mt-2 text-[#8B0000] animate-pulse">Use o Editor Chefe acima para gerar o estudo.</p>}
                 </div>
             )}
         </div>
 
         {pages.length > 1 && hasAccess && !isEditing && (
             <div className="fixed bottom-16 left-0 w-full bg-white dark:bg-dark-card border-t border-[#C5A059] p-4 flex justify-between items-center z-30 shadow-[0_-5px_20px_rgba(0,0,0,0.1)] safe-bottom">
-                <button 
-                    onClick={() => setCurrentPage(Math.max(0, currentPage - 1))} 
-                    disabled={currentPage === 0} 
-                    className="flex items-center gap-1 px-4 py-3 bg-[#8B0000] text-white rounded-lg font-bold shadow-md hover:bg-[#600018] disabled:opacity-50 disabled:bg-gray-400 transition-all active:scale-95"
-                >
+                <button onClick={() => setCurrentPage(Math.max(0, currentPage - 1))} disabled={currentPage === 0} className="flex items-center gap-1 px-4 py-3 bg-[#8B0000] text-white rounded-lg font-bold disabled:opacity-50 disabled:bg-gray-400 transition-all">
                     <ChevronLeft /> Anterior
                 </button>
                 <span className="font-cinzel font-bold text-[#1a0f0f] dark:text-white text-sm md:text-base">
-                    {currentPage + 1} / {pages.length}
+                    Página {currentPage + 1} de {pages.length}
                 </span>
-                <button 
-                    onClick={() => setCurrentPage(Math.min(pages.length - 1, currentPage + 1))} 
-                    disabled={currentPage === pages.length - 1} 
-                    className="flex items-center gap-1 px-4 py-3 bg-[#8B0000] text-white rounded-lg font-bold shadow-md hover:bg-[#600018] disabled:opacity-50 disabled:bg-gray-400 transition-all active:scale-95"
-                >
-                    Próximo <ChevronRight />
+                <button onClick={() => setCurrentPage(Math.min(pages.length - 1, currentPage + 1))} disabled={currentPage === pages.length - 1} className="flex items-center gap-1 px-4 py-3 bg-[#8B0000] text-white rounded-lg font-bold disabled:opacity-50 disabled:bg-gray-400 transition-all">
+                    Próxima <ChevronRight />
                 </button>
             </div>
         )}

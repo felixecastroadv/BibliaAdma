@@ -31,7 +31,6 @@ function processResponse(text: string | undefined, jsonSchema: any) {
     return text;
 }
 
-// Mantido para compatibilidade
 export type TaskType = 'commentary' | 'dictionary' | 'devotional' | 'ebd' | 'metadata' | 'general';
 
 export const generateContent = async (
@@ -43,11 +42,10 @@ export const generateContent = async (
     try {
         const adminKey = getStoredApiKey();
         
-        // --- MODO CLIENTE (Chave pessoal do Admin) ---
         if (adminKey) {
             const ai = new GoogleGenAI({ apiKey: adminKey });
             const config: any = {
-                temperature: 0.9, 
+                temperature: 0.7, 
                 topP: 0.95,
                 topK: 40,
             };
@@ -57,9 +55,8 @@ export const generateContent = async (
                 config.responseSchema = jsonSchema;
             }
 
-            // @google/genai: Use gemini-3-flash-preview for basic text tasks like commentary and EBD.
             const response = await ai.models.generateContent({
-                model: "gemini-3-flash-preview",
+                model: "gemini-2.5-flash-latest",
                 contents: [{ parts: [{ text: prompt }] }],
                 config: config
             });
@@ -67,10 +64,7 @@ export const generateContent = async (
             return processResponse(response.text, jsonSchema);
         } 
         
-        // --- MODO SERVER (Rotação Inteligente) ---
         const controller = new AbortController();
-        // Timeout aumentado para 300s (5 minutos) para suportar geração de EBD
-        // e o tempo de rotação de múltiplas chaves no servidor.
         const timeoutMs = 300000; 
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -91,46 +85,17 @@ export const generateContent = async (
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
             const detail = errData.error || `Status ${response.status}`;
-            
-            if (response.status === 503) {
-                throw new Error("Alta demanda global. Nenhuma chave disponível no momento. Tente em 30 segundos.");
-            }
-            if (response.status === 429) {
-                throw new Error("Cota excedida no momento. Aguarde alguns segundos e tente novamente.");
-            }
             throw new Error(`Erro na IA: ${detail}`);
         }
 
-        // SE FOR STREAMING (Long Output)
-        if (isLongOutput && !jsonSchema && response.body) {
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder("utf-8");
-            let fullText = "";
-            
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                const chunk = decoder.decode(value, { stream: true });
-                fullText += chunk;
-            }
-            
-            if (!fullText || fullText.trim().length === 0) {
-                 throw new Error("A IA conectou mas não enviou resposta.");
-            }
-            return fullText;
-        }
-
-        // SE FOR JSON PADRÃO
         const data = await response.json();
         return processResponse(data.text, jsonSchema);
 
     } catch (error: any) {
         console.error("Gemini Service Error:", error);
-        
         if (error.name === 'AbortError') {
-             throw new Error("A geração demorou muito e excedeu 5 minutos. Tente novamente ou use um texto menor.");
+             throw new Error("A geração demorou muito e excedeu 5 minutos.");
         }
-        
         throw error; 
     }
 };

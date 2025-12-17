@@ -25,9 +25,7 @@ export default async function handler(request, response) {
   }
 
   try {
-    // --- 1. COLETA E ORDENAÇÃO SEQUENCIAL DE CHAVES ---
     const allKeys = [];
-
     if (process.env.API_KEY) allKeys.push({ k: process.env.API_KEY, i: 0 });
     if (process.env.Biblia_ADMA_API) allKeys.push({ k: process.env.Biblia_ADMA_API, i: 0.1 });
 
@@ -66,13 +64,11 @@ export default async function handler(request, response) {
         try {
             const ai = new GoogleGenAI({ apiKey });
             
-            // @google/genai: Use gemini-3-flash-preview for text tasks and ensure thinkingBudget is set alongside maxOutputTokens.
             const aiConfig = {
-                temperature: 0.5, 
+                temperature: 0.7, 
                 topP: 0.95,
                 topK: 40,
-                maxOutputTokens: 4096, 
-                thinkingConfig: { thinkingBudget: 2048 },
+                maxOutputTokens: 4096,
                 safetySettings: [
                     { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
@@ -87,7 +83,7 @@ export default async function handler(request, response) {
             }
 
             const aiResponse = await ai.models.generateContent({
-                model: "gemini-3-flash-preview",
+                model: "gemini-2.5-flash-latest",
                 contents: [{ parts: [{ text: prompt }] }],
                 config: aiConfig
             });
@@ -113,11 +109,6 @@ export default async function handler(request, response) {
         return response.status(200).json({ text: successResponse });
     } else {
         const errorMsg = lastError?.message || 'Erro desconhecido.';
-        if (errorMsg.includes('429') || errorMsg.includes('Quota')) {
-            return response.status(429).json({ 
-                error: 'SISTEMA OCUPADO: As primeiras chaves estão congestionadas. Aguarde 30 segundos.' 
-            });
-        }
         return response.status(500).json({ error: `Falha na geração: ${errorMsg}` });
     }
 
