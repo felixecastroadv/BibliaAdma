@@ -15,9 +15,9 @@ export default async function handler(request, response) {
         'Biblia_ADMA_API',
         'Biblia_ADMA',
         'API_Biblia_ADMA',
-        'BIBLIA_ADMA'
+        'BIBLIA_ADMA',
+        'API Biblia_ADMA'
     ];
-    // Monitora até 40 chaves para acompanhar seu crescimento na Vercel
     for(let i=1; i<=40; i++) keysNames.push(`API_KEY_${i}`);
 
     const activeKeysConfigured = keysNames
@@ -33,7 +33,7 @@ export default async function handler(request, response) {
         try {
             const ai = new GoogleGenAI({ apiKey: keyEntry.key });
             const result = await ai.models.generateContent({
-                model: "gemini-3-pro-preview",
+                model: "gemini-3-flash-preview", // Testa o modelo Flash
                 contents: [{ parts: [{ text: "ping" }] }],
                 config: { 
                     maxOutputTokens: 2,
@@ -77,7 +77,6 @@ export default async function handler(request, response) {
         }
     };
 
-    // Testa em blocos de 5 para não sobrecarregar
     const results = [];
     for (let i = 0; i < activeKeysConfigured.length; i += 5) {
         const chunk = activeKeysConfigured.slice(i, i + 5);

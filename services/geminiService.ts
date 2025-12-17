@@ -57,7 +57,7 @@ export const generateContent = async (
             }
 
             const response = await ai.models.generateContent({
-                model: "gemini-3-pro-preview",
+                model: "gemini-3-flash-preview",
                 contents: [{ parts: [{ text: prompt }] }],
                 config: config
             });
@@ -87,7 +87,8 @@ export const generateContent = async (
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
             const detail = errData.error || `Status ${response.status}`;
-            throw new Error(`Erro na IA: ${detail}`);
+            const techDetail = errData.detail ? ` (${errData.detail})` : '';
+            throw new Error(`${detail}${techDetail}`);
         }
 
         const data = await response.json();
