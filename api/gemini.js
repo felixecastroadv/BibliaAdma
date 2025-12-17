@@ -22,8 +22,8 @@ export default async function handler(request, response) {
   }
 
   try {
-    // Lista sequencial conforme solicitado
-    const apiKeys = [
+    // Lista sequencial rigorosa
+    const rawKeys = [
       process.env.API_KEY,
       process.env.Biblia_ADMA_API,
       process.env.API_KEY_1, process.env.API_KEY_2, process.env.API_KEY_3,
@@ -33,10 +33,12 @@ export default async function handler(request, response) {
       process.env.API_KEY_13, process.env.API_KEY_14, process.env.API_KEY_15,
       process.env.API_KEY_16, process.env.API_KEY_17, process.env.API_KEY_18,
       process.env.API_KEY_19, process.env.API_KEY_20, process.env.API_KEY_21
-    ].filter(k => k && k.length > 10);
+    ];
+
+    const apiKeys = rawKeys.filter(k => k && k.trim().length > 20);
 
     if (apiKeys.length === 0) {
-      return response.status(500).json({ error: 'Nenhuma chave API configurada.' });
+      return response.status(500).json({ error: 'Nenhuma chave API configurada no ambiente.' });
     }
 
     let body = request.body;
@@ -50,47 +52,69 @@ export default async function handler(request, response) {
     let lastError = null;
     let successResponse = null;
 
-    // Tenta cada chave sequencialmente (Revezamento Relay)
-    for (const key of apiKeys) {
+    // REVEZAMENTO SEQUENCIAL (RELAY)
+    for (let i = 0; i < apiKeys.length; i++) {
+      const currentKey = apiKeys[i];
       try {
-        const ai = new GoogleGenAI({ apiKey: key });
-        const config = {
-          model: "gemini-3-pro-preview",
-          contents: [{ parts: [{ text: prompt }] }],
-          config: {
-            systemInstruction: systemInstruction || "Você é o Professor Michel Felix, teólogo Pentecostal Clássico e erudito.",
-            temperature: 0.7,
-            topP: 0.95,
-            topK: 40,
-            maxOutputTokens: 8192,
-          }
+        const ai = new GoogleGenAI({ apiKey: currentKey });
+        
+        const generationConfig = {
+          temperature: 0.7,
+          topP: 0.95,
+          topK: 40,
+          maxOutputTokens: 8192,
         };
 
         if (schema) {
-          config.config.responseMimeType = "application/json";
-          config.config.responseSchema = schema;
+          generationConfig.responseMimeType = "application/json";
+          generationConfig.responseSchema = schema;
         }
 
-        const res = await ai.models.generateContent(config);
+        const res = await ai.models.generateContent({
+          model: "gemini-3-pro-preview",
+          contents: [{ parts: [{ text: prompt }] }],
+          config: {
+            ...generationConfig,
+            systemInstruction: systemInstruction || "Você é o Professor Michel Felix, teólogo Pentecostal Clássico e erudito.",
+          }
+        });
         
         if (res.text) {
           successResponse = res.text;
-          break; // Sucesso, sai do loop
+          break; // SUCESSO: Para o loop e retorna
+        } else {
+          throw new Error("Resposta vazia da API.");
         }
       } catch (error) {
+        const errorMsg = error.message || "";
+        console.error(`Chave index ${i} falhou: ${errorMsg}`);
         lastError = error;
-        console.error(`Chave falhou, tentando próxima... Erro: ${error.message}`);
-        // Continua para a próxima chave
+
+        // Se for erro de cota ou limite, passa para a próxima sem hesitar
+        if (errorMsg.includes('429') || errorMsg.includes('quota') || errorMsg.includes('limit')) {
+            continue; 
+        }
+        
+        // Se for erro de chave inválida, também pula
+        if (errorMsg.includes('API key not valid')) {
+            continue;
+        }
+
+        // Para outros erros (como erro de rede ou prompt bloqueado), tentamos mais uma vez ou passamos
+        continue;
       }
     }
 
     if (successResponse) {
       return response.status(200).json({ text: successResponse });
     } else {
-      return response.status(500).json({ error: `Todas as chaves atingiram o limite ou falharam: ${lastError?.message}` });
+      return response.status(500).json({ 
+        error: `Todas as ${apiKeys.length} chaves falharam sequencialmente.`,
+        detail: lastError?.message 
+      });
     }
 
   } catch (error) {
-    return response.status(500).json({ error: 'Erro interno no servidor de IA.' });
+    return response.status(500).json({ error: 'Erro crítico no processador de revezamento.' });
   }
 }
