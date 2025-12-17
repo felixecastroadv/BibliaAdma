@@ -40,7 +40,6 @@ export const generateContent = async (
   systemInstruction?: string
 ) => {
     try {
-        // Detecção forçada para garantir sincronia com PanoramaView
         const effectiveTaskType = (prompt.includes('PANORÂMA') || prompt.includes('Panorama') || prompt.includes('MICROSCOPIA')) ? 'ebd' : taskType;
         
         const adminKey = getStoredApiKey();
@@ -60,7 +59,7 @@ export const generateContent = async (
             }
 
             const response = await ai.models.generateContent({
-                model: "gemini-3-flash-preview",
+                model: effectiveTaskType === 'ebd' ? "gemini-3-pro-preview" : "gemini-3-flash-preview",
                 contents: [{ parts: [{ text: prompt }] }],
                 config: config
             });
@@ -69,7 +68,7 @@ export const generateContent = async (
         } 
         
         const controller = new AbortController();
-        const timeoutMs = 300000; // 5 minutos para suportar as 600+ palavras por página
+        const timeoutMs = 400000; // Aumentado para ~7 minutos (Processamento PRO é mais lento e denso)
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         const response = await fetch('/api/gemini', {
@@ -97,7 +96,7 @@ export const generateContent = async (
 
     } catch (error: any) {
         console.error("Gemini Service Error:", error);
-        if (error.name === 'AbortError') throw new Error("Tempo esgotado. A IA está gerando um conteúdo muito grande, tente novamente.");
+        if (error.name === 'AbortError') throw new Error("Tempo esgotado. O modelo PRO está gerando um estudo muito denso, aguarde um pouco e tente novamente.");
         throw error; 
     }
 };

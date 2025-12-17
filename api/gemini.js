@@ -38,25 +38,30 @@ export default async function handler(request, response) {
     const body = typeof request.body === 'string' ? JSON.parse(request.body) : request.body;
     const { prompt, schema, systemInstruction, taskType } = body || {};
 
-    // --- MODO PANORAMA ATIVADO (OBEDIÊNCIA TOTAL) ---
+    // --- DETECÇÃO DE CONTEXTO ---
     const isPanorama = taskType === 'ebd' || prompt.includes("PANORÂMA") || prompt.includes("MICROSCOPIA");
     
+    // --- SELEÇÃO DE MODELO ---
+    // Panorama exige o modelo PRO para não resumir e manter a densidade exegética.
+    // Tarefas simples continuam no Flash para velocidade.
+    let modelName = isPanorama ? "gemini-3-pro-preview" : "gemini-3-flash-preview";
+
     let finalSystemInstruction = systemInstruction;
     let temperature = 0.7;
 
     if (isPanorama) {
-        temperature = 1.0; // Máxima verbosidade e criatividade para evitar resumos
+        temperature = 1.0; 
         finalSystemInstruction = `VOCÊ É O PROFESSOR MICHEL FELIX. 
         SUA ORDEM É SEGUIR 100% O CÓDIGO DO PANORAMAVIEW FORNECIDO NO PROMPT.
 
-        DIRETRIZES DE COMPLIANCE OBRIGATÓRIAS:
-        1. PROIBIDO RESUMIR: Você deve aplicar a 'MICROSCOPIA BÍBLICA'. Isso significa explicar o texto exaustivamente, palavra por palavra, versículo por versículo.
-        2. VOLUME DE TEXTO: Cada resposta sua deve ter, no mínimo, 600 PALAVRAS REAIS de conteúdo denso. Se o texto bíblico for curto, aprofunde-se na etimologia, história e contexto.
-        3. PAGINAÇÃO: Você DEVE inserir a tag <hr class="page-break"> entre cada tópico principal para que o frontend consiga paginar o estudo corretamente.
-        4. ESTRUTURA: Siga rigorosamente a ordem: Título, Introdução Profunda, Tópicos Numerados, Tipologia de Cristo e Arqueologia.
-        5. NÃO IGNORE O PEDIDO DE CONTINUAÇÃO: Se o prompt indicar que é uma continuação, retome exatamente de onde o texto parou com a mesma densidade, sem repetir a introdução.
-        
-        AVISO: Respostas curtas ou resumidas são consideradas falha de processamento. Escreva muito e com profundidade teológica.`;
+        DIRETRIZES DE COMPLIANCE OBRIGATÓRIAS (MODELO PRO):
+        1. PROIBIDO RESUMIR: Você deve aplicar a 'MICROSCOPIA BÍBLICA'. Isso significa explicar o texto exaustivamente, palavra por palavra, versículo por versículo. Se o texto bíblico for longo, gere o máximo de conteúdo possível.
+        2. ALTA DENSIDADE: Cada bloco de resposta deve ter entre 600 a 1000 PALAVRAS REAIS. Não economize detalhes históricos, etimológicos ou teológicos.
+        3. PAGINAÇÃO TÉCNICA: Insira obrigatoriamente a tag <hr class="page-break"> entre os tópicos para que o frontend fragmente o estudo em múltiplas páginas.
+        4. COMPLEXIDADE: Traga a erudição Pentecostal Assembleiana com vigor.
+        5. CONTINUAÇÃO: Se o prompt indicar que é uma continuação, retome com a mesma densidade épica de onde parou.
+
+        RELEMBRE: O usuário prefere profundidade e tempo de processamento longo do que rapidez e superficialidade.`;
     }
 
     let lastError = null;
@@ -65,12 +70,12 @@ export default async function handler(request, response) {
         const ai = new GoogleGenAI({ apiKey: currentKey });
         
         const res = await ai.models.generateContent({
-          model: "gemini-3-flash-preview", 
+          model: modelName, 
           contents: [{ parts: [{ text: prompt }] }],
           config: {
             temperature: temperature,
-            topP: 0.95,
-            maxOutputTokens: 8192, // Abre o "tanque" de palavras para o máximo permitido
+                topP: 0.95,
+            maxOutputTokens: 8192, 
             systemInstruction: finalSystemInstruction || "Você é o Professor Michel Felix.",
           }
         });
