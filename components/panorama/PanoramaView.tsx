@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 // Componente de Visualização do Panorama Bíblico
 import { ChevronLeft, GraduationCap, Lock, BookOpen, ChevronRight, Volume2, Sparkles, Loader2, Book, Trash2, Edit, Save, X, CheckCircle, Pause, Play, Settings, FastForward } from 'lucide-react';
@@ -115,31 +116,31 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     return text.trim();
   };
 
-  // --- PAGINAÇÃO OTIMIZADA PARA 600 PALAVRAS (~4200 CARACTERES) ---
+  // --- PAGINAÇÃO OTIMIZADA PARA 600 PALAVRAS (~4000 CARACTERES) ---
   const processAndPaginate = (html: string) => {
     if (!html) { setPages([]); return; }
     
-    // Divide por marcadores de quebra ou blocos de continuação
+    // Divide pelo marcador de quebra ou continuação
     let rawSegments = html.split(/<hr[^>]*>|__CONTINUATION_MARKER__/i)
                           .map(s => cleanText(s))
-                          .filter(s => s.length > 15);
+                          .filter(s => s.length > 20);
 
     const finalPages: string[] = [];
     let currentBuffer = "";
-    // 4200 caracteres é o alvo para 600 palavras exegéticas densas
-    const TARGET_CHAR_LIMIT = 4200; 
+    // Alvo: 4000 caracteres para garantir ~600 palavras densas
+    const TARGET_CHAR_LIMIT = 4000; 
 
     for (let i = 0; i < rawSegments.length; i++) {
         const segment = rawSegments[i];
         if (!currentBuffer) {
             currentBuffer = segment;
         } else {
-            // Se o conteúdo atual + o novo segmento não ultrapassar muito o limite, junta eles.
-            // Isso garante que introduções curtas fiquem presas ao primeiro tópico (Padrão 2.5)
-            if ((currentBuffer.length + segment.length) < (TARGET_CHAR_LIMIT * 1.35)) {
+            // Se o buffer atual + o novo segmento não ultrapassar muito o limite, junta eles.
+            // Isso evita que a introdução (segmento 0) fique sozinha na página 1 se for curta.
+            if ((currentBuffer.length + segment.length) < (TARGET_CHAR_LIMIT * 1.3)) {
                 currentBuffer += "\n\n__CONTINUATION_MARKER__\n\n" + segment;
             } else {
-                // Se já atingiu o volume de palavras ideal, cria a página
+                // Já temos densidade suficiente, fecha a página atual
                 finalPages.push(currentBuffer);
                 currentBuffer = segment;
             }
@@ -324,26 +325,26 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     const studyKey = generateChapterKey(book, chapter);
     const existing = (await db.entities.PanoramaBiblico.filter({ study_key: studyKey }))[0] || {};
     const currentText = target === 'student' ? (existing.student_content || '') : (existing.teacher_content || '');
-    const cleanContext = currentText.replace(/__CONTINUATION_MARKER__/g, ' ').slice(-4200);
+    const cleanContext = currentText.replace(/__CONTINUATION_MARKER__/g, ' ').slice(-4000);
 
     const WRITING_STYLE = `
         ATUE COMO: Professor Michel Felix.
         PERFIL: Teólogo Pentecostal Clássico, Arminiano, Erudito e Assembleiano.
 
-        --- OBJETIVO SUPREMO: CONTEÚDO COMPLETO E DENSO (PADRÃO GEMINI 2.5 FLASH) ---
-        1. NÃO RESUMA. Explique CADA versículo com profundidade exegética e histórica total.
-        2. TAMANHO DA PÁGINA: O alvo é escrever blocos de 600 PALAVRAS por título/sessão.
-        3. PAGINAÇÃO: Insira a tag <hr class="page-break"> APENAS após atingir um volume de pelo menos 4200 caracteres de texto denso.
-        4. TERMOS TÉCNICOS: Explique o significado entre parênteses. Ex: "Vemos aqui uma Teofania (uma aparição visível de Deus)...".
+        --- OBJETIVO SUPREMO: CONTEÚDO COMPLETO E DENSO (600 PALAVRAS POR PÁGINA) ---
+        1. NÃO RESUMA. Explique CADA versículo ou grupo de versículos com profundidade máxima.
+        2. TAMANHO DA PÁGINA: Escreva blocos longos de aproximadamente 600 PALAVRAS por tópico.
+        3. PAGINAÇÃO: Use obrigatoriamente a tag <hr class="page-break"> APENAS após atingir um volume denso de texto (mínimo 3500 caracteres).
+        4. TERMOS TÉCNICOS: Explique o significado entre parênteses. Ex: "Usa-se um antropomorfismo (atribuição de características humanas a Deus)...".
         
         --- ESTRUTURA VISUAL OBRIGATÓRIA ---
         1. TÍTULO: PANORÂMA BÍBLICO - ${book.toUpperCase()} ${chapter} (PROF. MICHEL FELIX)
-        2. INTRODUÇÃO: Texto rico contextualizando o capítulo. JUNTE OBRIGATORIAMENTE a introdução com o primeiro tópico do estudo para preencher a página 1 com 600 palavras.
-        3. TÓPICOS: Use numeração (1., 2., 3...) e escreva o máximo de detalhes exegéticos possíveis.
+        2. INTRODUÇÃO: Texto rico contextualizando o capítulo. JUNTE a introdução com o primeiro tópico para que a primeira página já comece com conteúdo denso (mínimo 600 palavras).
+        3. TÓPICOS: Use numeração (1., 2., 3...) e insira <hr class="page-break"> somente se o tópico for muito longo ou mudar drasticamente o assunto.
     `;
     
     const instructions = customInstructions ? `\nINSTRUÇÕES EXTRAS: ${customInstructions}` : "";
-    const continuationInstructions = `MODO CONTINUAÇÃO. Continue exatamente de onde parou: "...${cleanContext.slice(-500)}...". Mantenha a densidade de 600 palavras por página e exegese profunda.`;
+    const continuationInstructions = `MODO CONTINUAÇÃO. Continue de onde parou: "...${cleanContext.slice(-500)}...". Continue a explicação DETALHADA dos versículos seguintes de ${book} ${chapter}. Mantenha a densidade de 600 palavras por página.`;
 
     let specificPrompt = target === 'student' ? 
         `OBJETIVO: AULA DO ALUNO para ${book} ${chapter}. ${WRITING_STYLE} ${instructions} ${mode === 'continue' ? continuationInstructions : 'INÍCIO DO ESTUDO COMPLETO.'}` : 
@@ -460,7 +461,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         {isAdmin && !isEditing && (
             <div className="bg-[#1a0f0f] text-[#C5A059] p-4 shadow-inner sticky top-[130px] z-20 border-b-4 border-[#8B0000]">
                 <div className="flex items-center justify-between mb-2">
-                    <span className="font-cinzel text-xs flex items-center gap-2 font-bold"><Sparkles className="w-4 h-4" /> EDITOR CHEFE (2.5 FLASH PREVIEW)</span>
+                    <span className="font-cinzel text-xs flex items-center gap-2 font-bold"><Sparkles className="w-4 h-4" /> EDITOR CHEFE (3.0 FLASH)</span>
                     <button onClick={() => setShowInstructions(!showInstructions)} className="text-xs underline">
                         {showInstructions ? 'Ocultar' : 'Instruções'}
                     </button>

@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 const STORAGE_KEY_API = 'adma_temp_api_key';
@@ -44,7 +45,7 @@ export const generateContent = async (
         if (adminKey) {
             const ai = new GoogleGenAI({ apiKey: adminKey });
             const config: any = {
-                temperature: 0.75, 
+                temperature: 0.7, 
                 topP: 0.95,
                 topK: 40,
             };
@@ -55,7 +56,7 @@ export const generateContent = async (
             }
 
             const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash-preview",
+                model: "gemini-3-flash-preview",
                 contents: [{ parts: [{ text: prompt }] }],
                 config: config
             });

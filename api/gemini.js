@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 // Configuração para Vercel Serverless Functions
@@ -64,7 +65,7 @@ export default async function handler(request, response) {
             const ai = new GoogleGenAI({ apiKey });
             
             const aiConfig = {
-                temperature: 0.75, 
+                temperature: 0.7, 
                 topP: 0.95,
                 topK: 40,
                 maxOutputTokens: 4096,
@@ -82,7 +83,7 @@ export default async function handler(request, response) {
             }
 
             const aiResponse = await ai.models.generateContent({
-                model: "gemini-2.5-flash-preview",
+                model: "gemini-3-flash-preview",
                 contents: [{ parts: [{ text: prompt }] }],
                 config: aiConfig
             });
@@ -100,8 +101,7 @@ export default async function handler(request, response) {
             if (msg.includes('400') || msg.includes('INVALID_ARGUMENT')) {
                 return response.status(400).json({ error: `Erro no formato da requisição: ${msg}` });
             }
-            // Se for 429 ou erro de modelo, aguarda um pouco e tenta a próxima chave
-            await new Promise(resolve => setTimeout(resolve, 300));
+            await new Promise(resolve => setTimeout(resolve, 200));
         }
     }
 
