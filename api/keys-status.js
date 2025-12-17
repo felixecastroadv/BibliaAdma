@@ -12,12 +12,13 @@ export default async function handler(request, response) {
   try {
     const keysNames = [
         'API_KEY',
-        'Biblia_ADMA',
-        'BIBLIA_ADMA',
         'Biblia_ADMA_API',
-        'API_Biblia_ADMA'
+        'Biblia_ADMA',
+        'API_Biblia_ADMA',
+        'BIBLIA_ADMA'
     ];
-    for(let i=1; i<=30; i++) keysNames.push(`API_KEY_${i}`);
+    // Monitora até 40 chaves para acompanhar seu crescimento na Vercel
+    for(let i=1; i<=40; i++) keysNames.push(`API_KEY_${i}`);
 
     const activeKeysConfigured = keysNames
         .map(name => ({ name, key: process.env[name] }))
@@ -31,8 +32,6 @@ export default async function handler(request, response) {
         const start = Date.now();
         try {
             const ai = new GoogleGenAI({ apiKey: keyEntry.key });
-            
-            // Testa o modelo PRO que é o usado no app
             const result = await ai.models.generateContent({
                 model: "gemini-3-pro-preview",
                 contents: [{ parts: [{ text: "ping" }] }],
@@ -42,7 +41,7 @@ export default async function handler(request, response) {
                 } 
             });
 
-            if (!result?.text) throw new Error("Vazio");
+            if (!result?.text) throw new Error("Resposta Vazia");
 
             return {
                 name: keyEntry.name,
@@ -62,7 +61,7 @@ export default async function handler(request, response) {
                 msg = 'Limite atingido';
             } else if (err.includes('API key not valid') || err.includes('401')) {
                 status = 'invalid';
-                msg = 'Chave Inválida';
+                msg = 'Chave Inválida/Inativa';
             } else {
                 status = 'error';
                 msg = err.substring(0, 30);
@@ -78,6 +77,7 @@ export default async function handler(request, response) {
         }
     };
 
+    // Testa em blocos de 5 para não sobrecarregar
     const results = [];
     for (let i = 0; i < activeKeysConfigured.length; i += 5) {
         const chunk = activeKeysConfigured.slice(i, i + 5);
@@ -95,6 +95,6 @@ export default async function handler(request, response) {
     });
 
   } catch (error) {
-    return response.status(500).json({ error: 'Erro no monitor de infraestrutura.' });
+    return response.status(500).json({ error: 'Erro ao processar monitor.' });
   }
 }
