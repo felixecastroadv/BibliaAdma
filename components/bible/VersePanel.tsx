@@ -206,7 +206,8 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
       setChatMessages(prev => [...prev, userMsg]);
       setChatInput('');
       setIsChatLoading(true);
-      if (!isAdmin) incrementUsage();
+      
+      // NOTA: incrementUsage só será chamado no bloco try se tiver sucesso.
 
       // PROMPT OTIMIZADO - MODO PHD/ORTODOXO
       const prompt = `
@@ -239,6 +240,10 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
       try {
           const response = await generateContent(prompt);
           setChatMessages(prev => [...prev, { role: 'model', text: response || "Desculpe, não consegui processar sua dúvida agora." }]);
+          
+          // SÓ DESCONTA DO LIMITE SE TIVER SUCESSO
+          if (!isAdmin) incrementUsage();
+          
       } catch (error) {
           setChatMessages(prev => [...prev, { role: 'model', text: "Erro de conexão com o Professor. Tente novamente." }]);
       } finally {

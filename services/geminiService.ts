@@ -67,8 +67,8 @@ export const generateContent = async (
         
         // --- MODO SERVER (Rotação Inteligente) ---
         const controller = new AbortController();
-        // Aumentado para 90s para dar tempo de rodar várias chaves
-        const timeoutMs = 90000; 
+        // Aumentado para 180s (3 minutos) para dar tempo de rodar várias chaves
+        const timeoutMs = 180000; 
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         const response = await fetch('/api/gemini', {

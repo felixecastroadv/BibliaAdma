@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 
 // Configuração para Vercel Serverless Functions
 export const config = {
-  maxDuration: 60, // Tempo máximo de execução (segundos)
+  maxDuration: 300, // Aumentando para 5 min para evitar timeout no Vercel (se plano permitir)
 };
 
 export default async function handler(request, response) {
