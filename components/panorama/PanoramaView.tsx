@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-// Componente de Visualização do Panorama Bíblico - Versão Master Restaurada
+// Componente de Visualização do Panorama Bíblico
 import { ChevronLeft, GraduationCap, Lock, BookOpen, ChevronRight, Volume2, Sparkles, Loader2, Book, Trash2, Edit, Save, X, CheckCircle, Pause, Play, Settings, FastForward } from 'lucide-react';
 import { db } from '../../services/database';
 import { BIBLE_BOOKS, generateChapterKey } from '../../constants';
@@ -63,6 +63,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     };
     
     loadVoices();
+    // Alguns navegadores carregam vozes assincronamente
     if (window.speechSynthesis.onvoiceschanged !== undefined) {
         window.speechSynthesis.onvoiceschanged = loadVoices;
     }
@@ -125,7 +126,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     return text.trim();
   };
 
-  // --- PAGINAÇÃO HÍBRIDA ---
+  // --- PAGINAÇÃO HÍBRIDA (Corrigida para evitar apenas uma página) ---
   const processAndPaginate = (html: string) => {
     if (!html) { setPages([]); return; }
     
@@ -133,32 +134,33 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                           .map(s => cleanText(s))
                           .filter(s => s.length > 50);
 
-    if (rawSegments.length === 1 && rawSegments[0].length > 4000) {
+    // Divisão forçada se for um bloco gigante único (Acima de 3500 caracteres)
+    if (rawSegments.length === 1 && rawSegments[0].length > 3500) {
         const bigText = rawSegments[0];
+        // Tenta quebrar em novos parágrafos de tópicos (### ou Numeração)
         const forcedSegments = bigText.split(/(?=\n### |^\s*[IVX]+\.|^\s*\d+\.\s+[A-Z])/gm);
         if (forcedSegments.length > 1) {
-            rawSegments = forcedSegments.map(s => cleanText(s)).filter(s => s.length > 100);
+            rawSegments = forcedSegments.map(s => cleanText(s)).filter(s => s.length > 50);
         }
     }
     
     const finalPages: string[] = [];
     let currentBuffer = "";
-    const CHAR_LIMIT_MIN = 3500; 
+    // Limite reduzido para 2000 para garantir que o conteúdo seja paginado com mais facilidade
+    const CHAR_LIMIT_MIN = 2000; 
 
     for (let i = 0; i < rawSegments.length; i++) {
         const segment = rawSegments[i];
         if (!currentBuffer) {
             currentBuffer = segment;
         } else {
-            if ((currentBuffer.length + segment.length) < (CHAR_LIMIT_MIN * 1.5)) {
+            // Se o conteúdo acumulado já for razoável, começa nova página em vez de "colar"
+            if ((currentBuffer.length + segment.length) < (CHAR_LIMIT_MIN)) {
                 currentBuffer += "\n\n__CONTINUATION_MARKER__\n\n" + segment;
             } else {
-                if (currentBuffer.length > 2000) {
-                    finalPages.push(currentBuffer);
-                    currentBuffer = segment;
-                } else {
-                    currentBuffer += "\n\n__CONTINUATION_MARKER__\n\n" + segment;
-                }
+                // Força nova página se o buffer atual já for grande o suficiente
+                finalPages.push(currentBuffer);
+                currentBuffer = segment;
             }
         }
     }
@@ -242,7 +244,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
       if (!userProgress || isRead) return;
       const newReadList = [...(userProgress.ebd_read || []), studyKey];
       const newTotal = (userProgress.total_ebd_read || 0) + 1;
-      const updated = await db.entities.ReadingProgress.update(userProgress.id, {
+      const updated = await db.entities.ReadingProgress.update(userProgress.id!, {
           ebd_read: newReadList,
           total_ebd_read: newTotal
       });
@@ -395,35 +397,25 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         --- PROTOCOLO DE SEGURANÇA TEOLÓGICA E DIDÁTICA (NÍVEL MÁXIMO - IMPLÍCITO) ---
         1. A BÍBLIA EXPLICA A BÍBLIA: Antes de formular o comentário, verifique MENTALMENTE e RIGOROSAMENTE o CONTEXTO IMEDIATO (capítulo) e o CONTEXTO REMOTO (livros históricos paralelos, profetas contemporâneos, Novo Testamento) para garantir a coerência.
         2. PRECISÃO CRONOLÓGICA E CONTEXTUAL: Ao explicar, evite anacronismos (ex: confundir reis, datas ou eventos que ainda não ocorreram na narrativa).
-        3. EXEMPLO DE RIGOR: Se o texto trata de Ezequias, verifique se Manassés já era nascido. A Bíblia diz que não. Logo, seja exato.
-        4. IMPORTANTE: Não escreva "Segundo a regra hermenêutica". Apenas aplique-a silenciosamente para gerar o conteúdo correto.
+        3. FOCO NA INTENÇÃO ORIGINAL: O que o autor sagrado quis ensinar sobre Deus e o homem? Fique nisso.
 
         3. DIDÁTICA DOS TEXTOS POLÊMICOS E DIFÍCEIS:
-           - É EXCELENTE, DIDÁTICO e RECOMENDADO citar as principais correntes interpretativas divergentes para enriquecer a cultura do aluno (ex: "Alguns teólogos históricos interpretam como X, outros como Y..."). Mostre erudição citando as visões (Judaica, Patrística, Apócrifa).
-           - CONTUDO, APÓS ELENCAR as visões, você deve OBRIGATORIAMENTE concluir defendendo a interpretação Ortodoxa, Assembleiana e Biblicamente coerente, refutando as demais com base nas Escrituras e nas palavras de Jesus.
+           - É EXCELENTE, DIDÁTICO e RECOMENDADO citar as principais correntes interpretativas divergentes para enriquecer a cultura do aluno.
+           - CONTUDO, APÓS ELENCAR as visões, você deve OBRIGATORIAMENTE concluir defendendo a interpretação Ortodoxa e Biblicamente coerente.
         
-        4. APLICAÇÃO PRÁTICA EM CASOS ESPECÍFICOS:
-           - Gênesis 6 ("Filhos de Deus"): Cite que a visão de "anjos caídos" existe e é antiga (Livro de Enoque/Josefo), MAS refute-a biblicamente (Jesus disse que anjos não casam em Mt 22:30). A doutrina a ser firmada como CORRETA é a "Linhagem de Sete" (justos) se misturando com a "Linhagem de Caim".
-           - Jefté: Cite a possibilidade de sacrifício literal, mas defenda a visão da dedicação perpétua ao tabernáculo (voto de celibato).
-           - Em resumo: Apresente o leque de interpretações para conhecimento, mas feche a questão com a ortodoxia segura.
-
-        5. ANGELOLOGIA E ANTROPOLOGIA: Respeite a natureza dos seres criados. Não misture naturezas distintas (espíritos não possuem genética reprodutiva humana).
-        6. TOM: Magistral, Impessoal, Acadêmico, Vibrante e Ortodoxo.
+        4. TOM: Magistral, Impessoal, Acadêmico, Vibrante e Ortodoxo.
 
         --- METODOLOGIA DE ENSINO (MICROSCOPIA BÍBLICA) ---
         1. CHEGA DE RESUMOS: O aluno precisa entender o texto COMPLETAMENTE. Não faça explicações genéricas que cobrem 10 versículos de uma vez.
-        2. DETALHES QUE FAZEM A DIFERENÇA: Traga costumes da época, geografia e contexto histórico para iluminar o texto e causar o efeito "Ah! Entendi!".
-        3. DENSIDADE: Extraia todo o suco do texto. Se houver uma lista de nomes, explique a relevância. Se houver uma ação detalhada, explique o motivo.
-        4. O texto deve ser DENSO e EXEGÉTICO, mas respeitando o limite de tamanho (aprox. 600 palavras por resposta).
-        5. PROIBIDO TRANSCREVER O TEXTO BÍBLICO: O aluno já tem a Bíblia. NÃO escreva o versículo por extenso. Cite apenas a referência (Ex: "No versículo 1...", ou "Em Gn 47:1-6...") e vá direto para a EXPLICAÇÃO.
+        2. DENSIDADE: Extraia todo o suco do texto. Se houver uma lista de nomes, explique a relevância. Se houver uma ação detalhada, explique o motivo.
+        3. PROIBIDO TRANSCREVER O TEXTO BÍBLICO: O aluno já tem a Bíblia. NÃO escreva o versículo por extenso. Cite apenas a referência.
 
         --- IDIOMAS ORIGINAIS E ETIMOLOGIA (INDISPENSÁVEL) ---
-        O EBD não é um curso de línguas, mas para um melhor ensino é OBRIGATÓRIO:
-        1. PALAVRAS-CHAVE: Cite os termos originais (Hebraico no AT / Grego no NT) transliterados e com a grafia original quando relevante para explicar o sentido profundo.
+        1. PALAVRAS-CHAVE: Cite os termos originais (Hebraico no AT / Grego no NT) transliterados quando relevante para explicar o sentido profundo.
         2. SIGNIFICADOS DE NOMES: Sempre traga o significado etimológico de nomes de pessoas e lugares.
 
         --- ESTRUTURA VISUAL OBRIGATÓRIA (BASEADA NO MODELO ADMA) ---
-        Use EXATAMENTE esta estrutura de tópicos. NÃO use cabeçalhos como "Introdução" ou "Desenvolvimento" explicitamente, apenas comece o texto ou use os números.
+        Use EXATAMENTE esta estrutura de tópicos.
 
         1. TÍTULO PRINCIPAL:
            PANORÂMA BÍBLICO - ${book.toUpperCase()} ${chapter} (PROF. MICHEL FELIX)
@@ -433,23 +425,20 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         3. TÓPICOS DO ESTUDO (Use Numeração 1., 2., 3...):
            Exemplo:
            1. TÍTULO DO TÓPICO EM MAIÚSCULO (Referência: Gn X:Y-Z)
-           (Aqui entra a explicação detalhada, versículo por versículo, sem pressa, aplicando a metodologia de microscopia bíblica. NÃO COPIE O TEXTO BÍBLICO, APENAS EXPLIQUE).
+           (Explicação detalhada versículo por versículo).
 
         4. SEÇÕES FINAIS OBRIGATÓRIAS (No final do estudo):
            ### TIPOLOGIA: CONEXÃO COM JESUS CRISTO
-           (Liste de forma enumerada se houver múltiplos pontos, ou texto corrido. Mostre como o texto aponta para o Messias).
-
            ### CURIOSIDADES E ARQUEOLOGIA
-           (Fatos históricos, culturais e arqueológicos relevantes).
 
         --- INSTRUÇÕES DE PAGINAÇÃO ---
-        1. Texto de TAMANHO MÉDIO (aprox. 600 palavras por geração).
-        2. Insira <hr class="page-break"> entre os tópicos principais para dividir as páginas.
-        3. Se for CONTINUAÇÃO, não repita o título nem a introdução, siga para o próximo tópico numérico ou continue a explicação detalhada do versículo onde parou.
+        1. GERE CONTEÚDO LONGO E DETALHADO (Aprox. 600-800 palavras).
+        2. Insira OBRIGATORIAMENTE <hr class="page-break"> entre os tópicos principais para dividir as páginas.
+        3. Se for CONTINUAÇÃO, continue a explicação detalhada do versículo onde parou.
     `;
     
     const instructions = customInstructions ? `\nINSTRUÇÕES EXTRAS: ${customInstructions}` : "";
-    const continuationInstructions = `MODO CONTINUAÇÃO. O texto anterior terminou assim: "...${cleanContext.slice(-400)}...". Continue o raciocínio detalhado. Se já cobriu todo o texto bíblico (até o último versículo), GERE AS SEÇÕES FINAIS (Tipologia e Arqueologia).`;
+    const continuationInstructions = `MODO CONTINUAÇÃO. O texto anterior terminou assim: "...${cleanContext.slice(-400)}...". Continue o raciocínio detalhado. Se já cobriu todo o texto bíblico, GERE AS SEÇÕES FINAIS (Tipologia e Arqueologia).`;
 
     let specificPrompt = target === 'student' ? 
         `OBJETIVO: AULA DO ALUNO para ${book} ${chapter}. ${WRITING_STYLE} ${instructions} ${mode === 'continue' ? continuationInstructions : 'INÍCIO DO ESTUDO COMPLETO.'}` : 
@@ -533,7 +522,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     >
         <div className="sticky top-0 z-30 bg-gradient-to-r from-[#600018] to-[#400010] text-white p-4 shadow-lg flex justify-between items-center">
             <button onClick={onBack} className="p-2"><ChevronLeft /></button>
-            <h2 className="font-cinzel font-bold text-sm tracking-widest uppercase">Panorama EBD ADMA</h2>
+            <h2 className="font-cinzel font-bold text-sm md:text-base tracking-widest uppercase">Panorama EBD</h2>
             <div className="flex gap-2">
                 {isAdmin && !isEditing && content && (
                     <button onClick={handleStartEditing} title="Editar Texto Manualmente" className="p-2 hover:bg-white/10 rounded-full">
@@ -541,7 +530,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                     </button>
                 )}
                 <button onClick={() => setShowAudioSettings(!showAudioSettings)} title="Opções de Áudio" className="p-2">
-                    <Volume2 className={isPlaying ? "w-6 h-6 text-green-400 animate-pulse" : "w-6 h-6"} />
+                    <Volume2 className={isPlaying ? "text-green-400 animate-pulse" : "w-6 h-6"} />
                 </button>
             </div>
         </div>
@@ -653,10 +642,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                             </button>
                         </div>
                      </div>
-                     <p className="text-xs text-gray-500 mb-2 font-montserrat">
-                        Use <code>__CONTINUATION_MARKER__</code> (em uma nova linha) para criar separadores visuais sem quebrar a página.
-                        Use <code>&lt;hr class="page-break"&gt;</code> para forçar nova página.
-                     </p>
                      <textarea 
                         value={editValue} 
                         onChange={e => setEditValue(e.target.value)} 
@@ -665,6 +650,14 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                  </div>
             ) : content && pages.length > 0 ? (
                 <div className="bg-white dark:bg-dark-card shadow-2xl p-8 md:p-16 min-h-[600px] border border-[#C5A059]/20 relative rounded-[2rem]">
+                     {(!content.student_content.includes('PANORÂMA') && currentPage === 0) && (
+                         <div className="mb-8 text-center border-b-2 border-[#8B0000] dark:border-[#ff6b6b] pb-4 pt-2">
+                            <h1 className="font-cinzel font-bold text-2xl md:text-3xl text-[#8B0000] dark:text-[#ff6b6b] uppercase tracking-widest drop-shadow-sm">
+                                PANORÂMA BÍBLICO - {content.book} {content.chapter}
+                            </h1>
+                        </div>
+                     )}
+                     
                      <div className="space-y-6">
                         {renderFormattedText(pages[currentPage])}
                      </div>
