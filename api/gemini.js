@@ -1,12 +1,10 @@
 import { GoogleGenAI } from "@google/genai";
 
-// Configuração para Vercel Serverless Functions
 export const config = {
   maxDuration: 60, 
 };
 
 export default async function handler(request, response) {
-  // Configuração de CORS
   response.setHeader('Access-Control-Allow-Credentials', true);
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -24,33 +22,26 @@ export default async function handler(request, response) {
   }
 
   try {
-    const allKeys = [];
-    if (process.env.API_KEY) allKeys.push({ k: process.env.API_KEY, i: 0 });
-    if (process.env.Biblia_ADMA_API) allKeys.push({ k: process.env.Biblia_ADMA_API, i: 0.1 });
+    // Lista sequencial conforme solicitado
+    const apiKeys = [
+      process.env.API_KEY,
+      process.env.Biblia_ADMA_API,
+      process.env.API_KEY_1, process.env.API_KEY_2, process.env.API_KEY_3,
+      process.env.API_KEY_4, process.env.API_KEY_5, process.env.API_KEY_6,
+      process.env.API_KEY_7, process.env.API_KEY_8, process.env.API_KEY_9,
+      process.env.API_KEY_10, process.env.API_KEY_11, process.env.API_KEY_12,
+      process.env.API_KEY_13, process.env.API_KEY_14, process.env.API_KEY_15,
+      process.env.API_KEY_16, process.env.API_KEY_17, process.env.API_KEY_18,
+      process.env.API_KEY_19, process.env.API_KEY_20, process.env.API_KEY_21
+    ].filter(k => k && k.length > 10);
 
-    for (let i = 1; i <= 50; i++) {
-        const keyName = `API_KEY_${i}`;
-        const val = process.env[keyName];
-        if (val && val.length > 10 && !val.startsWith('vck_')) {
-            allKeys.push({ k: val, i: i });
-        }
+    if (apiKeys.length === 0) {
+      return response.status(500).json({ error: 'Nenhuma chave API configurada.' });
     }
-
-    if (allKeys.length === 0) {
-         return response.status(500).json({ 
-             error: 'CONFIGURAÇÃO PENDENTE: Nenhuma Chave de API válida encontrada.' 
-         });
-    }
-
-    const sortedKeys = allKeys.sort((a, b) => a.i - b.i).map(item => item.k);
 
     let body = request.body;
     if (typeof body === 'string') {
-        try {
-            body = JSON.parse(body);
-        } catch (e) {
-            return response.status(400).json({ error: 'Invalid JSON body' });
-        }
+      try { body = JSON.parse(body); } catch (e) { return response.status(400).json({ error: 'Invalid JSON' }); }
     }
     
     const { prompt, schema, systemInstruction } = body || {};
@@ -58,59 +49,48 @@ export default async function handler(request, response) {
 
     let lastError = null;
     let successResponse = null;
-    const keysToTry = sortedKeys.slice(0, 15);
 
-    for (const apiKey of keysToTry) {
-        try {
-            const ai = new GoogleGenAI({ apiKey });
-            
-            const aiConfig = {
-                temperature: 0.7, 
-                topP: 0.95,
-                topK: 40,
-                maxOutputTokens: 8192, 
-                systemInstruction: systemInstruction || "Você é o Professor Michel Felix, teólogo Pentecostal Clássico e erudito.",
-                safetySettings: [
-                    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-                    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-                    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-                    { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-                ],
-            };
+    // Tenta cada chave sequencialmente (Revezamento Relay)
+    for (const key of apiKeys) {
+      try {
+        const ai = new GoogleGenAI({ apiKey: key });
+        const config = {
+          model: "gemini-3-pro-preview",
+          contents: [{ parts: [{ text: prompt }] }],
+          config: {
+            systemInstruction: systemInstruction || "Você é o Professor Michel Felix, teólogo Pentecostal Clássico e erudito.",
+            temperature: 0.7,
+            topP: 0.95,
+            topK: 40,
+            maxOutputTokens: 8192,
+          }
+        };
 
-            if (schema) {
-                aiConfig.responseMimeType = "application/json";
-                aiConfig.responseSchema = schema;
-            }
-
-            const aiResponse = await ai.models.generateContent({
-                model: "gemini-3-pro-preview",
-                contents: [{ parts: [{ text: prompt }] }],
-                config: aiConfig
-            });
-
-            if (!aiResponse.text) {
-                throw new Error("Resposta vazia da IA (Retry)");
-            }
-
-            successResponse = aiResponse.text;
-            break; 
-
-        } catch (error) {
-            lastError = error;
-            console.error("API Key Error:", error.message);
-            await new Promise(resolve => setTimeout(resolve, 300));
+        if (schema) {
+          config.config.responseMimeType = "application/json";
+          config.config.responseSchema = schema;
         }
+
+        const res = await ai.models.generateContent(config);
+        
+        if (res.text) {
+          successResponse = res.text;
+          break; // Sucesso, sai do loop
+        }
+      } catch (error) {
+        lastError = error;
+        console.error(`Chave falhou, tentando próxima... Erro: ${error.message}`);
+        // Continua para a próxima chave
+      }
     }
 
     if (successResponse) {
-        return response.status(200).json({ text: successResponse });
+      return response.status(200).json({ text: successResponse });
     } else {
-        const errorMsg = lastError?.message || 'Erro desconhecido.';
-        return response.status(500).json({ error: `Falha na geração: ${errorMsg}` });
+      return response.status(500).json({ error: `Todas as chaves atingiram o limite ou falharam: ${lastError?.message}` });
     }
 
   } catch (error) {
-    return response.status(500).json({ error: 'Erro interno crítico no servidor.' });
+    return response.status(500).json({ error: 'Erro interno no servidor de IA.' });
   }
 }
