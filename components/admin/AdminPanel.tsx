@@ -601,7 +601,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       addLog(`Gerando devocional para ${displayDate}...`);
       try {
          const existing = await db.entities.Devotional.filter({ date: dateStr });
-         if(existing.length > 0) await db.entities.Devotional.delete(existing[0].id);
+         if(existing.length > 0) await db.entities.Devotional.delete(existing[0].id!);
          const prompt = `ATUE COMO: Michel Felix. TAREFA: Devocional para ${displayDate}. JSON FORMAT: { title, reference, verse_text, body (com \\n\\n), prayer }.`;
          const schema = {
             type: GenType.OBJECT,

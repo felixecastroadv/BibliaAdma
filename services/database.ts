@@ -131,6 +131,10 @@ const createHelpers = (col: string) => ({
         // 3. Se Nuvem falhou ou vazia, retorna Backup Local (Modo Offline/Resgate)
         return localBackup.list(col);
     },
+    count: async () => {
+        const res = await apiCall('count', col);
+        return res ? res.count : 0;
+    },
     filter: async (criteria: any) => {
         let allItems = await apiCall('list', col);
         
