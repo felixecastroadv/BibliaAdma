@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 export const config = {
-  maxDuration: 60, // Limite Vercel Hobby
+  maxDuration: 60,
 };
 
 export default async function handler(request, response) {
@@ -23,7 +23,6 @@ export default async function handler(request, response) {
         }
     }
 
-    // Remove duplicatas
     const uniqueKeys = [];
     const seen = new Set();
     for (const k of allKeys) {
@@ -37,53 +36,26 @@ export default async function handler(request, response) {
         return response.status(200).json({ keys: [], total: 0, healthy: 0 });
     }
 
-    // 2. FUNÇÃO DE TESTE INDIVIDUAL (FAILOVER INTELIGENTE)
+    // OTIMIZAÇÃO: Testar apenas uma AMOSTRA de 5 chaves aleatórias por vez
+    // Isso evita que o monitor "mate" todas as chaves ao testá-las simultaneamente.
+    const sampleSize = 5;
+    const shuffled = uniqueKeys.sort(() => 0.5 - Math.random());
+    const selectedKeys = shuffled.slice(0, sampleSize);
+
     const checkKey = async (keyEntry) => {
         const start = Date.now();
-        let usedModel = "gemini-2.5-flash";
-
         try {
             const ai = new GoogleGenAI({ apiKey: keyEntry.key });
             
-            // Função auxiliar de chamada com configurações permissivas
-            const performCall = async (modelName) => {
-                return await ai.models.generateContent({
-                    model: modelName,
-                    contents: [{ parts: [{ text: "Hello" }] }],
-                    config: { 
-                        maxOutputTokens: 30, 
-                        temperature: 0.1,
-                        safetySettings: [
-                            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-                            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-                            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-                            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-                        ]
-                    } 
-                });
-            };
+            // Teste ultra-leve
+            const result = await ai.models.generateContent({
+                model: "gemini-2.5-flash",
+                contents: [{ parts: [{ text: "Hi" }] }],
+                config: { maxOutputTokens: 5 } 
+            });
 
-            let result;
-            try {
-                result = await performCall("gemini-2.5-flash");
-            } catch (errPrimary) {
-                const msg = errPrimary.message || JSON.stringify(errPrimary);
-                if (msg.includes("404") || msg.includes("not found") || msg.includes("model")) {
-                    usedModel = "gemini-1.5-flash";
-                    result = await performCall("gemini-1.5-flash");
-                } else {
-                    throw errPrimary;
-                }
-            }
-
-            // Validação de integridade
-            let textOutput = result?.text;
-            if (!textOutput) {
-                textOutput = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-            }
-
-            if (!textOutput) {
-                throw new Error("Resposta vazia (Sem texto)");
+            if (!result?.text && !result?.candidates?.[0]?.content?.parts?.[0]?.text) {
+                throw new Error("No text");
             }
 
             return {
@@ -91,30 +63,23 @@ export default async function handler(request, response) {
                 mask: `...${keyEntry.key.slice(-4)}`,
                 status: 'active',
                 latency: Date.now() - start,
-                msg: 'OK',
-                model: usedModel
+                msg: 'OK'
             };
 
         } catch (e) {
-            const err = e.message || JSON.stringify(e);
+            const err = e.message || "";
             let status = 'error';
-            let msg = err.substring(0, 60);
+            let msg = 'Erro';
 
-            if (err.includes('429') || err.includes('Quota') || err.includes('Exhausted')) {
+            if (err.includes('429') || err.includes('Quota')) {
                 status = 'exhausted';
-                msg = 'Cota Excedida (429)';
-            } else if (err.includes('API key not valid') || err.includes('400') || err.includes('INVALID_ARGUMENT')) {
+                msg = 'Cota (429)';
+            } else if (err.includes('API key not valid')) {
                 status = 'invalid';
-                msg = 'Chave Inválida';
-            } else if (err.includes('503') || err.includes('Overloaded')) {
-                status = 'slow';
-                msg = 'Google Instável (503)';
-            } else if (err.includes('404') || err.includes('not found')) {
+                msg = 'Inválida';
+            } else {
                 status = 'error';
-                msg = 'Modelo 404';
-            } else if (err.includes('fetch failed')) {
-                status = 'error';
-                msg = 'Erro de Conexão';
+                msg = err.substring(0, 30);
             }
 
             return {
@@ -127,31 +92,21 @@ export default async function handler(request, response) {
         }
     };
 
-    // 3. PROCESSAMENTO EM LOTES (BATCH)
-    const BATCH_SIZE = 5;
-    const finalResults = [];
-
-    for (let i = 0; i < uniqueKeys.length; i += BATCH_SIZE) {
-        const batch = uniqueKeys.slice(i, i + BATCH_SIZE);
-        const batchResults = await Promise.all(batch.map(k => checkKey(k)));
-        finalResults.push(...batchResults);
-        
-        if (i + BATCH_SIZE < uniqueKeys.length) {
-            await new Promise(r => setTimeout(r, 300));
-        }
-    }
-
-    const healthyCount = finalResults.filter(r => r.status === 'active').length;
+    const results = await Promise.all(selectedKeys.map(k => checkKey(k)));
+    const healthySample = results.filter(r => r.status === 'active').length;
+    
+    // Extrapolação estatística para exibição
+    const estimatedHealthy = Math.round((healthySample / sampleSize) * uniqueKeys.length);
 
     return response.status(200).json({
-        keys: finalResults,
-        total: finalResults.length,
-        healthy: healthyCount,
-        healthPercentage: finalResults.length > 0 ? Math.round((healthyCount / finalResults.length) * 100) : 0
+        keys: results, // Retorna só a amostra testada
+        total: uniqueKeys.length, // Total real de chaves configuradas
+        healthy: estimatedHealthy, // Estimativa
+        healthPercentage: Math.round((healthySample / sampleSize) * 100),
+        note: "Amostragem aleatória de 5 chaves para evitar sobrecarga."
     });
 
   } catch (error) {
-    console.error("Monitor Error:", error);
-    return response.status(500).json({ error: 'Erro crítico no monitoramento.' });
+    return response.status(500).json({ error: 'Erro no monitoramento.' });
   }
 }

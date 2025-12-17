@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 
 // Configuração para Vercel Serverless Functions
 export const config = {
-  maxDuration: 300, // 5 minutos (Máximo para Hobby/Pro em Serverless)
+  maxDuration: 60, // Aumentado para tolerância (embora Hobby limite a 10s, Pro vai até 300s)
 };
 
 export default async function handler(request, response) {
@@ -42,7 +42,7 @@ export default async function handler(request, response) {
 
     if (validKeys.length === 0) {
          return response.status(500).json({ 
-             error: 'CONFIGURAÇÃO PENDENTE: Nenhuma Chave de API válida encontrada (API_KEY_1...50).' 
+             error: 'CONFIGURAÇÃO PENDENTE: Nenhuma Chave de API válida encontrada.' 
          });
     }
 
@@ -58,79 +58,65 @@ export default async function handler(request, response) {
     const { prompt, schema } = body || {};
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
-    // --- 3. LOOP DE ROTAÇÃO DE CHAVES (FAILOVER INTELIGENTE) ---
+    // --- 3. LOOP DE ROTAÇÃO DE CHAVES (STRICT GEMINI 2.5) ---
+    // Embaralha as chaves para balanceamento de carga
     const shuffledKeys = validKeys.sort(() => 0.5 - Math.random());
     
     let lastError = null;
     let successResponse = null;
-    let attempts = 0;
+    
+    // Tenta no máximo 10 chaves diferentes para não estourar o tempo da função serverless
+    const maxAttempts = Math.min(10, shuffledKeys.length); 
+    const keysToTry = shuffledKeys.slice(0, maxAttempts);
 
-    // Define os modelos para tentar (Prioridade: 2.5 Flash -> Fallback: 1.5 Flash)
-    // 1.5 Flash tem cotas separadas e é muito estável para textos longos
-    const modelsToTry = ["gemini-2.5-flash", "gemini-1.5-flash"];
+    for (const apiKey of keysToTry) {
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            
+            const aiConfig = {
+                temperature: 0.5, // Equilíbrio para EBD
+                topP: 0.95,
+                topK: 40,
+                maxOutputTokens: 8192, // Permite respostas longas para EBD
+                safetySettings: [
+                    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+                ],
+            };
 
-    outerLoop:
-    for (const apiKey of shuffledKeys) {
-        attempts++;
-        
-        // Tenta cada modelo disponível para a chave atual
-        for (const modelId of modelsToTry) {
-            try {
-                const ai = new GoogleGenAI({ apiKey });
-                
-                const aiConfig = {
-                    temperature: 0.5, // Equilíbrio para EBD
-                    topP: 0.95,
-                    topK: 40,
-                    safetySettings: [
-                        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-                        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-                        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-                        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-                    ],
-                };
-
-                if (schema) {
-                    aiConfig.responseMimeType = "application/json";
-                    aiConfig.responseSchema = schema;
-                }
-
-                // console.log(`Tentando chave ${attempts} com modelo ${modelId}...`);
-
-                const aiResponse = await ai.models.generateContent({
-                    model: modelId,
-                    contents: [{ parts: [{ text: prompt }] }],
-                    config: aiConfig
-                });
-
-                if (!aiResponse.text) {
-                    throw new Error(aiResponse.candidates?.[0]?.finishReason || "EMPTY_RESPONSE_RETRY");
-                }
-
-                successResponse = aiResponse.text;
-                break outerLoop; // Sucesso total, sai de todos os loops
-
-            } catch (error) {
-                lastError = error;
-                const msg = error.message || '';
-                
-                const isQuotaError = msg.includes('429') || msg.includes('Quota') || msg.includes('Too Many Requests') || msg.includes('Exhausted');
-                const isServerError = msg.includes('503') || msg.includes('500') || msg.includes('Overloaded');
-
-                if (isQuotaError || isServerError) {
-                    // Se falhou por cota, não adianta tentar outro modelo na MESMA chave.
-                    // Sai do loop de modelos e vai para a próxima chave.
-                    break; 
-                } 
-                // Se for outro erro (ex: Invalid Argument), pode tentar o modelo fallback na mesma chave
+            if (schema) {
+                aiConfig.responseMimeType = "application/json";
+                aiConfig.responseSchema = schema;
             }
-        }
 
-        // --- COOL DOWN ---
-        // Se a chave falhou (cota), espera um pouco antes de tentar a próxima.
-        // Isso evita que o Google bloqueie o IP do servidor por "ataque" de requisições.
-        if (!successResponse) {
-            await new Promise(resolve => setTimeout(resolve, 800));
+            // FORÇA O USO DO GEMINI 2.5 FLASH (Não faz downgrade)
+            const aiResponse = await ai.models.generateContent({
+                model: "gemini-2.5-flash",
+                contents: [{ parts: [{ text: prompt }] }],
+                config: aiConfig
+            });
+
+            if (!aiResponse.text) {
+                throw new Error("Resposta vazia da IA (Retry)");
+            }
+
+            successResponse = aiResponse.text;
+            break; // SUCESSO! Sai do loop.
+
+        } catch (error) {
+            lastError = error;
+            const msg = error.message || '';
+            
+            // Se for erro de COTA (429) ou SERVIDOR (503), continua para a próxima chave.
+            // Se for erro de BAD REQUEST (400), provavelmente é o prompt/schema, então para.
+            if (msg.includes('400') || msg.includes('INVALID_ARGUMENT')) {
+                return response.status(400).json({ error: `Erro no formato da requisição: ${msg}` });
+            }
+
+            // Pequeno delay (Cool Down) antes de tentar a próxima chave para evitar banimento de IP
+            await new Promise(resolve => setTimeout(resolve, 500));
         }
     }
 
@@ -138,15 +124,17 @@ export default async function handler(request, response) {
     if (successResponse) {
         return response.status(200).json({ text: successResponse });
     } else {
+        // Se todas as tentativas falharam
         const errorMsg = lastError?.message || 'Erro desconhecido.';
+        console.error("Todas as chaves falharam. Último erro:", errorMsg);
         
         if (errorMsg.includes('429') || errorMsg.includes('Quota')) {
             return response.status(429).json({ 
-                error: 'ALTA DEMANDA: Todas as chaves do sistema estão ocupadas neste exato momento. Aguarde 30 segundos e tente novamente.' 
+                error: 'ALTA DEMANDA: O sistema está sobrecarregado no momento. Aguarde 1 minuto e tente novamente.' 
             });
         }
         
-        return response.status(500).json({ error: `Erro na IA: ${errorMsg}` });
+        return response.status(500).json({ error: `Falha na geração: ${errorMsg}` });
     }
 
   } catch (error) {
