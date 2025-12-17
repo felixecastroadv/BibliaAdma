@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, Calendar, Loader2, Volume2, VolumeX, Edit3, Settings, RefreshCw, Command, ChevronRight, Lock, AlertCircle, FastForward, Type, Trash2, Flame } from 'lucide-react';
 import { generateContent } from '../../services/geminiService';
 import { db } from '../../services/database';
@@ -17,6 +17,7 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string>('');
   const [playbackRate, setPlaybackRate] = useState(1);
+  const speechRef = useRef<any>(null); // Referência para controlar o loop de áudio
   
   // Settings State
   const [showSettings, setShowSettings] = useState(false);
@@ -39,16 +40,33 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
   useEffect(() => {
     loadDevotional();
     
-    // Carregar vozes
+    // Carregar vozes com prioridade para Humanizadas
     const loadVoices = () => {
-        const available = window.speechSynthesis.getVoices().filter(v => v.lang.includes('pt'));
+        let available = window.speechSynthesis.getVoices().filter(v => v.lang.includes('pt'));
+        
+        // ORDENAÇÃO DE VOZES MAIS HUMANIZADAS
+        available.sort((a, b) => {
+            const getScore = (v: SpeechSynthesisVoice) => {
+                let score = 0;
+                if (v.name.includes('Google')) score += 5;
+                if (v.name.includes('Microsoft')) score += 4;
+                if (v.name.includes('Luciana')) score += 3; 
+                if (v.name.includes('Joana')) score += 3;
+                return score;
+            };
+            return getScore(b) - getScore(a);
+        });
+
         setVoices(available);
-        if(available.length > 0) setSelectedVoice(available[0].name);
+        if(available.length > 0 && !selectedVoice) setSelectedVoice(available[0].name);
     };
     loadVoices();
     window.speechSynthesis.onvoiceschanged = loadVoices;
     
-    return () => window.speechSynthesis.cancel();
+    return () => {
+        window.speechSynthesis.cancel();
+        setIsPlaying(false);
+    };
   }, [displayDateStr]);
 
   useEffect(() => {
@@ -56,7 +74,7 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
         window.speechSynthesis.cancel();
         speakText();
     }
-  }, [playbackRate]);
+  }, [playbackRate, selectedVoice]);
 
   const loadDevotional = async () => {
     setDevotional(null);
@@ -91,7 +109,6 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
             // Nenhum conteúdo encontrado.
             if (!isFuture && !isExpired) {
                 // Se for hoje ou passado recente (e não tiver no banco), GERA AUTOMATICAMENTE
-                // Isso acontece para qualquer usuário, tornando o devocional "original" do app.
                 await generateDevotional(); 
             } else {
                 setDevotional(null);
@@ -106,7 +123,6 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
 
   const generateDevotional = async (customInstruction?: string) => {
     // Se for comando customizado, só admin pode.
-    // Se for auto-geração (customInstruction undefined), qualquer um dispara se a data for válida.
     if (customInstruction && !isAdmin) return;
 
     setStatusMessage('Gerando devocional inédito...');
@@ -152,12 +168,10 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
     try {
         const res = await generateContent(prompt, schema);
         
-        // Se a geração falhar ou vier vazia, não salvamos
         if (!res || !res.title) throw new Error("Falha na geração");
 
         const data: Devotional = { ...res, date: displayDateStr, is_published: true };
         
-        // Remove anterior se for regeração do admin
         if (customInstruction) {
              const existing = await db.entities.Devotional.filter({ date: displayDateStr });
              if(existing.length > 0) await db.entities.Devotional.delete(existing[0].id!);
@@ -178,18 +192,70 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
     }
   };
 
+  // --- NOVA LÓGICA DE ÁUDIO ROBUSTA (Chunking) ---
   const speakText = () => {
     if(!devotional) return;
-    const cleanBody = devotional.body.replace(/\*\*/g, '').replace(/\*/g, '').replace(/\n/g, ' ');
-    const text = `${devotional.title}. ${devotional.reference}. ${devotional.verse_text}. ${cleanBody}. Oração: ${devotional.prayer}`;
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = 'pt-BR';
-    utter.rate = playbackRate;
-    const voice = voices.find(v => v.name === selectedVoice);
-    if (voice) utter.voice = voice;
-    utter.onend = () => setIsPlaying(false);
-    window.speechSynthesis.speak(utter);
+    
+    // 1. Prepara o Texto Completo
+    const fullText = `
+        ${devotional.title}. 
+        Leitura de ${devotional.reference}. 
+        ${devotional.verse_text}. 
+        ${devotional.body}. 
+        Vamos orar: ${devotional.prayer}
+    `;
+
+    // 2. Limpeza Profunda
+    const cleanText = fullText
+        .replace(/\*\*/g, '')
+        .replace(/\*/g, '')
+        .replace(/#/g, '')
+        .replace(/\n/g, '. ') // Transforma quebras de linha em pausas
+        .replace(/\.\./g, '.') // Remove pontos duplos acidentais
+        .trim();
+
+    window.speechSynthesis.cancel(); // Limpa fila anterior
+
+    // 3. Chunking (Divide em frases para o navegador não travar)
+    const sentences = cleanText.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [cleanText];
+    let index = 0;
+
+    const speakNextChunk = () => {
+        if (index >= sentences.length) {
+            setIsPlaying(false);
+            return;
+        }
+
+        const chunk = sentences[index];
+        if (!chunk.trim()) {
+            index++;
+            speakNextChunk();
+            return;
+        }
+
+        const utter = new SpeechSynthesisUtterance(chunk);
+        utter.lang = 'pt-BR';
+        utter.rate = playbackRate;
+        const voice = voices.find(v => v.name === selectedVoice);
+        if (voice) utter.voice = voice;
+
+        utter.onend = () => {
+            index++;
+            speakNextChunk();
+        };
+
+        utter.onerror = (e) => {
+            console.error("Erro na fala:", e);
+            setIsPlaying(false);
+        };
+
+        // Guarda ref para evitar garbage collection prematuro em alguns browsers
+        speechRef.current = utter;
+        window.speechSynthesis.speak(utter);
+    };
+
     setIsPlaying(true);
+    speakNextChunk();
   };
 
   const togglePlay = () => {
