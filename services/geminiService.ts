@@ -67,8 +67,9 @@ export const generateContent = async (
         
         // --- MODO SERVER (Rotação Inteligente) ---
         const controller = new AbortController();
-        // Aumentado para 180s (3 minutos) para dar tempo de rodar várias chaves
-        const timeoutMs = 180000; 
+        // Timeout aumentado para 300s (5 minutos) para suportar geração de EBD
+        // e o tempo de rotação de múltiplas chaves no servidor.
+        const timeoutMs = 300000; 
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         const response = await fetch('/api/gemini', {
@@ -93,7 +94,7 @@ export const generateContent = async (
                 throw new Error("Alta demanda global. Nenhuma chave disponível no momento. Tente em 30 segundos.");
             }
             if (response.status === 429) {
-                throw new Error("Cota excedida. Aguarde um momento.");
+                throw new Error("Cota excedida no momento. Aguarde alguns segundos e tente novamente.");
             }
             throw new Error(`Erro na IA: ${detail}`);
         }
@@ -125,7 +126,7 @@ export const generateContent = async (
         console.error("Gemini Service Error:", error);
         
         if (error.name === 'AbortError') {
-             throw new Error("O servidor demorou muito procurando uma chave livre. Tente novamente.");
+             throw new Error("A geração demorou muito e excedeu 5 minutos. Tente novamente ou use um texto menor.");
         }
         
         throw error; 
