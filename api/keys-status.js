@@ -36,7 +36,7 @@ export default async function handler(request, response) {
         { name: 'API_KEY_21', key: process.env.API_KEY_21 }
     ];
 
-    const activeKeysConfigured = rawKeys.filter(k => k.key && k.key.trim().length > 20);
+    const activeKeysConfigured = rawKeys.filter(k => k.key && k.key.trim().length > 10);
 
     if (activeKeysConfigured.length === 0) {
         return response.status(200).json({ keys: [], total: 0, healthy: 0, healthPercentage: 0 });
@@ -47,18 +47,17 @@ export default async function handler(request, response) {
         try {
             const ai = new GoogleGenAI({ apiKey: keyEntry.key });
             
-            // Teste rigoroso: solicita uma pequena exegese para garantir que a chave aguenta o processamento real
-            // Isso evita falsos positivos de chaves que respondem "Hi" mas negam "Estudos Longos"
+            // TESTE REAL COM O MODELO PRO (Igual ao App)
             const result = await ai.models.generateContent({
-                model: "gemini-3-flash-preview",
-                contents: [{ parts: [{ text: "Gere um título exegético curto para João 3:16." }] }],
+                model: "gemini-3-pro-preview",
+                contents: [{ parts: [{ text: "Responda apenas: Ativa" }] }],
                 config: { 
-                    maxOutputTokens: 20,
+                    maxOutputTokens: 5,
                     thinkingConfig: { thinkingBudget: 0 }
                 } 
             });
 
-            if (!result?.text) throw new Error("No text");
+            if (!result?.text) throw new Error("Sem resposta");
 
             return {
                 name: keyEntry.name,
@@ -75,13 +74,13 @@ export default async function handler(request, response) {
 
             if (err.includes('429') || err.includes('Quota') || err.includes('limit')) {
                 status = 'exhausted';
-                msg = 'Limite (429)';
+                msg = 'Esgotada (429)';
             } else if (err.includes('API key not valid')) {
                 status = 'invalid';
-                msg = 'Inválida';
+                msg = 'Chave Inválida';
             } else {
                 status = 'error';
-                msg = err.substring(0, 20);
+                msg = err.substring(0, 30);
             }
 
             return {
@@ -94,8 +93,14 @@ export default async function handler(request, response) {
         }
     };
 
-    // Testa todas as chaves em paralelo para um relatório 100% real
-    const results = await Promise.all(activeKeysConfigured.map(k => checkKey(k)));
+    // Testa em pequenos lotes para não sobrecarregar o próprio servidor
+    const results = [];
+    for (let i = 0; i < activeKeysConfigured.length; i += 5) {
+        const chunk = activeKeysConfigured.slice(i, i + 5);
+        const chunkResults = await Promise.all(chunk.map(k => checkKey(k)));
+        results.push(...chunkResults);
+    }
+    
     const healthyCount = results.filter(r => r.status === 'active').length;
 
     return response.status(200).json({
@@ -106,6 +111,6 @@ export default async function handler(request, response) {
     });
 
   } catch (error) {
-    return response.status(500).json({ error: 'Erro no monitoramento de infraestrutura.' });
+    return response.status(500).json({ error: 'Erro no monitor de infraestrutura.' });
   }
 }
