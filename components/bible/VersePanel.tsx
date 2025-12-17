@@ -208,29 +208,32 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
       setIsChatLoading(true);
       if (!isAdmin) incrementUsage();
 
+      // PROMPT OTIMIZADO - MODO PHD/ORTODOXO
       const prompt = `
-        ATUE COMO: Professor Michel Felix.
-        PERFIL: Teólogo Pentecostal Clássico, Arminiano, Erudito e Assembleiano.
+        ATUE COMO: Professor Michel Felix, PhD em Teologia Bíblica e Exegese.
+        PERFIL: Acadêmico, Ortodoxo, Conservador, porém acessível e pastoral.
         
         CONTEXTO BÍBLICO: Livro de ${book}, Capítulo ${chapter}, Versículo ${verseNumber}.
         TEXTO: "${verse}"
-        DÚVIDA DO ALUNO: "${text}"
+        PERGUNTA DO ALUNO: "${text}"
 
-        --- DIRETRIZES DO CHAT (RIGOROSO) ---
-        1. OBJETIVO: Explicar de forma simples e profunda ("Efeito Ah! Entendi!").
-        2. TOM DE VOZ: Pastoral, Mestre, Acolhedor mas Firme na Doutrina. Use termos como "Meu caro aluno", "Excelente pergunta".
+        --- DIRETRIZES FUNDAMENTAIS (RIGOROSO) ---
+        1. TONE: Magistral e seguro. Use uma linguagem culta, mas explicativa.
+           - PROIBIDO: Usar expressões coloquiais como "Ah, entendi!", "Boa pergunta!".
+           - PROIBIDO: Usar rótulos explícitos como "Sou pentecostal", "Sou arminiano". Sua teologia deve ser IMPLÍCITA na força da sua argumentação bíblica (Sola Scriptura), defendendo a linha conservadora/assembleiana naturalmente.
+
+        2. METODOLOGIA DE RESPOSTA (HERMENÊUTICA SÉRIA):
+           - Se a pergunta envolver polêmicas (ex: Gênesis 6, Jefté, Predestinação, Batismo, Dons):
+             A) ELENQUE as principais interpretações históricas (ex: "Historicamente, existem três visões...").
+             B) REFUTE com clareza as visões liberais, míticas ou heterodoxas, demonstrando suas falhas lógicas e bíblicas.
+             C) ESTABELEÇA a interpretação correta (Ortodoxa/Conservadora) de forma indubitável, fundamentando-a na analogia da fé.
+
+        3. VISUAL & FORMATAÇÃO:
+           - Use listas numeradas (1., 2., 3.) para separar argumentos ou interpretações.
+           - Destaque termos-chave com **negrito** (dois asteriscos).
+           - Resposta visualmente limpa e organizada.
         
-        --- BLINDAGEM TEOLÓGICA (CRUCIAL) ---
-        Você deve manter a MESMA linha teológica dos Comentários e da EBD Panorama:
-        1. A BÍBLIA INTERPRETA A BÍBLIA (Analogia da Fé).
-        2. POLÊMICAS: Se a pergunta tocar em pontos sensíveis (ex: Gênesis 6:2, Jefté, Predestinação):
-           - Apresente as visões existentes brevemente.
-           - DEFENDA a visão Ortodoxa/Assembleiana/Conservadora.
-           - Exemplo Gn 6:2: Cite a visão dos anjos caídos se necessário, mas PREFIRA e DEFENDA a "Linhagem de Sete" (justos se corrompendo) para evitar mitologias, conforme a tradição conservadora.
-           - Exemplo Jefté: Defenda a dedicação perpétua, não sacrifício humano.
-        3. REJEITE: Heresias, Gnosticismo, Liberalismo Teológico.
-        
-        RESPOSTA: Curta, direta, conversacional e didática.
+        TAMANHO: Resposta densa, completa e bonita. Máximo 300 palavras.
       `;
 
       try {
@@ -241,6 +244,41 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
       } finally {
           setIsChatLoading(false);
       }
+  };
+
+  // --- RENDERIZADOR DE MENSAGENS DE CHAT (VISUAL OTIMIZADO) ---
+  const renderChatBubble = (text: string) => {
+      // 1. Limpa espaços excessivos
+      const clean = text.trim();
+      
+      // 2. Divide em blocos (parágrafos ou itens de lista)
+      const blocks = clean.split('\n').filter(l => l.trim().length > 0);
+
+      return (
+          <div className="space-y-3">
+              {blocks.map((block, idx) => {
+                  // Detecta se é item de lista (1. ou -)
+                  const isList = /^\d+\.|^-/.test(block.trim());
+                  
+                  // Processa Markdown (**bold**)
+                  const parts = block.split(/(\*\*.*?\*\*)/g);
+                  
+                  return (
+                      <p 
+                        key={idx} 
+                        className={`font-cormorant leading-relaxed ${isList ? 'pl-4 border-l-2 border-[#C5A059]/30 ml-1' : ''}`}
+                      >
+                          {parts.map((part, j) => {
+                              if (part.startsWith('**') && part.endsWith('**')) {
+                                  return <strong key={j} className="text-[#8B0000] dark:text-[#ff6b6b] font-bold">{part.slice(2, -2)}</strong>;
+                              }
+                              return part;
+                          })}
+                      </p>
+                  );
+              })}
+          </div>
+      );
   };
 
   const generateDictionary = async () => {
@@ -690,7 +728,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                                             <div key={idx} className={`flex ${isModel ? 'justify-start' : 'justify-end'}`}>
                                                 <div className={`max-w-[85%] rounded-lg p-3 shadow-sm text-sm relative ${isModel ? 'bg-white dark:bg-[#1f2c34] text-gray-800 dark:text-gray-100 rounded-tl-none' : 'bg-[#d9fdd3] dark:bg-[#005c4b] text-gray-900 dark:text-white rounded-tr-none'}`}>
                                                     {isModel && <p className="text-[10px] font-bold text-[#8B0000] dark:text-[#C5A059] mb-1 font-montserrat">Prof. Michel Felix</p>}
-                                                    <p className="font-cormorant text-base leading-snug whitespace-pre-line">{msg.text}</p>
+                                                    {isModel ? renderChatBubble(msg.text) : <p className="font-cormorant text-base leading-snug whitespace-pre-line">{msg.text}</p>}
                                                 </div>
                                             </div>
                                         );
