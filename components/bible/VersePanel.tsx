@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, BookOpen, Languages, Loader2, RefreshCw, AlertTriangle, Send, Lock, Save, Sparkles, Volume2, Pause, Play, FastForward, MessageCircle, User, Bot, Battery, Edit, Command, FileText, ShieldCheck } from 'lucide-react';
+import { X, BookOpen, Languages, Loader2, RefreshCw, AlertTriangle, Send, Lock, Save, Sparkles, Volume2, Pause, Play, FastForward, MessageCircle, User, Bot, Battery, Edit, Command, FileText, ShieldCheck, StopCircle } from 'lucide-react';
 import { db } from '../../services/database';
 import { generateContent } from '../../services/geminiService';
 import { generateVerseKey } from '../../constants';
@@ -61,6 +61,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
 
   // Audio State
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentSpeechId, setCurrentSpeechId] = useState<string | null>(null); // Para rastrear qual msg está tocando
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string>('');
   const [playbackRate, setPlaybackRate] = useState(1);
@@ -89,6 +90,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
     if (!isOpen) {
         window.speechSynthesis.cancel();
         setIsPlaying(false);
+        setCurrentSpeechId(null);
     }
   }, [isOpen, verseKey]); 
 
@@ -107,7 +109,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
   }, []);
 
   useEffect(() => {
-    if (isPlaying) {
+    if (isPlaying && activeTab === 'professor') {
         window.speechSynthesis.cancel();
         speakText();
     }
@@ -207,9 +209,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
       setChatInput('');
       setIsChatLoading(true);
       
-      // NOTA: incrementUsage só será chamado no bloco try se tiver sucesso.
-
-      // PROMPT OTIMIZADO - MODO PHD/ORTODOXO
+      // PROMPT OTIMIZADO - MODO PHD/ORTODOXO + HERMENÊUTICA RIGOROSA
       const prompt = `
         ATUE COMO: Professor Michel Felix, PhD em Teologia Bíblica e Exegese.
         PERFIL: Acadêmico, Ortodoxo, Conservador, porém acessível e pastoral.
@@ -221,18 +221,23 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
         --- DIRETRIZES FUNDAMENTAIS (RIGOROSO) ---
         1. TONE: Magistral e seguro. Use uma linguagem culta, mas explicativa.
            - PROIBIDO: Usar expressões coloquiais como "Ah, entendi!", "Boa pergunta!".
-           - PROIBIDO: Usar rótulos explícitos como "Sou pentecostal", "Sou arminiano". Sua teologia deve ser IMPLÍCITA na força da sua argumentação bíblica (Sola Scriptura), defendendo a linha conservadora/assembleiana naturalmente.
+           - PROIBIDO: Usar rótulos explícitos como "Sou pentecostal", "Sou arminiano". Sua teologia deve ser IMPLÍCITA na força da sua argumentação bíblica (Sola Scriptura).
 
-        2. METODOLOGIA DE RESPOSTA (HERMENÊUTICA SÉRIA):
-           - Se a pergunta envolver polêmicas (ex: Gênesis 6, Jefté, Predestinação, Batismo, Dons):
-             A) ELENQUE as principais interpretações históricas (ex: "Historicamente, existem três visões...").
-             B) REFUTE com clareza as visões liberais, míticas ou heterodoxas, demonstrando suas falhas lógicas e bíblicas.
-             C) ESTABELEÇA a interpretação correta (Ortodoxa/Conservadora) de forma indubitável, fundamentando-a na analogia da fé.
+        2. REGRA DE OURO DA HERMENÊUTICA (IMPLÍCITA):
+           - A Bíblia explica a própria Bíblia. Antes de responder, verifique MENTALMENTE e RIGOROSAMENTE o CONTEXTO IMEDIATO (capítulo) e o CONTEXTO REMOTO (livros históricos paralelos, profetas contemporâneos, Novo Testamento).
+           - PRECISÃO CRONOLÓGICA E CONTEXTUAL: Não dê respostas genéricas. Se a pergunta envolve fatos históricos (ex: Reis de Judá, Profecias), cruze as informações com Reis e Crônicas. 
+           - EXEMPLO DE PRECAUÇÃO: Se falar sobre Ezequias e a promessa de vida, lembre-se que Manassés nasceu 3 anos DEPOIS da cura (durante os 15 anos extras). Não afirme que ele "já era nascido" ou "era jovem" se o texto bíblico prova o contrário. A resposta deve ser cronologicamente perfeita.
 
-        3. VISUAL & FORMATAÇÃO:
-           - Use listas numeradas (1., 2., 3.) para separar argumentos ou interpretações.
-           - Destaque termos-chave com **negrito** (dois asteriscos).
-           - Resposta visualmente limpa e organizada.
+        3. METODOLOGIA DE RESPOSTA (HERMENÊUTICA SÉRIA):
+           - Se a pergunta envolver polêmicas:
+             A) ELENQUE as principais interpretações históricas.
+             B) REFUTE com clareza as visões liberais, míticas ou anacrônicas.
+             C) ESTABELEÇA a interpretação correta (Ortodoxa/Conservadora) de forma indubitável, fundamentando-a na conexão com outros textos bíblicos (sem citar "analogia da fé" explicitamente, apenas aplicando-a).
+
+        4. VISUAL & FORMATAÇÃO:
+           - Use listas numeradas (1., 2., 3.) para separar argumentos.
+           - Destaque termos-chave com **negrito**.
+           - Resposta limpa e organizada.
         
         TAMANHO: Resposta densa, completa e bonita. Máximo 300 palavras.
       `;
@@ -241,7 +246,6 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
           const response = await generateContent(prompt);
           setChatMessages(prev => [...prev, { role: 'model', text: response || "Desculpe, não consegui processar sua dúvida agora." }]);
           
-          // SÓ DESCONTA DO LIMITE SE TIVER SUCESSO
           if (!isAdmin) incrementUsage();
           
       } catch (error) {
@@ -251,21 +255,75 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
       }
   };
 
+  const speakChatMessage = (text: string, id: string) => {
+      // Se já estiver tocando ESSE áudio, para.
+      if (isPlaying && currentSpeechId === id) {
+          window.speechSynthesis.cancel();
+          setIsPlaying(false);
+          setCurrentSpeechId(null);
+          return;
+      }
+
+      // Se estiver tocando OUTRO áudio, para o anterior e começa o novo.
+      window.speechSynthesis.cancel();
+
+      // Limpa marcadores
+      const cleanText = text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#/g, '');
+      const utter = new SpeechSynthesisUtterance(cleanText);
+      utter.lang = 'pt-BR';
+      utter.rate = playbackRate;
+      const voice = voices.find(v => v.name === selectedVoice);
+      if (voice) utter.voice = voice;
+      
+      utter.onstart = () => {
+          setIsPlaying(true);
+          setCurrentSpeechId(id);
+      };
+      
+      utter.onend = () => {
+          setIsPlaying(false);
+          setCurrentSpeechId(null);
+      };
+
+      utter.onerror = () => {
+          setIsPlaying(false);
+          setCurrentSpeechId(null);
+      };
+
+      window.speechSynthesis.speak(utter);
+  };
+
+  const speakText = () => {
+    if (!commentary || activeTab !== 'professor') return;
+    const cleanText = commentary.commentary_text.replace(/\*\*/g, '').replace(/\*/g, '');
+    const utter = new SpeechSynthesisUtterance(cleanText);
+    utter.lang = 'pt-BR';
+    utter.rate = playbackRate;
+    const voice = voices.find(v => v.name === selectedVoice);
+    if (voice) utter.voice = voice;
+    utter.onend = () => setIsPlaying(false);
+    window.speechSynthesis.speak(utter);
+    setIsPlaying(true);
+  };
+
+  const togglePlay = () => {
+    if (isPlaying) {
+        window.speechSynthesis.cancel();
+        setIsPlaying(false);
+    } else {
+        speakText();
+    }
+  };
+
   // --- RENDERIZADOR DE MENSAGENS DE CHAT (VISUAL OTIMIZADO) ---
   const renderChatBubble = (text: string) => {
-      // 1. Limpa espaços excessivos
       const clean = text.trim();
-      
-      // 2. Divide em blocos (parágrafos ou itens de lista)
       const blocks = clean.split('\n').filter(l => l.trim().length > 0);
 
       return (
           <div className="space-y-3">
               {blocks.map((block, idx) => {
-                  // Detecta se é item de lista (1. ou -)
                   const isList = /^\d+\.|^-/.test(block.trim());
-                  
-                  // Processa Markdown (**bold**)
                   const parts = block.split(/(\*\*.*?\*\*)/g);
                   
                   return (
@@ -286,6 +344,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
       );
   };
 
+  // ... (restante das funções generateDictionary, generateCommentary, handleManualSave, etc mantidas iguais) ...
   const generateDictionary = async () => {
     setLoading(true);
     onShowToast(`Analisando texto original em ${lang}...`, 'info');
@@ -435,55 +494,24 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
       }
   };
 
-  const speakText = () => {
-    if (!commentary || activeTab !== 'professor') return;
-    // Limpa marcadores de markdown para leitura fluida
-    const cleanText = commentary.commentary_text.replace(/\*\*/g, '').replace(/\*/g, '');
-    const utter = new SpeechSynthesisUtterance(cleanText);
-    utter.lang = 'pt-BR';
-    utter.rate = playbackRate;
-    const voice = voices.find(v => v.name === selectedVoice);
-    if (voice) utter.voice = voice;
-    utter.onend = () => setIsPlaying(false);
-    window.speechSynthesis.speak(utter);
-    setIsPlaying(true);
-  };
-
-  const togglePlay = () => {
-    if (isPlaying) {
-        window.speechSynthesis.cancel();
-        setIsPlaying(false);
-    } else {
-        speakText();
-    }
-  };
-
   const startEditing = () => {
       setManualEditText(commentary?.commentary_text || '');
       setIsEditingCommentary(true);
   };
 
-  // --- RENDERIZADOR PREMIUM DE TEXTO (AJUSTADO PARA OS PRINTS) ---
   const renderFormattedCommentary = (text: string) => {
-    // 1. Divide em parágrafos para aplicar indentação
     const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim().length > 0);
-
     return (
         <div className="space-y-6">
             {paragraphs.map((para, i) => {
-                // 2. Parser de Markdown (* e **)
-                // Regex captura: (**bold**) OU (*italic*)
                 const parts = para.split(/(\*\*.*?\*\*|\*.*?\*)/g);
-
                 return (
                     <p key={i} className="font-cormorant text-xl leading-loose text-[#1a0f0f] dark:text-gray-200 text-justify indent-8 tracking-wide">
                         {parts.map((part, j) => {
                             if (part.startsWith('**') && part.endsWith('**')) {
-                                // Negrito Premium (Vermelho ADMA) - Se houver
                                 return <strong key={j} className="text-[#8B0000] dark:text-[#ff6b6b] font-bold">{part.slice(2, -2)}</strong>;
                             }
                             if (part.startsWith('*') && part.endsWith('*')) {
-                                // Itálico Premium (Dourado/Gold - Ideal para termos originais)
                                 return <span key={j} className="text-[#C5A059] font-medium italic">{part.slice(1, -1)}</span>;
                             }
                             return part;
@@ -571,6 +599,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                     </div>
                 ) : (
                     <>
+                        {/* ... (Tabs Professor e Dicionário mantidas) ... */}
                         {activeTab === 'professor' && (
                             <div className="p-6 md:p-8 space-y-4 flex-1 flex flex-col">
                                 {isEditingCommentary ? (
@@ -594,7 +623,6 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                                     </div>
                                 ) : commentary ? (
                                     <>
-                                        {/* Decorative Header inside text */}
                                         <div className="flex items-center justify-center mb-6">
                                             <div className="h-[1px] w-12 bg-[#C5A059]/50"></div>
                                             <span className="mx-3 font-cinzel text-[#C5A059] text-[10px] uppercase tracking-[0.2em]">Exegese & Aplicação</span>
@@ -729,10 +757,24 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                                     {chatMessages.map((msg, idx) => {
                                         const isModel = msg.role === 'model';
+                                        const speechId = `msg-${idx}`;
+                                        const isThisPlaying = isPlaying && currentSpeechId === speechId;
+
                                         return (
                                             <div key={idx} className={`flex ${isModel ? 'justify-start' : 'justify-end'}`}>
                                                 <div className={`max-w-[85%] rounded-lg p-3 shadow-sm text-sm relative ${isModel ? 'bg-white dark:bg-[#1f2c34] text-gray-800 dark:text-gray-100 rounded-tl-none' : 'bg-[#d9fdd3] dark:bg-[#005c4b] text-gray-900 dark:text-white rounded-tr-none'}`}>
-                                                    {isModel && <p className="text-[10px] font-bold text-[#8B0000] dark:text-[#C5A059] mb-1 font-montserrat">Prof. Michel Felix</p>}
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        {isModel && <p className="text-[10px] font-bold text-[#8B0000] dark:text-[#C5A059] font-montserrat">Prof. Michel Felix</p>}
+                                                        {isModel && (
+                                                            <button 
+                                                                onClick={() => speakChatMessage(msg.text, speechId)} 
+                                                                className="text-gray-400 hover:text-[#C5A059] ml-2"
+                                                                title="Ouvir Resposta"
+                                                            >
+                                                                {isThisPlaying ? <StopCircle className="w-3 h-3 text-red-500 animate-pulse"/> : <Volume2 className="w-3 h-3"/>}
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                     {isModel ? renderChatBubble(msg.text) : <p className="font-cormorant text-base leading-snug whitespace-pre-line">{msg.text}</p>}
                                                 </div>
                                             </div>
