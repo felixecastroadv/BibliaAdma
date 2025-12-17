@@ -10,37 +10,18 @@ export default async function handler(request, response) {
   }
 
   try {
-    const rawKeys = [
-        { name: 'MAIN_KEY', key: process.env.API_KEY },
-        { name: 'ADMA_KEY', key: process.env.Biblia_ADMA_API },
-        { name: 'API_KEY_1', key: process.env.API_KEY_1 },
-        { name: 'API_KEY_2', key: process.env.API_KEY_2 },
-        { name: 'API_KEY_3', key: process.env.API_KEY_3 },
-        { name: 'API_KEY_4', key: process.env.API_KEY_4 },
-        { name: 'API_KEY_5', key: process.env.API_KEY_5 },
-        { name: 'API_KEY_6', key: process.env.API_KEY_6 },
-        { name: 'API_KEY_7', key: process.env.API_KEY_7 },
-        { name: 'API_KEY_8', key: process.env.API_KEY_8 },
-        { name: 'API_KEY_9', key: process.env.API_KEY_9 },
-        { name: 'API_KEY_10', key: process.env.API_KEY_10 },
-        { name: 'API_KEY_11', key: process.env.API_KEY_11 },
-        { name: 'API_KEY_12', key: process.env.API_KEY_12 },
-        { name: 'API_KEY_13', key: process.env.API_KEY_13 },
-        { name: 'API_KEY_14', key: process.env.API_KEY_14 },
-        { name: 'API_KEY_15', key: process.env.API_KEY_15 },
-        { name: 'API_KEY_16', key: process.env.API_KEY_16 },
-        { name: 'API_KEY_17', key: process.env.API_KEY_17 },
-        { name: 'API_KEY_18', key: process.env.API_KEY_18 },
-        { name: 'API_KEY_19', key: process.env.API_KEY_19 },
-        { name: 'API_KEY_20', key: process.env.API_KEY_20 },
-        { name: 'API_KEY_21', key: process.env.API_KEY_21 },
-        { name: 'API_KEY_22', key: process.env.API_KEY_22 },
-        { name: 'API_KEY_23', key: process.env.API_KEY_23 },
-        { name: 'API_KEY_24', key: process.env.API_KEY_24 },
-        { name: 'API_KEY_25', key: process.env.API_KEY_25 }
+    const keysNames = [
+        'API_KEY',
+        'Biblia_ADMA',
+        'BIBLIA_ADMA',
+        'Biblia_ADMA_API',
+        'API_Biblia_ADMA'
     ];
+    for(let i=1; i<=30; i++) keysNames.push(`API_KEY_${i}`);
 
-    const activeKeysConfigured = rawKeys.filter(k => k.key && k.key.trim().length > 15);
+    const activeKeysConfigured = keysNames
+        .map(name => ({ name, key: process.env[name] }))
+        .filter(entry => entry.key && entry.key.trim().length > 15);
 
     if (activeKeysConfigured.length === 0) {
         return response.status(200).json({ keys: [], total: 0, healthy: 0, healthPercentage: 0 });
@@ -51,12 +32,12 @@ export default async function handler(request, response) {
         try {
             const ai = new GoogleGenAI({ apiKey: keyEntry.key });
             
-            // TESTE RIGOROSO: Usa o modelo PRO que é o mais restrito.
+            // Testa o modelo PRO que é o usado no app
             const result = await ai.models.generateContent({
                 model: "gemini-3-pro-preview",
-                contents: [{ parts: [{ text: "Teste de conexão. Responda: OK" }] }],
+                contents: [{ parts: [{ text: "ping" }] }],
                 config: { 
-                    maxOutputTokens: 5,
+                    maxOutputTokens: 2,
                     thinkingConfig: { thinkingBudget: 0 }
                 } 
             });
@@ -76,10 +57,10 @@ export default async function handler(request, response) {
             let status = 'error';
             let msg = 'Erro';
 
-            if (err.includes('429') || err.includes('Quota') || err.includes('limit')) {
+            if (err.includes('429') || err.includes('Quota')) {
                 status = 'exhausted';
                 msg = 'Limite atingido';
-            } else if (err.includes('API key not valid')) {
+            } else if (err.includes('API key not valid') || err.includes('401')) {
                 status = 'invalid';
                 msg = 'Chave Inválida';
             } else {
@@ -97,7 +78,6 @@ export default async function handler(request, response) {
         }
     };
 
-    // Testa em paralelo com limite de concorrência para não travar o serverless
     const results = [];
     for (let i = 0; i < activeKeysConfigured.length; i += 5) {
         const chunk = activeKeysConfigured.slice(i, i + 5);
