@@ -22,8 +22,8 @@ export default async function handler(request, response) {
   }
 
   try {
-    // Lista sequencial absoluta (Ordem solicitada)
-    const keysPool = [
+    // Pool expandido para garantir que novas chaves (até 30) sejam capturadas
+    const rawPool = [
       process.env.API_KEY,
       process.env.Biblia_ADMA_API,
       process.env.API_KEY_1, process.env.API_KEY_2, process.env.API_KEY_3,
@@ -32,11 +32,16 @@ export default async function handler(request, response) {
       process.env.API_KEY_10, process.env.API_KEY_11, process.env.API_KEY_12,
       process.env.API_KEY_13, process.env.API_KEY_14, process.env.API_KEY_15,
       process.env.API_KEY_16, process.env.API_KEY_17, process.env.API_KEY_18,
-      process.env.API_KEY_19, process.env.API_KEY_20, process.env.API_KEY_21
-    ].filter(k => k && k.trim().length > 10);
+      process.env.API_KEY_19, process.env.API_KEY_20, process.env.API_KEY_21,
+      process.env.API_KEY_22, process.env.API_KEY_23, process.env.API_KEY_24,
+      process.env.API_KEY_25, process.env.API_KEY_26, process.env.API_KEY_27,
+      process.env.API_KEY_28, process.env.API_KEY_29, process.env.API_KEY_30
+    ];
 
-    if (keysPool.length === 0) {
-      return response.status(500).json({ error: 'Nenhuma chave API configurada no Vercel.' });
+    const apiKeys = rawPool.filter(k => k && k.trim().length > 15);
+
+    if (apiKeys.length === 0) {
+      return response.status(500).json({ error: 'Nenhuma chave API encontrada nas variáveis de ambiente da Vercel.' });
     }
 
     let body = request.body;
@@ -49,15 +54,15 @@ export default async function handler(request, response) {
 
     let lastError = null;
     let successResponse = null;
-    let attemptCount = 0;
+    let attempt = 0;
 
-    // REVEZAMENTO SEQUENCIAL (RELAY)
-    for (const currentKey of keysPool) {
-      attemptCount++;
+    // REVEZAMENTO SEQUENCIAL RIGOROSO (Inicia do 0 até o fim)
+    for (const currentKey of apiKeys) {
+      attempt++;
       try {
         const ai = new GoogleGenAI({ apiKey: currentKey });
         
-        const genConfig = {
+        const generationConfig = {
           temperature: 0.7,
           topP: 0.95,
           topK: 40,
@@ -65,49 +70,55 @@ export default async function handler(request, response) {
         };
 
         if (schema) {
-          genConfig.responseMimeType = "application/json";
-          genConfig.responseSchema = schema;
+          generationConfig.responseMimeType = "application/json";
+          generationConfig.responseSchema = schema;
         }
 
         const res = await ai.models.generateContent({
           model: "gemini-3-pro-preview",
           contents: [{ parts: [{ text: prompt }] }],
           config: {
-            ...genConfig,
+            ...generationConfig,
             systemInstruction: systemInstruction || "Você é o Professor Michel Felix, teólogo Pentecostal Clássico e erudito.",
           }
         });
         
         if (res.text) {
           successResponse = res.text;
-          break; // SUCESSO: Interrompe o loop
-        } else {
-          throw new Error("API retornou texto vazio.");
+          break; // Sucesso absoluto, retorna para o app
         }
       } catch (error) {
         lastError = error;
         const msg = error.message || "";
-        console.error(`Tentativa ${attemptCount}/${keysPool.length} falhou: ${msg}`);
-        
-        // Se for erro de rede, espera 200ms antes de tentar a próxima para não "atropelar"
-        if (msg.includes('fetch') || msg.includes('network')) {
-            await new Promise(r => setTimeout(r, 200));
+        console.error(`Chave ${attempt}/${apiKeys.length} falhou: ${msg}`);
+
+        // Se o erro for de segurança do prompt (HATE, HARASSMENT), não adianta trocar de chave.
+        if (msg.includes('SAFETY') || msg.includes('blocked')) {
+            return response.status(400).json({ 
+                error: "O conteúdo solicitado foi bloqueado pelos filtros de segurança da IA. Tente reformular o pedido.",
+                detail: msg
+            });
         }
-        // Continua para a próxima chave do pool
+
+        // Se for erro de rede/conexão, espera 100ms para a próxima tentativa não ser ignorada pelo servidor
+        if (msg.includes('fetch') || msg.includes('network')) {
+            await new Promise(r => setTimeout(r, 100));
+        }
+        
+        // Continua para a próxima chave (429, 500, 503, etc)
       }
     }
 
     if (successResponse) {
       return response.status(200).json({ text: successResponse });
     } else {
-      // Retorna erro detalhado da última chave para debug
       return response.status(500).json({ 
-        error: `Falha total: Todas as ${keysPool.length} chaves foram tentadas sequencialmente, mas nenhuma obteve sucesso.`,
-        detail: lastError?.message || "Erro desconhecido nas APIs."
+        error: `Falha total: Todas as ${apiKeys.length} chaves falharam.`,
+        detail: lastError?.message || "Serviço temporariamente indisponível."
       });
     }
 
   } catch (error) {
-    return response.status(500).json({ error: 'Erro crítico no orquestrador de chaves.' });
+    return response.status(500).json({ error: 'Erro crítico no processador de revezamento.' });
   }
 }

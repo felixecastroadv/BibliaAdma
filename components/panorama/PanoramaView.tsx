@@ -695,7 +695,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                                     : 'bg-gradient-to-r from-[#C5A059] to-[#8B0000] text-white hover:shadow-xl animate-pulse'
                                 }`}
                              >
-                                 {isRead ? <CheckCircle className="w-6 h-6" /> : <GraduationCap className="w-6 h-6" />}
+                                 {isRead ? <CheckCircle className="w-6 h-6" /> : <CheckCircle className="w-6 h-6" />}
                                  {isRead ? 'ESTUDO CONCLUÍDO' : 'CONCLUIR ESTUDO'}
                              </button>
                              {isRead && <p className="text-xs text-green-600 mt-2 font-bold">Registrado no Ranking de EBD</p>}

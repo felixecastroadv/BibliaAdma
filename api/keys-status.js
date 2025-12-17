@@ -33,10 +33,14 @@ export default async function handler(request, response) {
         { name: 'API_KEY_18', key: process.env.API_KEY_18 },
         { name: 'API_KEY_19', key: process.env.API_KEY_19 },
         { name: 'API_KEY_20', key: process.env.API_KEY_20 },
-        { name: 'API_KEY_21', key: process.env.API_KEY_21 }
+        { name: 'API_KEY_21', key: process.env.API_KEY_21 },
+        { name: 'API_KEY_22', key: process.env.API_KEY_22 },
+        { name: 'API_KEY_23', key: process.env.API_KEY_23 },
+        { name: 'API_KEY_24', key: process.env.API_KEY_24 },
+        { name: 'API_KEY_25', key: process.env.API_KEY_25 }
     ];
 
-    const activeKeysConfigured = rawKeys.filter(k => k.key && k.key.trim().length > 10);
+    const activeKeysConfigured = rawKeys.filter(k => k.key && k.key.trim().length > 15);
 
     if (activeKeysConfigured.length === 0) {
         return response.status(200).json({ keys: [], total: 0, healthy: 0, healthPercentage: 0 });
@@ -47,17 +51,17 @@ export default async function handler(request, response) {
         try {
             const ai = new GoogleGenAI({ apiKey: keyEntry.key });
             
-            // TESTE REAL COM O MODELO PRO (Igual ao App)
+            // TESTE RIGOROSO: Usa o modelo PRO que é o mais restrito.
             const result = await ai.models.generateContent({
                 model: "gemini-3-pro-preview",
-                contents: [{ parts: [{ text: "Responda apenas: Ativa" }] }],
+                contents: [{ parts: [{ text: "Teste de conexão. Responda: OK" }] }],
                 config: { 
                     maxOutputTokens: 5,
                     thinkingConfig: { thinkingBudget: 0 }
                 } 
             });
 
-            if (!result?.text) throw new Error("Sem resposta");
+            if (!result?.text) throw new Error("Vazio");
 
             return {
                 name: keyEntry.name,
@@ -74,7 +78,7 @@ export default async function handler(request, response) {
 
             if (err.includes('429') || err.includes('Quota') || err.includes('limit')) {
                 status = 'exhausted';
-                msg = 'Esgotada (429)';
+                msg = 'Limite atingido';
             } else if (err.includes('API key not valid')) {
                 status = 'invalid';
                 msg = 'Chave Inválida';
@@ -93,7 +97,7 @@ export default async function handler(request, response) {
         }
     };
 
-    // Testa em pequenos lotes para não sobrecarregar o próprio servidor
+    // Testa em paralelo com limite de concorrência para não travar o serverless
     const results = [];
     for (let i = 0; i < activeKeysConfigured.length; i += 5) {
         const chunk = activeKeysConfigured.slice(i, i + 5);
