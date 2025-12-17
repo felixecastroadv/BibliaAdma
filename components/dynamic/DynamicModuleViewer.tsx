@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, CheckCircle, XCircle, FileText, ExternalLink, Brain } from 'lucide-react';
+import { ChevronLeft, Brain } from 'lucide-react';
 import { DynamicModule } from '../../types';
 
 interface Props {
@@ -18,7 +18,7 @@ export default function DynamicModuleViewer({ module, onBack }: Props) {
         const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
 
         const questions = module.data?.questions || [];
-        const question = questions[currentQ];
+        const question = questions[currentQ] || { text: "Erro", options: [], correctIndex: 0 };
 
         const handleAnswer = (idx: number) => {
             if (selectedOption !== null) return;

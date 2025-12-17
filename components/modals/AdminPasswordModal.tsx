@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Lock, X, Eye, EyeOff } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as motionBase, AnimatePresence } from 'framer-motion';
+
+// Fix for TypeScript errors with framer-motion props
+const motion = motionBase as any;
 
 const ADMIN_PASSWORD = 'LoloikiJ10@@';
 

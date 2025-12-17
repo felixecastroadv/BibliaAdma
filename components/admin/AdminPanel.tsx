@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ShieldCheck, RefreshCw, Loader2, Upload, Download, Server, HardDrive, Flag, CheckCircle, XCircle, MessageSquare, Languages, GraduationCap, Calendar, CloudUpload, Wand2, Play, StopCircle, Trash2, AlertTriangle, FileJson, Save, Users, Lock, Unlock, KeyRound, Search, Cloud, Activity, Zap, Battery } from 'lucide-react';
+import { ChevronLeft, ShieldCheck, RefreshCw, Loader2, Upload, Download, Server, HardDrive, Flag, CheckCircle, XCircle, MessageSquare, Languages, GraduationCap, Calendar, CloudUpload, Wand2, StopCircle, Trash2, AlertTriangle, Save, Lock, Unlock, KeyRound, Search, Cloud, Activity, Zap, Battery } from 'lucide-react';
 import { generateContent } from '../../services/geminiService';
 import { BIBLE_BOOKS, generateChapterKey, generateVerseKey, TOTAL_CHAPTERS } from '../../constants';
 import { db, bibleStorage } from '../../services/database';
 import { Type as GenType } from "@google/genai";
-import { ContentReport, AppConfig, Devotional, UserProgress } from '../../types';
+import { ContentReport, AppConfig, UserProgress } from '../../types';
 import AppBuilder from './AppBuilder';
-import { format, addDays } from 'date-fns';
 
 export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void, onShowToast: (msg: string, type: 'success' | 'error' | 'info') => void }) {
   // --- STATES DE INFRAESTRUTURA ---
@@ -27,6 +26,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   const [batchBook, setBatchBook] = useState('Gênesis');
   const [batchStartChapter, setBatchStartChapter] = useState(1);
   const [isGeneratingBatch, setIsGeneratingBatch] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [batchType, setBatchType] = useState<'commentary' | 'dictionary' | null>(null);
   const [batchLogs, setBatchLogs] = useState<string[]>([]);
   

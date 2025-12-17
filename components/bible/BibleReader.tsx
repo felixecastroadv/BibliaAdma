@@ -5,7 +5,10 @@ import { db } from '../../services/database';
 import { generateChapterKey, BIBLE_BOOKS } from '../../constants';
 import { generateContent } from '../../services/geminiService';
 import { ChapterMetadata } from '../../types';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as motionBase, AnimatePresence } from 'framer-motion';
+
+// Fix for TypeScript errors with framer-motion props
+const motion = motionBase as any;
 
 // --- CATEGORIZAÇÃO DIDÁTICA DA BÍBLIA ---
 const BIBLE_CATEGORIES = [

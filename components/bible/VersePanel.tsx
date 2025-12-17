@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, BookOpen, Languages, Loader2, RefreshCw, AlertTriangle, Send, Lock, Save, Sparkles, Volume2, Pause, Play, FastForward, MessageCircle, User, Bot, Battery, Edit, Command, FileText, ShieldCheck, StopCircle } from 'lucide-react';
+import { X, BookOpen, Languages, Loader2, RefreshCw, AlertTriangle, Send, Lock, Save, Sparkles, Volume2, Pause, Play, MessageCircle, Bot, Battery, Edit, Command, ShieldCheck, StopCircle } from 'lucide-react';
 import { db } from '../../services/database';
 import { generateContent } from '../../services/geminiService';
 import { generateVerseKey } from '../../constants';

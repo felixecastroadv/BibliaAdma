@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { BookOpen, User, ArrowRight, Loader2, Lock, ShieldAlert, KeyRound, CheckCircle } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as motionBase, AnimatePresence } from 'framer-motion';
 import { CHURCH_NAME, PASTOR_PRESIDENT } from '../../constants';
 import { db } from '../../services/database';
+
+// Fix for TypeScript errors with framer-motion props
+const motion = motionBase as any;
 
 interface LoginScreenProps {
   onLogin: (firstName: string, lastName: string) => void;

@@ -1,8 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Trophy, Medal, Crown, User, Loader2, BookOpen, GraduationCap, X, Flame, Star, Shield } from 'lucide-react';
 import { db } from '../../services/database';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion as motionBase } from 'framer-motion';
+
+// Fix for TypeScript errors with framer-motion props
+const motion = motionBase as any;
 
 export default function RankingView({ onBack }: any) {
   const [users, setUsers] = useState<any[]>([]);

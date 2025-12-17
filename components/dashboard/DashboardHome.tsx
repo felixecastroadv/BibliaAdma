@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, GraduationCap, ShieldCheck, Trophy, Calendar, ListChecks, Mail, CheckCircle2, Moon, Sun, Download, Instagram, X, Share, MoreVertical, Monitor, LogOut, Sparkles, Brain, FileText, Link as LinkIcon, Star, Smartphone, ArrowUpRight } from 'lucide-react';
 import { CHURCH_NAME, TOTAL_CHAPTERS, APP_VERSION, PASTOR_PRESIDENT } from '../../constants';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as motionBase, AnimatePresence } from 'framer-motion';
 import { AppConfig, DynamicModule } from '../../types';
 import { db } from '../../services/database';
+
+// Fix for TypeScript errors with framer-motion props
+const motion = motionBase as any;
 
 interface DashboardProps {
     onNavigate: (view: string, params?: any) => void;
