@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 
 // Configuração para Vercel Serverless Functions
 export const config = {
-  maxDuration: 60, // Aumentado para tolerância (embora Hobby limite a 10s, Pro vai até 300s)
+  maxDuration: 60, 
 };
 
 export default async function handler(request, response) {
@@ -24,27 +24,31 @@ export default async function handler(request, response) {
   }
 
   try {
-    // --- 1. COLETA MASSIVA DE CHAVES (POOL) ---
+    // --- 1. COLETA E ORDENAÇÃO SEQUENCIAL DE CHAVES ---
+    // Estrutura: { key: string, index: number }
     const allKeys = [];
 
-    if (process.env.API_KEY) allKeys.push(process.env.API_KEY);
-    if (process.env.Biblia_ADMA_API) allKeys.push(process.env.Biblia_ADMA_API);
+    // Prioridade 0: Chaves principais
+    if (process.env.API_KEY) allKeys.push({ k: process.env.API_KEY, i: 0 });
+    if (process.env.Biblia_ADMA_API) allKeys.push({ k: process.env.Biblia_ADMA_API, i: 0.1 });
 
+    // Prioridade 1 a 50: Chaves numeradas
     for (let i = 1; i <= 50; i++) {
         const keyName = `API_KEY_${i}`;
         const val = process.env[keyName];
-        if (val && val.length > 10) {
-            allKeys.push(val);
+        if (val && val.length > 10 && !val.startsWith('vck_')) {
+            allKeys.push({ k: val, i: i });
         }
     }
 
-    const validKeys = [...new Set(allKeys)].filter(k => k && !k.startsWith('vck_'));
-
-    if (validKeys.length === 0) {
+    if (allKeys.length === 0) {
          return response.status(500).json({ 
              error: 'CONFIGURAÇÃO PENDENTE: Nenhuma Chave de API válida encontrada.' 
          });
     }
+
+    // ORDENAÇÃO: Garante que API_KEY_1 venha antes de API_KEY_2, etc.
+    const sortedKeys = allKeys.sort((a, b) => a.i - b.i).map(item => item.k);
 
     // --- 2. PREPARAÇÃO DO BODY ---
     let body = request.body;
@@ -58,26 +62,25 @@ export default async function handler(request, response) {
     const { prompt, schema } = body || {};
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
-    // --- 3. LOOP DE ROTAÇÃO DE CHAVES (STRICT GEMINI 2.5) ---
-    // Embaralha as chaves para balanceamento de carga
-    const shuffledKeys = validKeys.sort(() => 0.5 - Math.random());
+    // --- 3. LOOP DE TENTATIVA SEQUENCIAL ---
+    // Começa sempre da primeira. Se falhar (cota), vai para a próxima.
     
     let lastError = null;
     let successResponse = null;
     
-    // Tenta no máximo 10 chaves diferentes para não estourar o tempo da função serverless
-    const maxAttempts = Math.min(10, shuffledKeys.length); 
-    const keysToTry = shuffledKeys.slice(0, maxAttempts);
+    // Tenta no máximo 15 chaves em sequência por requisição para não estourar tempo limite de conexão
+    // Se as 15 primeiras estiverem esgotadas, provavelmente o sistema todo está sob ataque ou carga extrema
+    const keysToTry = sortedKeys.slice(0, 15);
 
     for (const apiKey of keysToTry) {
         try {
             const ai = new GoogleGenAI({ apiKey });
             
             const aiConfig = {
-                temperature: 0.5, // Equilíbrio para EBD
+                temperature: 0.5, 
                 topP: 0.95,
                 topK: 40,
-                maxOutputTokens: 8192, // Permite respostas longas para EBD
+                maxOutputTokens: 8192, // Tokens máximos para EBD completa
                 safetySettings: [
                     { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
@@ -91,7 +94,7 @@ export default async function handler(request, response) {
                 aiConfig.responseSchema = schema;
             }
 
-            // FORÇA O USO DO GEMINI 2.5 FLASH (Não faz downgrade)
+            // FORÇA O USO DO GEMINI 2.5 FLASH
             const aiResponse = await ai.models.generateContent({
                 model: "gemini-2.5-flash",
                 contents: [{ parts: [{ text: prompt }] }],
@@ -103,20 +106,20 @@ export default async function handler(request, response) {
             }
 
             successResponse = aiResponse.text;
-            break; // SUCESSO! Sai do loop.
+            break; // SUCESSO! Para o loop e retorna.
 
         } catch (error) {
             lastError = error;
             const msg = error.message || '';
             
-            // Se for erro de COTA (429) ou SERVIDOR (503), continua para a próxima chave.
-            // Se for erro de BAD REQUEST (400), provavelmente é o prompt/schema, então para.
+            // Se for erro de formato (400), não adianta trocar de chave, o prompt está ruim.
             if (msg.includes('400') || msg.includes('INVALID_ARGUMENT')) {
                 return response.status(400).json({ error: `Erro no formato da requisição: ${msg}` });
             }
 
-            // Pequeno delay (Cool Down) antes de tentar a próxima chave para evitar banimento de IP
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Se for erro de Cota (429) ou Server (500/503), continua o loop para a próxima chave
+            // Pequena pausa de 200ms para dar fôlego à rede
+            await new Promise(resolve => setTimeout(resolve, 200));
         }
     }
 
@@ -124,13 +127,12 @@ export default async function handler(request, response) {
     if (successResponse) {
         return response.status(200).json({ text: successResponse });
     } else {
-        // Se todas as tentativas falharam
         const errorMsg = lastError?.message || 'Erro desconhecido.';
-        console.error("Todas as chaves falharam. Último erro:", errorMsg);
+        console.error("Todas as chaves sequenciais falharam. Último erro:", errorMsg);
         
         if (errorMsg.includes('429') || errorMsg.includes('Quota')) {
             return response.status(429).json({ 
-                error: 'ALTA DEMANDA: O sistema está sobrecarregado no momento. Aguarde 1 minuto e tente novamente.' 
+                error: 'SISTEMA OCUPADO: As primeiras chaves estão congestionadas. Aguarde 30 segundos para o reset automático.' 
             });
         }
         
