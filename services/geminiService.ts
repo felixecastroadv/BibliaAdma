@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 
 const STORAGE_KEY_API = 'adma_temp_api_key';
@@ -56,7 +55,7 @@ export const generateContent = async (
             }
 
             const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash-latest",
+                model: "gemini-2.0-flash",
                 contents: [{ parts: [{ text: prompt }] }],
                 config: config
             });

@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 
 // Configuração para Vercel Serverless Functions
@@ -83,7 +82,7 @@ export default async function handler(request, response) {
             }
 
             const aiResponse = await ai.models.generateContent({
-                model: "gemini-2.5-flash-latest",
+                model: "gemini-2.0-flash",
                 contents: [{ parts: [{ text: prompt }] }],
                 config: aiConfig
             });
