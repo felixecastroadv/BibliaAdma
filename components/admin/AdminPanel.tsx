@@ -72,13 +72,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
     } catch(e) {}
   };
 
-  const loadReports = async () => {
-      try {
-          const data = await db.entities.ContentReports.list();
-          setReports(data || []);
-      } catch (e) {}
-  };
-
   const checkDbConnection = async () => {
     setDbStatus('checking');
     setIsCheckingDb(true);
@@ -108,7 +101,11 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           const cData = await cRes.json();
           const mData = await mRes.json();
           const dData = await dRes.json();
-          setCounts({ chapters: cData.count || 0, commentaries: mData.count || 0, dictionaries: dData.count || 0 });
+          setCounts({ 
+            chapters: cData.count || 0, 
+            commentaries: mData.count || 0, 
+            dictionaries: dData.count || 0 
+          });
       } catch (e) { console.error("Erro ao contar itens reais na nuvem:", e); }
   };
 
@@ -129,10 +126,17 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       } catch (e) { setOfflineCount(0); }
   };
 
+  const loadReports = async () => {
+      try {
+          const data = await db.entities.ContentReports.list();
+          setReports(data || []);
+      } catch (e) {}
+  };
+
   const loadUsers = async () => {
       setLoadingUsers(true);
       try {
-          const data = await db.entities.ReadingProgress.list(); 
+          const data = await db.entities.ReadingProgress.list('chapters', 1000); 
           setUsersList(data || []);
       } catch(e) {
           onShowToast("Erro ao carregar usuários.", "error");
@@ -169,12 +173,31 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       } catch(e) { onShowToast("Erro ao resetar senha.", "error"); }
   };
 
+  const fetchWithRetry = async (url: string, retries = 3, backoff = 1000): Promise<any> => {
+      try {
+          const res = await fetch(url);
+          if (res.status === 429) throw new Error("RATE_LIMIT");
+          if (!res.ok) throw new Error(`HTTP_${res.status}`);
+          const json = await res.json();
+          if (!json || !json.verses || json.verses.length === 0) throw new Error("EMPTY_DATA");
+          return json;
+      } catch (e: any) {
+          if (retries > 0) {
+              await new Promise(r => setTimeout(r, backoff));
+              return fetchWithRetry(url, retries - 1, backoff * 2);
+          }
+          throw e;
+      }
+  };
+
   const handleDownloadBible = async () => {
-      if (!window.confirm("Isso baixará toda a Bíblia da API externa e salvará na NUVEM e no dispositivo. Continuar?")) return;
+      if (!window.confirm("Isso baixará toda a Bíblia da API externa e salvará na NUVEM e no dispositivo. Isso restaura textos perdidos. Continuar?")) return;
       setIsProcessing(true);
-      setProcessStatus("Iniciando Sincronização...");
+      setProcessStatus("Preparando...");
       setProgress(0);
       let count = 0;
+      await bibleStorage.clear();
+      setOfflineCount(0); 
       stopBatchRef.current = false;
       try {
         for (const book of BIBLE_BOOKS) {
@@ -183,12 +206,12 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                 if (stopBatchRef.current) break;
                 const key = `bible_acf_${book.abbrev}_${c}`;
                 try {
-                    setProcessStatus(`Sincronizando ${book.name} ${c}...`);
-                    const res = await fetch(`https://www.abibliadigital.com.br/api/verses/acf/${book.abbrev}/${c}`);
-                    const data = await res.json();
+                    setProcessStatus(`Baixando ${book.name} ${c}...`);
+                    const data = await fetchWithRetry(`https://www.abibliadigital.com.br/api/verses/acf/${book.abbrev}/${c}`);
                     if (data && data.verses) {
                         const optimizedVerses = data.verses.map((v: any) => v.text.trim());
                         await db.entities.BibleChapter.saveUniversal(key, optimizedVerses);
+                        setOfflineCount(prev => (prev || 0) + 1);
                     }
                 } catch(e: any) { console.error(`Falha em ${book.name} ${c}:`, e); }
                 count++;
@@ -199,13 +222,13 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       setIsProcessing(false);
       stopBatchRef.current = false;
       await refreshRealData();
-      onShowToast("Base Sincronizada!", "success");
+      onShowToast("Bíblia Restaurada e Sincronizada com Sucesso!", "success");
   };
 
   const handleRestoreFromCloud = async () => {
-      if (!window.confirm("Baixar todo o conteúdo bíblico da nuvem para este dispositivo?")) return;
+      if (!window.confirm("Isso irá verificar a BASE DE DADOS NA NUVEM e baixar todo o texto bíblico salvo para o seu dispositivo. Continuar?")) return;
       setIsProcessing(true);
-      setProcessStatus("Conectando à Base...");
+      setProcessStatus("Conectando à Base de Dados...");
       setProgress(0);
       stopBatchRef.current = false;
       try {
@@ -217,7 +240,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                   if (stopBatchRef.current) break;
                   const key = `bible_acf_${book.abbrev}_${c}`;
                   const verses = await db.entities.BibleChapter.getCloud(key);
-                  if (verses) {
+                  if (verses && Array.isArray(verses) && verses.length > 0) {
                       await bibleStorage.save(key, verses);
                       totalRestored++;
                   }
@@ -225,9 +248,9 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
               setProgress(Math.round(((i + 1) / BIBLE_BOOKS.length) * 100));
               setProcessStatus(`Restaurando: ${book.name}`);
           }
-          await checkOfflineIntegrity();
-          onShowToast(`Restauração completa: ${totalRestored} capítulos.`, "success");
-      } catch (e: any) { onShowToast("Erro na restauração.", "error"); } finally { setIsProcessing(false); }
+          setOfflineCount(await bibleStorage.count());
+          onShowToast(`Restauração Completa! ${totalRestored} capítulos recuperados.`, "success");
+      } catch (e: any) { onShowToast(`Erro na restauração: ${e.message}`, "error"); } finally { setIsProcessing(false); setProgress(0); }
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -235,29 +258,68 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       if (!file) return;
       const reader = new FileReader();
       setIsProcessing(true);
-      setProcessStatus("Lendo arquivo...");
+      setProcessStatus("Lendo arquivo gigante...");
+      stopBatchRef.current = false;
       reader.onload = async (e) => {
           try {
-              const rawData = JSON.parse(e.target?.result as string);
-              const list = Array.isArray(rawData) ? rawData : (rawData.verses || []);
+              const jsonText = e.target?.result as string;
+              const cleanJson = jsonText.replace(/^\uFEFF/, ''); 
+              const rawData = JSON.parse(cleanJson);
+              
+              setProcessStatus("Analisando estrutura e versões...");
               let count = 0;
-              for (let i = 0; i < list.length; i++) {
-                  const item = list[i];
-                  if (item.key && item.verses) {
-                      await db.entities.BibleChapter.saveUniversal(item.key, item.verses);
-                      count++;
+              const isFlatVerseList = Array.isArray(rawData) && rawData.length > 1000 && (rawData[0].verse || rawData[0].versiculo);
+              
+              if (isFlatVerseList) {
+                  const chaptersMap: Record<string, string[]> = {};
+                  for (let i = 0; i < rawData.length; i++) {
+                      if (stopBatchRef.current) break;
+                      const item = rawData[i];
+                      const bAbbrevRaw = (item.abbrev || item.abbreviation || "").toLowerCase();
+                      const foundBook = BIBLE_BOOKS.find(b => b.abbrev === bAbbrevRaw || b.name.toLowerCase() === (item.book || "").toLowerCase());
+                      if (!foundBook) continue;
+                      const cNum = item.chapter || item.capitulo || item.c;
+                      const vNum = item.verse || item.versiculo || item.v;
+                      const text = item.text || item.texto;
+                      if (cNum && text) {
+                          const key = `bible_acf_${foundBook.abbrev}_${cNum}`;
+                          if (!chaptersMap[key]) chaptersMap[key] = [];
+                          chaptersMap[key][vNum - 1] = text.trim();
+                      }
                   }
-                  if (i % 50 === 0) setProgress(Math.round((i / list.length) * 100));
+                  const chapterKeys = Object.keys(chaptersMap);
+                  for (let i = 0; i < chapterKeys.length; i++) {
+                      if (stopBatchRef.current) break;
+                      const key = chapterKeys[i];
+                      const verses = chaptersMap[key].filter(v => v !== undefined);
+                      await db.entities.BibleChapter.saveUniversal(key, verses);
+                      count++;
+                      if (i % 10 === 0) setProgress(Math.round((i / chapterKeys.length) * 100));
+                  }
+              } else {
+                  const list = Array.isArray(rawData) ? rawData : (rawData.verses || rawData.chapters || []);
+                  for (let i = 0; i < list.length; i++) {
+                      if (stopBatchRef.current) break;
+                      const item = list[i];
+                      const key = item.key || generateChapterKey(item.book, item.chapter);
+                      const verses = item.verses || item.text;
+                      if (key && Array.isArray(verses)) {
+                          await db.entities.BibleChapter.saveUniversal(key, verses);
+                          count++;
+                      }
+                      if (i % 50 === 0) setProgress(Math.round((i / list.length) * 100));
+                  }
               }
-              onShowToast(`Importado: ${count} capítulos.`, "success");
-          } catch (error: any) { onShowToast("Erro no JSON.", "error"); } finally { setIsProcessing(false); setProgress(0); }
+              setOfflineCount(await bibleStorage.count());
+              onShowToast(`Sucesso! ${count} capítulos salvos.`, "success");
+          } catch (error: any) { onShowToast(`Erro crítico: ${error.message}`, "error"); } finally { setIsProcessing(false); setProgress(0); }
       };
       reader.readAsText(file);
   };
 
   const handleExportJson = async () => {
       setIsProcessing(true);
-      setProcessStatus("Exportando...");
+      setProcessStatus("Gerando arquivo...");
       try {
           const allData: any[] = [];
           for (const book of BIBLE_BOOKS) {
@@ -270,9 +332,9 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           const blob = new Blob([JSON.stringify(allData)], { type: 'application/json' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
-          a.href = url; a.download = `backup_biblia_adma.json`;
+          a.href = url; a.download = `backup_biblia_adma_${new Date().toISOString().split('T')[0]}.json`;
           a.click();
-          onShowToast("Backup gerado.", "success");
+          onShowToast("Exportação concluída.", "success");
       } catch (e) { onShowToast("Erro ao exportar.", "error"); } finally { setIsProcessing(false); }
   };
 
@@ -287,13 +349,13 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
           const chapKey = `bible_acf_${bookMeta.abbrev}_${c}`;
           let verses = (await db.entities.BibleChapter.getCloud(chapKey)) as any[];
           if (!verses || verses.length === 0) {
-              addLog(`❌ Texto de ${bookMeta.name} ${c} não encontrado no Supabase.`);
+              addLog(`❌ Erro: Texto de ${bookMeta.name} ${c} não encontrado no Supabase.`);
               setIsGeneratingBatch(false);
               return;
           }
           addLog(`🚀 Iniciando Lote: ${bookMeta.name} ${c} (${verses.length} versículos).`);
           for (let i = 0; i < verses.length; i++) {
-              if (stopBatchRef.current) { addLog("🛑 Interrompido."); break; }
+              if (stopBatchRef.current) { addLog("🛑 Processamento Interrompido."); break; }
               const verseNum = i + 1;
               const vKey = generateVerseKey(bookMeta.name, c, verseNum);
               const textBase = verses[i];
@@ -321,7 +383,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                   await new Promise(r => setTimeout(r, 850)); 
               } catch (err: any) { addLog(`⚠️ Falha em ${c}:${verseNum}: ${err.message}`); }
           }
-      } catch (e: any) { addLog(`Erro Crítico: ${e.message}`); }
+      } catch (e: any) { addLog(`Erro Crítico de Rede: ${e.message}`); }
       setIsGeneratingBatch(false);
       updateRealCounts();
   };
@@ -334,7 +396,17 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       addLog(`Gerando devocional para ${dateStr}...`);
       try {
          const prompt = `ATUE COMO: Michel Felix. TAREFA: Devocional para ${dateStr}. JSON: { title, reference, verse_text, body, prayer }.`;
-         const res = await generateContent(prompt, { type: GenType.OBJECT, properties: { title: {type: GenType.STRING}, reference: {type: GenType.STRING}, verse_text: {type: GenType.STRING}, body: {type: GenType.STRING}, prayer: {type: GenType.STRING} } });
+         const schema = {
+            type: GenType.OBJECT,
+            properties: {
+                title: {type: GenType.STRING},
+                reference: {type: GenType.STRING},
+                verse_text: {type: GenType.STRING},
+                body: {type: GenType.STRING},
+                prayer: {type: GenType.STRING}
+            }
+         };
+         const res = await generateContent(prompt, schema);
          await db.entities.Devotional.create({ ...res, date: dateStr, is_published: true });
          addLog(`Devocional criado!`);
          onShowToast(`Devocional gerado!`, "success");
@@ -343,18 +415,43 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   };
 
   const addLog = (msg: string) => setBatchLogs(prev => [msg, ...prev].slice(0, 30));
+  const handleStopBatch = () => { stopBatchRef.current = true; addLog("🛑 Solicitando parada..."); };
 
   const bibleProgress = Math.round((counts.chapters / 1189) * 100);
   const commentaryProgress = Math.round((counts.commentaries / TOTAL_VERSES) * 100);
   const reqsRemaining = Math.max(0, (TOTAL_VERSES * 2) - (counts.commentaries + counts.dictionaries));
 
-  const filteredUsers = usersList.filter(u => u.user_name.toLowerCase().includes(userSearch.toLowerCase()) || u.user_email.toLowerCase().includes(userSearch.toLowerCase()));
-
   if (showBuilder) return <AppBuilder onBack={() => { setShowBuilder(false); loadAppConfig(); }} onShowToast={onShowToast} currentConfig={appConfig} />;
+
+  const filteredUsers = usersList.filter(u => u.user_name.toLowerCase().includes(userSearch.toLowerCase()) || u.user_email.toLowerCase().includes(userSearch.toLowerCase()));
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] dark:bg-[#121212] transition-colors duration-300">
       
+      {/* MODAL DE RELATÓRIOS */}
+      {showReportsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-black/60" onClick={() => setShowReportsModal(false)} />
+              <div className="bg-white dark:bg-[#1E1E1E] w-full max-w-2xl max-h-[80vh] rounded-2xl p-6 relative z-10 overflow-hidden flex flex-col shadow-2xl animate-in zoom-in">
+                  <div className="flex justify-between items-center mb-4 border-b pb-2 dark:border-gray-700">
+                      <h3 className="font-cinzel font-bold text-xl dark:text-white flex items-center gap-2">
+                          <Flag className="w-5 h-5 text-red-500"/> Relatórios de Erro ({reports.length})
+                      </h3>
+                      <button onClick={() => setShowReportsModal(false)}><XCircle className="w-6 h-6 text-gray-500" /></button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+                      {reports.length === 0 ? <p className="text-center text-gray-400 py-10">Vazio.</p> : reports.map(report => (
+                          <div key={report.id} className="bg-gray-50 dark:bg-black/20 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                              <div className="flex justify-between"><span className="font-bold text-[#8B0000]">{report.reference_text}</span></div>
+                              <p className="text-gray-700 dark:text-gray-300 italic mb-3">"{report.report_text}"</p>
+                              <button onClick={() => handleDeleteReport(report.id!)} className="w-full bg-green-600 text-white py-1 rounded text-xs font-bold hover:bg-green-700 flex items-center justify-center gap-2"><CheckCircle className="w-3 h-3"/> Marcar como Resolvido</button>
+                          </div>
+                      ))}
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* HEADER */}
       <div className="bg-[#1a0f0f] text-white p-4 flex items-center gap-4 sticky top-0 shadow-lg z-30 border-b border-[#C5A059]/30">
         <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full"><ChevronLeft /></button>
@@ -370,7 +467,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
 
       <div className="p-6 max-w-5xl mx-auto space-y-8 pb-32">
         
-        {/* BOTÃO BUILDER */}
+        {/* BOTÃO BUILDER AI */}
         <div className="bg-gradient-to-r from-[#C5A059] to-[#8B0000] p-6 rounded-3xl shadow-xl text-white flex justify-between items-center transform hover:scale-[1.01] transition-transform cursor-pointer" onClick={() => setShowBuilder(true)}>
             <div>
                 <h2 className="font-cinzel font-bold text-2xl flex items-center gap-2"><Wand2 className="w-6 h-6"/> ADMA Builder AI</h2>
@@ -419,20 +516,20 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
         </div>
 
         {/* GESTÃO DA BÍBLIA */}
-        <h2 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#ff6b6b] border-b border-[#C5A059] pb-2">Gestão de Dados</h2>
+        <h2 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#ff6b6b] border-b border-[#C5A059] pb-2">1. Gestão da Bíblia (JSON / Big Data)</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
              <button onClick={handleDownloadBible} disabled={isProcessing} className="bg-white dark:bg-dark-card p-4 rounded-xl shadow border border-[#C5A059]/30 flex flex-col items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
                  {isProcessing ? <Loader2 className="w-8 h-8 animate-spin text-[#C5A059]" /> : <CloudUpload className="w-8 h-8 text-[#C5A059]" />}
                  <span className="font-bold text-xs text-center dark:text-white">Baixar da Web</span>
              </button>
-             <button onClick={handleRestoreFromCloud} disabled={isProcessing} className="bg-[#8B0000] text-white p-4 rounded-xl shadow border border-[#C5A059]/30 flex flex-col items-center justify-center gap-2 hover:bg-[#600018] transition">
+             <button onClick={handleRestoreFromCloud} disabled={isProcessing} className="bg-[#8B0000] text-white p-4 rounded-xl shadow border border-[#C5A059]/30 flex flex-col items-center justify-center gap-2 hover:bg-[#600018] transition animate-pulse">
                  {isProcessing ? <Loader2 className="w-8 h-8 animate-spin text-white" /> : <Cloud className="w-8 h-8 text-white" />}
-                 <span className="font-bold text-xs text-center">Resgatar Nuvem</span>
+                 <span className="font-bold text-xs text-center">Resgatar da Nuvem</span>
              </button>
-             <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow border border-[#C5A059]/30 flex flex-col items-center justify-center gap-2 relative overflow-hidden cursor-pointer">
+             <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow border border-[#C5A059]/30 flex flex-col items-center justify-center gap-2 relative overflow-hidden group hover:bg-gray-50 cursor-pointer">
                  <Upload className="w-8 h-8 text-blue-500" />
                  <span className="font-bold text-xs text-center dark:text-white">Upload JSON</span>
-                 <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".json" className="absolute inset-0 opacity-0 cursor-pointer" />
+                 <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".json" className="absolute inset-0 opacity-0 cursor-pointer" disabled={isProcessing} />
              </div>
              <button onClick={handleExportJson} disabled={isProcessing} className="bg-white dark:bg-dark-card p-4 rounded-xl shadow border border-[#C5A059]/30 flex flex-col items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
                  <Download className="w-8 h-8 text-green-500" />
@@ -440,7 +537,21 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
              </button>
         </div>
 
+        {/* PROGRESSO DE PROCESSAMENTO */}
+        {isProcessing && (
+            <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-xl border border-[#C5A059]/30 mt-4">
+                <div className="flex justify-between text-xs mb-1 font-bold dark:text-white">
+                    <span className="flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin"/> {processStatus}</span>
+                    <span>{progress}%</span>
+                </div>
+                <div className="w-full bg-gray-300 dark:bg-gray-600 rounded-full h-3 overflow-hidden border border-gray-400 dark:border-gray-500">
+                    <div className="bg-gradient-to-r from-[#C5A059] to-[#8B0000] h-3 rounded-full transition-all duration-300 shadow-[0_0_10px_#C5A059]" style={{ width: `${progress}%` }}></div>
+                </div>
+            </div>
+        )}
+
         {/* GERAÇÃO EM LOTE - PROMPTS RESTAURADOS */}
+        <h2 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#ff6b6b] border-b border-[#C5A059] pb-2 mt-8">2. Fábrica de Conteúdo (IA)</h2>
         <div className="bg-white dark:bg-[#1E1E1E] rounded-[2rem] shadow-xl border border-[#C5A059]/30 overflow-hidden">
             <div className="bg-[#1a0f0f] p-6 flex justify-between items-center border-b border-[#C5A059]/20">
                 <div><h3 className="font-cinzel font-bold text-white text-lg">Gerador de Massa (Padrão ADMA)</h3><p className="text-[10px] text-[#C5A059] uppercase tracking-widest font-bold">Processamento Sequencial com Rigor Exegético</p></div>
@@ -452,7 +563,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
             <div className="p-8">
                 {isGeneratingBatch ? (
                     <div className="space-y-6">
-                        <div className="flex flex-col items-center justify-center py-6 text-center"><Loader2 className="w-12 h-12 animate-spin text-[#8B0000] mb-3" /><p className="font-cinzel font-bold dark:text-white text-xl">Gerindo Massa: {batchBook} {batchStartChapter}...</p><button onClick={() => { stopBatchRef.current = true; }} className="mt-6 flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-full font-bold hover:bg-red-700 transition-all text-xs"><StopCircle className="w-4 h-4" /> PARAR LOTE</button></div>
+                        <div className="flex flex-col items-center justify-center py-6 text-center"><Loader2 className="w-12 h-12 animate-spin text-[#8B0000] mb-3" /><p className="font-cinzel font-bold dark:text-white text-xl">Gerindo Massa: {batchBook} {batchStartChapter}...</p><button onClick={handleStopBatch} className="mt-6 flex items-center gap-2 px-6 py-2 bg-red-600 text-white rounded-full font-bold hover:bg-red-700 transition-all text-xs"><StopCircle className="w-4 h-4" /> PARAR LOTE</button></div>
                         <div className="bg-black/90 rounded-2xl p-6 font-mono text-[11px] text-green-400 h-64 overflow-y-auto shadow-inner border border-white/5">{batchLogs.map((log, i) => <div key={i} className="mb-1">{log}</div>)}</div>
                     </div>
                 ) : (
@@ -462,15 +573,17 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                     </div>
                 )}
             </div>
-            <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border-t flex flex-wrap gap-4 items-center">
-                <span className="text-xs font-bold text-purple-700">Gerador Devocional:</span>
-                <input type="date" value={devotionalDate} onChange={e => setDevotionalDate(e.target.value)} className="p-1 text-xs border rounded"/>
-                <button onClick={handleGenerateDevotional} className="bg-purple-700 text-white px-4 py-1 rounded text-xs font-bold">Gerar</button>
+            <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border-t flex flex-wrap gap-4 items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <span className="text-xs font-bold text-purple-700 flex items-center gap-1"><Calendar className="w-3 h-3"/> Gerador Devocional:</span>
+                    <input type="date" value={devotionalDate} onChange={e => setDevotionalDate(e.target.value)} className="p-1 text-xs border rounded"/>
+                </div>
+                <button onClick={handleGenerateDevotional} className="bg-purple-700 text-white px-6 py-1 rounded text-xs font-bold hover:bg-purple-800 transition-colors">Gerar para esta Data</button>
             </div>
         </div>
 
         {/* GESTÃO DE USUÁRIOS */}
-        <h2 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#ff6b6b] border-b border-[#C5A059] pb-2">Gestão de Usuários</h2>
+        <h2 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#ff6b6b] border-b border-[#C5A059] pb-2 mt-8">3. Gestão de Usuários</h2>
         <div className="bg-white dark:bg-dark-card rounded-xl shadow border border-[#C5A059]/20 overflow-hidden">
             <div className="p-4 bg-gray-50 dark:bg-gray-900 border-b border-[#C5A059]/20 flex gap-2">
                 <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" /><input value={userSearch} onChange={e => setUserSearch(e.target.value)} placeholder="Buscar usuários..." className="w-full pl-9 p-2 rounded border text-sm dark:bg-gray-800 dark:text-white dark:border-gray-700" /></div>
@@ -481,11 +594,25 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                     <table className="w-full text-sm">
                         <thead className="bg-gray-50 dark:bg-black/20 text-gray-500 font-bold text-left sticky top-0"><tr><th className="p-3">Nome</th><th className="p-3">Status</th><th className="p-3 text-right">Ações</th></tr></thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">{filteredUsers.map(user => (
-                            <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-white/5"><td className="p-3"><div className="font-bold dark:text-white">{user.user_name}</div><div className="text-xs text-gray-400">{user.user_email}</div></td><td className="p-3">{user.is_blocked ? <span className="text-red-500 font-bold flex items-center gap-1"><Lock className="w-3 h-3"/> Bloqueado</span> : <span className="text-green-500 font-bold flex items-center gap-1"><CheckCircle className="w-3 h-3"/> Ativo</span>}</td><td className="p-3 text-right flex justify-end gap-2"><KeyRound onClick={() => resetUserPassword(user)} className="w-5 h-5 text-yellow-600 cursor-pointer" /><div onClick={() => toggleUserBlock(user)} className="cursor-pointer">{user.is_blocked ? <Unlock className="w-5 h-5 text-green-600" /> : <Lock className="w-5 h-5 text-red-600" />}</div></td></tr>
+                            <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-white/5">
+                                <td className="p-3">
+                                    <div className="font-bold dark:text-white">{user.user_name}</div>
+                                    <div className="text-xs text-gray-400">{user.user_email}</div>
+                                    {user.reset_requested && <span className="inline-flex items-center gap-1 bg-yellow-100 text-yellow-800 text-[10px] px-2 py-0.5 rounded-full mt-1"><KeyRound className="w-3 h-3"/> Pediu Reset</span>}
+                                </td>
+                                <td className="p-3">{user.is_blocked ? <span className="text-red-500 font-bold flex items-center gap-1"><Lock className="w-3 h-3"/> Bloqueado</span> : <span className="text-green-500 font-bold flex items-center gap-1"><CheckCircle className="w-3 h-3"/> Ativo</span>}</td>
+                                <td className="p-3 text-right">
+                                    <div className="flex justify-end gap-2">
+                                        <button onClick={() => resetUserPassword(user)} className="p-1.5 text-yellow-600 hover:bg-yellow-50 rounded" title="Resetar Senha"><KeyRound className="w-4 h-4" /></button>
+                                        <button onClick={() => toggleUserBlock(user)} className={`p-1.5 rounded ${user.is_blocked ? 'text-green-600 hover:bg-green-50' : 'text-red-600 hover:bg-red-50'}`} title={user.is_blocked ? "Desbloquear" : "Bloquear"}>{user.is_blocked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}</button>
+                                    </div>
+                                </td>
+                            </tr>
                         ))}</tbody>
                     </table>
                 )}
             </div>
+            <div className="bg-gray-50 dark:bg-black/20 p-2 text-xs text-gray-500 text-center border-t border-[#C5A059]/20">Total de usuários: {usersList.length}</div>
         </div>
       </div>
     </div>

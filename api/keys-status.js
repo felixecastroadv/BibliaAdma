@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 export const config = {
@@ -47,14 +48,17 @@ export default async function handler(request, response) {
         try {
             const ai = new GoogleGenAI({ apiKey: keyEntry.key });
             
-            // Teste ultra-leve
+            // @google/genai: Use gemini-3-flash-preview and disable thinking for minimal latency during a simple health check.
             const result = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
+                model: "gemini-3-flash-preview",
                 contents: [{ parts: [{ text: "Hi" }] }],
-                config: { maxOutputTokens: 5 } 
+                config: { 
+                    maxOutputTokens: 5,
+                    thinkingConfig: { thinkingBudget: 0 }
+                } 
             });
 
-            if (!result?.text && !result?.candidates?.[0]?.content?.parts?.[0]?.text) {
+            if (!result?.text) {
                 throw new Error("No text");
             }
 

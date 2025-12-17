@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 // Configuração para Vercel Serverless Functions
@@ -65,13 +66,15 @@ export default async function handler(request, response) {
         try {
             const ai = new GoogleGenAI({ apiKey });
             
+            // @google/genai: Use gemini-3-flash-preview for text tasks and ensure thinkingBudget is set alongside maxOutputTokens.
             const aiConfig = {
                 temperature: 0.5, 
                 topP: 0.95,
                 topK: 40,
-                maxOutputTokens: 4096, // Reduzido de 8192 para 4096 (Alvo: ~2.500 palavras)
+                maxOutputTokens: 4096, 
+                thinkingConfig: { thinkingBudget: 2048 },
                 safetySettings: [
-                    { category: 'HARM_CATEGORY_HATE_SHEECH', threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
@@ -84,7 +87,7 @@ export default async function handler(request, response) {
             }
 
             const aiResponse = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
+                model: "gemini-3-flash-preview",
                 contents: [{ parts: [{ text: prompt }] }],
                 config: aiConfig
             });

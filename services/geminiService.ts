@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 const STORAGE_KEY_API = 'adma_temp_api_key';
@@ -56,8 +57,9 @@ export const generateContent = async (
                 config.responseSchema = jsonSchema;
             }
 
+            // @google/genai: Use gemini-3-flash-preview for basic text tasks like commentary and EBD.
             const response = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
+                model: "gemini-3-flash-preview",
                 contents: [{ parts: [{ text: prompt }] }],
                 config: config
             });
