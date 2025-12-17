@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, BookOpen, Languages, Loader2, RefreshCw, AlertTriangle, Send, Lock, Save, Sparkles, Volume2, Pause, Play, FastForward, MessageCircle, User, Bot, Battery, Edit, Command, FileText } from 'lucide-react';
+import { X, BookOpen, Languages, Loader2, RefreshCw, AlertTriangle, Send, Lock, Save, Sparkles, Volume2, Pause, Play, FastForward, MessageCircle, User, Bot, Battery, Edit, Command, FileText, ShieldCheck } from 'lucide-react';
 import { db } from '../../services/database';
 import { generateContent } from '../../services/geminiService';
 import { generateVerseKey } from '../../constants';
@@ -209,11 +209,28 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
       if (!isAdmin) incrementUsage();
 
       const prompt = `
+        ATUE COMO: Professor Michel Felix.
+        PERFIL: Teólogo Pentecostal Clássico, Arminiano, Erudito e Assembleiano.
+        
         CONTEXTO BÍBLICO: Livro de ${book}, Capítulo ${chapter}, Versículo ${verseNumber}.
         TEXTO: "${verse}"
-        PERSONA: Você é o Prof. Michel Felix, um teólogo Pentecostal Clássico.
-        PERGUNTA DO ALUNO: "${text}"
-        RESPOSTA:
+        DÚVIDA DO ALUNO: "${text}"
+
+        --- DIRETRIZES DO CHAT (RIGOROSO) ---
+        1. OBJETIVO: Explicar de forma simples e profunda ("Efeito Ah! Entendi!").
+        2. TOM DE VOZ: Pastoral, Mestre, Acolhedor mas Firme na Doutrina. Use termos como "Meu caro aluno", "Excelente pergunta".
+        
+        --- BLINDAGEM TEOLÓGICA (CRUCIAL) ---
+        Você deve manter a MESMA linha teológica dos Comentários e da EBD Panorama:
+        1. A BÍBLIA INTERPRETA A BÍBLIA (Analogia da Fé).
+        2. POLÊMICAS: Se a pergunta tocar em pontos sensíveis (ex: Gênesis 6:2, Jefté, Predestinação):
+           - Apresente as visões existentes brevemente.
+           - DEFENDA a visão Ortodoxa/Assembleiana/Conservadora.
+           - Exemplo Gn 6:2: Cite a visão dos anjos caídos se necessário, mas PREFIRA e DEFENDA a "Linhagem de Sete" (justos se corrompendo) para evitar mitologias, conforme a tradição conservadora.
+           - Exemplo Jefté: Defenda a dedicação perpétua, não sacrifício humano.
+        3. REJEITE: Heresias, Gnosticismo, Liberalismo Teológico.
+        
+        RESPOSTA: Curta, direta, conversacional e didática.
       `;
 
       try {
@@ -497,7 +514,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                     className={`flex-1 min-w-[100px] py-3 font-montserrat font-bold text-xs md:text-sm flex items-center justify-center gap-1 md:gap-2 transition-colors ${activeTab === 'chat' ? 'bg-[#C5A059] text-white' : 'text-[#8B0000] dark:text-[#C5A059] hover:bg-[#C5A059]/20'}`}
                 >
                     <MessageCircle className="w-4 h-4" /> Tira-Dúvidas
-                    {msgsLeft > 0 && <span className="bg-red-600 text-white text-[10px] px-1.5 rounded-full">{msgsLeft}</span>}
+                    {isAdmin ? <ShieldCheck className="w-3 h-3 text-[#8B0000]" /> : (msgsLeft > 0 && <span className="bg-red-600 text-white text-[10px] px-1.5 rounded-full">{msgsLeft}</span>)}
                 </button>
             </div>
 
@@ -664,7 +681,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                             <div className="flex flex-col h-full bg-[#E5DDD5] dark:bg-[#0b141a]">
                                 <div className="bg-white/80 dark:bg-black/40 p-2 text-center text-xs font-bold text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-800 flex justify-center items-center gap-2 backdrop-blur-sm">
                                     <Battery className={`w-4 h-4 ${isQuotaFull ? 'text-red-500' : 'text-green-500'}`} />
-                                    <span>{msgsLeft} perguntas restantes hoje</span>
+                                    <span>{isAdmin ? "Admin: Perguntas Ilimitadas" : `${msgsLeft} perguntas restantes hoje`}</span>
                                 </div>
                                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                                     {chatMessages.map((msg, idx) => {
