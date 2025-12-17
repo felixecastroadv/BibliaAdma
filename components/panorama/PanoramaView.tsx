@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 // Componente de Visualização do Panorama Bíblico
-import { ChevronLeft, GraduationCap, Lock, BookOpen, ChevronRight, Volume2, Sparkles, Loader2, Book, Trash2, Edit, Save, X, CheckCircle, Pause, Play, Settings, FastForward } from 'lucide-react';
+import { ChevronLeft, GraduationCap, Lock, BookOpen, ChevronRight, Volume2, Sparkles, Loader2, Book, Trash2, Edit, Save, X, CheckCircle, Pause, Play, Settings, FastForward } from 'lucide-center';
 import { db } from '../../services/database';
 import { BIBLE_BOOKS, generateChapterKey } from '../../constants';
 import { EBDContent } from '../../types';
@@ -69,13 +68,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     setIsPlaying(false);
   }, [currentPage, book, chapter, activeTab]);
 
-  useEffect(() => {
-    if (isPlaying) {
-        window.speechSynthesis.cancel();
-        speakText();
-    }
-  }, [playbackRate, selectedVoice]);
-
   const onTouchStart = (e: React.TouchEvent) => {
     setTouchEnd(null);
     setTouchStart(e.targetTouches[0].clientX);
@@ -116,18 +108,14 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     return text.trim();
   };
 
-  // --- PAGINAÇÃO OTIMIZADA PARA 600 PALAVRAS (~4000 CARACTERES) ---
   const processAndPaginate = (html: string) => {
     if (!html) { setPages([]); return; }
-    
-    // Divide pelo marcador de quebra ou continuação
     let rawSegments = html.split(/<hr[^>]*>|__CONTINUATION_MARKER__/i)
                           .map(s => cleanText(s))
                           .filter(s => s.length > 20);
 
     const finalPages: string[] = [];
     let currentBuffer = "";
-    // Alvo: 4000 caracteres para garantir ~600 palavras densas
     const TARGET_CHAR_LIMIT = 4000; 
 
     for (let i = 0; i < rawSegments.length; i++) {
@@ -135,12 +123,9 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         if (!currentBuffer) {
             currentBuffer = segment;
         } else {
-            // Se o buffer atual + o novo segmento não ultrapassar muito o limite, junta eles.
-            // Isso evita que a introdução (segmento 0) fique sozinha na página 1 se for curta.
             if ((currentBuffer.length + segment.length) < (TARGET_CHAR_LIMIT * 1.3)) {
                 currentBuffer += "\n\n__CONTINUATION_MARKER__\n\n" + segment;
             } else {
-                // Já temos densidade suficiente, fecha a página atual
                 finalPages.push(currentBuffer);
                 currentBuffer = segment;
             }
@@ -157,11 +142,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     if (!pages[currentPage]) return;
     window.speechSynthesis.cancel();
     const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = pages[currentPage]
-        .replace(/__CONTINUATION_MARKER__/g, '. ')
-        .replace(/<br>/g, '. ')
-        .replace(/<\/p>/g, '. ');
-    
+    tempDiv.innerHTML = pages[currentPage].replace(/__CONTINUATION_MARKER__/g, '. ').replace(/<br>/g, '. ').replace(/<\/p>/g, '. ');
     let textToSpeak = tempDiv.textContent || tempDiv.innerText || "";
     textToSpeak = textToSpeak.replace(/\*/g, '').replace(/#/g, '').trim();
     if (!textToSpeak) return;
@@ -325,34 +306,40 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     const studyKey = generateChapterKey(book, chapter);
     const existing = (await db.entities.PanoramaBiblico.filter({ study_key: studyKey }))[0] || {};
     const currentText = target === 'student' ? (existing.student_content || '') : (existing.teacher_content || '');
-    const cleanContext = currentText.replace(/__CONTINUATION_MARKER__/g, ' ').slice(-4000);
+    const cleanContext = currentText.replace(/__CONTINUATION_MARKER__/g, ' ').slice(-5000);
 
-    const WRITING_STYLE = `
+    // SYSTEM INSTRUCTION: Define a alma da IA
+    const SYSTEM_IDENTITY = `
         ATUE COMO: Professor Michel Felix.
-        PERFIL: Teólogo Pentecostal Clássico, Arminiano, Erudito e Assembleiano.
+        PERFIL: PhD em Teologia Bíblica, Pentecostal Clássico, Arminiano e Erudito.
+        TOM: Magistral, Vibrante e extremamente detalhista.
 
-        --- OBJETIVO SUPREMO: CONTEÚDO COMPLETO E DENSO (600 PALAVRAS POR PÁGINA) ---
-        1. NÃO RESUMA. Explique CADA versículo ou grupo de versículos com profundidade máxima.
-        2. TAMANHO DA PÁGINA: Escreva blocos longos de aproximadamente 600 PALAVRAS por tópico.
-        3. PAGINAÇÃO: Use obrigatoriamente a tag <hr class="page-break"> APENAS após atingir um volume denso de texto (mínimo 3500 caracteres).
-        4. TERMOS TÉCNICOS: Explique o significado entre parênteses. Ex: "Usa-se um antropomorfismo (atribuição de características humanas a Deus)...".
-        
-        --- ESTRUTURA VISUAL OBRIGATÓRIA ---
-        1. TÍTULO: PANORÂMA BÍBLICO - ${book.toUpperCase()} ${chapter} (PROF. MICHEL FELIX)
-        2. INTRODUÇÃO: Texto rico contextualizando o capítulo. JUNTE a introdução com o primeiro tópico para que a primeira página já comece com conteúdo denso (mínimo 600 palavras).
-        3. TÓPICOS: Use numeração (1., 2., 3...) e insira <hr class="page-break"> somente se o tópico for muito longo ou mudar drasticamente o assunto.
+        --- REGRAS DE OURO (OBRIGATÓRIO) ---
+        1. OBJETIVO SUPREMO: CONTEÚDO COMPLETO E DENSO. Proibido resumos.
+        2. DENSIDADE: Cada página/bloco gerado deve ter aproximadamente 600 PALAVRAS. Se o conteúdo for curto, expanda a exegese, história e aplicação.
+        3. PROTOCOLO DE SEGURANÇA: Verifique o contexto imediato e remoto. Ortodoxia total em temas polêmicos (Ex: Linhagem de Sete, Jefté, Anjos).
+        4. DIDÁTICA: Explique termos técnicos entre parênteses. Ex: "Teofania (aparição de Deus)".
+        5. ORIGINAIS: Use Hebraico/Grego transliterado para iluminar significados ocultos.
+        6. SEÇÕES FINAIS: Todo estudo deve terminar com "TIPOLOGIA: CONEXÃO COM CRISTO" e "CURIOSIDADES E ARQUEOLOGIA".
     `;
-    
-    const instructions = customInstructions ? `\nINSTRUÇÕES EXTRAS: ${customInstructions}` : "";
-    const continuationInstructions = `MODO CONTINUAÇÃO. Continue de onde parou: "...${cleanContext.slice(-500)}...". Continue a explicação DETALHADA dos versículos seguintes de ${book} ${chapter}. Mantenha a densidade de 600 palavras por página.`;
 
-    let specificPrompt = target === 'student' ? 
-        `OBJETIVO: AULA DO ALUNO para ${book} ${chapter}. ${WRITING_STYLE} ${instructions} ${mode === 'continue' ? continuationInstructions : 'INÍCIO DO ESTUDO COMPLETO.'}` : 
-        `OBJETIVO: MANUAL DO PROFESSOR para ${book} ${chapter}. ${WRITING_STYLE} ${instructions} ${mode === 'continue' ? continuationInstructions : 'INÍCIO DO ESTUDO COMPLETO.'}`;
+    const PROMPT_TASK = `
+        TAREFA: Gerar ${target === 'student' ? 'AULA DO ALUNO' : 'MANUAL DO PROFESSOR'} para ${book} ${chapter}.
+        ESTADO: ${mode === 'continue' ? 'CONTINUAÇÃO' : 'INÍCIO DO ESTUDO'}.
+        
+        --- ESTRUTURA VISUAL ---
+        1. TÍTULO: PANORÂMA BÍBLICO - ${book.toUpperCase()} ${chapter} (PROF. MICHEL FELIX)
+        2. INTRODUÇÃO: Se for início, junte a introdução com o primeiro tópico (Página 1 densa).
+        3. TÓPICOS: Numeração (1., 2., 3...).
+        4. PAGINAÇÃO: Use <hr class="page-break"> apenas após blocos densos (>4000 caracteres).
+        
+        ${mode === 'continue' ? `REGRAS DE CONTINUAÇÃO: Comece exatamente após: "...${cleanContext.slice(-500)}...". Não repita o título.` : ''}
+        ${customInstructions ? `INSTRUÇÕES ADICIONAIS: ${customInstructions}` : ''}
+    `;
 
     try {
-        const result = await generateContent(specificPrompt);
-        if (!result || result.trim() === 'undefined' || result.length < 50) throw new Error("A IA retornou vazio.");
+        const result = await generateContent(PROMPT_TASK, null, true, 'ebd', SYSTEM_IDENTITY);
+        if (!result || result.trim() === 'undefined' || result.length < 50) throw new Error("IA falhou.");
         
         let separator = '';
         if (mode === 'continue' && currentText.length > 0 && !currentText.trim().endsWith('>')) {
@@ -372,7 +359,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         else await db.entities.PanoramaBiblico.create(data);
 
         await loadContent();
-        onShowToast('Conteúdo gerado no Padrão Profundo ADMA!', 'success');
+        onShowToast('Conteúdo Profundo Gerado com Gemini 3 Pro!', 'success');
     } catch (e: any) {
         onShowToast(`Erro: ${e.message}`, 'error');
     } finally {
@@ -402,24 +389,15 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   };
 
   return (
-    <div 
-        className="min-h-screen bg-[#FDFBF7] dark:bg-dark-bg transition-colors duration-300"
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-    >
+    <div className="min-h-screen bg-[#FDFBF7] dark:bg-dark-bg transition-colors duration-300" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         <div className="sticky top-0 z-30 bg-gradient-to-r from-[#600018] to-[#400010] text-white p-4 shadow-lg flex justify-between items-center">
             <button onClick={onBack} className="p-2"><ChevronLeft /></button>
             <h2 className="font-cinzel font-bold text-sm tracking-widest uppercase text-[#C5A059]">Panorama EBD</h2>
             <div className="flex gap-2">
                 {isAdmin && !isEditing && content && (
-                    <button onClick={handleStartEditing} title="Editar" className="p-2 hover:bg-white/10 rounded-full">
-                        <Edit className="w-5 h-5 text-[#C5A059]" />
-                    </button>
+                    <button onClick={handleStartEditing} title="Editar" className="p-2 hover:bg-white/10 rounded-full"><Edit className="w-5 h-5 text-[#C5A059]" /></button>
                 )}
-                <button onClick={() => setShowAudioSettings(!showAudioSettings)} title="Áudio" className="p-2">
-                    <Volume2 className={isPlaying ? "text-green-400 animate-pulse" : "w-6 h-6"} />
-                </button>
+                <button onClick={() => setShowAudioSettings(!showAudioSettings)} title="Áudio" className="p-2"><Volume2 className={isPlaying ? "text-green-400 animate-pulse" : "w-6 h-6"} /></button>
             </div>
         </div>
 
@@ -432,12 +410,9 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                             {isPlaying ? <Pause className="w-4 h-4"/> : <Play className="w-4 h-4"/>} {isPlaying ? 'Pausar' : 'Ouvir'}
                         </button>
                     </div>
-                    <div>
-                        <label className="text-xs font-bold text-gray-500">Voz:</label>
-                        <select className="w-full p-1 text-sm border rounded mt-1 dark:bg-gray-800 dark:text-white" value={selectedVoice} onChange={e => setSelectedVoice(e.target.value)}>
-                            {voices.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
-                        </select>
-                    </div>
+                    <select className="w-full p-1 text-sm border rounded mt-1 dark:bg-gray-800 dark:text-white" value={selectedVoice} onChange={e => setSelectedVoice(e.target.value)}>
+                        {voices.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
+                    </select>
                 </div>
             </div>
         )}
@@ -450,35 +425,21 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         </div>
 
         <div className="flex bg-[#F5F5DC] dark:bg-black">
-            <button onClick={() => setActiveTab('student')} className={`flex-1 py-4 font-cinzel font-bold flex justify-center gap-2 transition-all ${activeTab === 'student' ? 'bg-[#600018] text-white shadow-inner' : 'text-gray-600 dark:text-gray-400'}`}>
-                <BookOpen className="w-5 h-5" /> Aluno
-            </button>
-            <button onClick={() => setActiveTab('teacher')} className={`flex-1 py-4 font-cinzel font-bold flex justify-center gap-2 transition-all ${activeTab === 'teacher' ? 'bg-[#600018] text-white shadow-inner' : 'text-gray-600 dark:text-gray-400'}`}>
-                {isAdmin ? <GraduationCap className="w-5 h-5" /> : <Lock className="w-5 h-5" />} Professor
-            </button>
+            <button onClick={() => setActiveTab('student')} className={`flex-1 py-4 font-cinzel font-bold flex justify-center gap-2 transition-all ${activeTab === 'student' ? 'bg-[#600018] text-white shadow-inner' : 'text-gray-600 dark:text-gray-400'}`}><BookOpen className="w-5 h-5" /> Aluno</button>
+            <button onClick={() => setActiveTab('teacher')} className={`flex-1 py-4 font-cinzel font-bold flex justify-center gap-2 transition-all ${activeTab === 'teacher' ? 'bg-[#600018] text-white shadow-inner' : 'text-gray-600 dark:text-gray-400'}`}>{isAdmin ? <GraduationCap className="w-5 h-5" /> : <Lock className="w-5 h-5" />} Professor</button>
         </div>
 
         {isAdmin && !isEditing && (
             <div className="bg-[#1a0f0f] text-[#C5A059] p-4 shadow-inner sticky top-[130px] z-20 border-b-4 border-[#8B0000]">
                 <div className="flex items-center justify-between mb-2">
-                    <span className="font-cinzel text-xs flex items-center gap-2 font-bold"><Sparkles className="w-4 h-4" /> EDITOR CHEFE (3.0 FLASH)</span>
-                    <button onClick={() => setShowInstructions(!showInstructions)} className="text-xs underline">
-                        {showInstructions ? 'Ocultar' : 'Instruções'}
-                    </button>
+                    <span className="font-cinzel text-xs flex items-center gap-2 font-bold"><Sparkles className="w-4 h-4" /> EDITOR CHEFE (3.0 PRO)</span>
+                    <button onClick={() => setShowInstructions(!showInstructions)} className="text-xs underline">{showInstructions ? 'Ocultar' : 'Instruções'}</button>
                 </div>
-                {showInstructions && (
-                    <textarea value={customInstructions} onChange={(e) => setCustomInstructions(e.target.value)} placeholder="Instruções..." className="w-full p-2 text-xs text-black rounded mb-2" rows={2} />
-                )}
+                {showInstructions && <textarea value={customInstructions} onChange={(e) => setCustomInstructions(e.target.value)} placeholder="Instruções..." className="w-full p-2 text-xs text-black rounded mb-2" rows={2} />}
                 <div className="flex gap-2">
-                    <button onClick={() => handleGenerate('start')} disabled={isGenerating} className="flex-1 px-3 py-2 border border-[#C5A059] rounded text-xs hover:bg-[#C5A059] hover:text-[#1a0f0f] transition disabled:opacity-50 font-bold">
-                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'INÍCIO (ESTUDO LONGO)'}
-                    </button>
-                    <button onClick={() => handleGenerate('continue')} disabled={isGenerating} className="flex-1 px-3 py-2 bg-[#C5A059] text-[#1a0f0f] font-bold rounded text-xs hover:bg-white transition disabled:opacity-50">
-                        {isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'CONTINUAR'}
-                    </button>
-                    {pages.length > 0 && (
-                        <button onClick={handleDeletePage} className="px-3 py-2 bg-red-900 text-white rounded hover:bg-red-700 transition" title="Apagar Página"><Trash2 className="w-4 h-4" /></button>
-                    )}
+                    <button onClick={() => handleGenerate('start')} disabled={isGenerating} className="flex-1 px-3 py-2 border border-[#C5A059] rounded text-xs hover:bg-[#C5A059] hover:text-[#1a0f0f] transition disabled:opacity-50 font-bold">{isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'INÍCIO (ESTUDO LONGO)'}</button>
+                    <button onClick={() => handleGenerate('continue')} disabled={isGenerating} className="flex-1 px-3 py-2 bg-[#C5A059] text-[#1a0f0f] font-bold rounded text-xs hover:bg-white transition disabled:opacity-50">{isGenerating ? <Loader2 className="animate-spin w-3 h-3 mx-auto"/> : 'CONTINUAR'}</button>
+                    {pages.length > 0 && <button onClick={handleDeletePage} className="px-3 py-2 bg-red-900 text-white rounded hover:bg-red-700 transition" title="Apagar Página"><Trash2 className="w-4 h-4" /></button>}
                 </div>
             </div>
         )}
@@ -502,12 +463,8 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                  </div>
             ) : content && pages.length > 0 ? (
                 <div className="bg-white dark:bg-dark-card shadow-2xl p-8 md:p-16 min-h-[600px] border border-[#C5A059]/20 relative rounded-[2rem]">
-                     <div className="space-y-6">
-                        {renderFormattedText(pages[currentPage])}
-                     </div>
-                     <div className="absolute bottom-4 right-8 text-[#C5A059] font-cinzel text-sm">
-                        {currentPage + 1} / {pages.length}
-                     </div>
+                     <div className="space-y-6">{renderFormattedText(pages[currentPage])}</div>
+                     <div className="absolute bottom-4 right-8 text-[#C5A059] font-cinzel text-sm">{currentPage + 1} / {pages.length}</div>
                      {currentPage === pages.length - 1 && userProgress && (
                          <div className="mt-12 text-center">
                              <button onClick={handleMarkAsRead} disabled={isRead} className={`px-8 py-4 rounded-full font-cinzel font-bold text-lg shadow-lg flex items-center justify-center gap-2 mx-auto transition-all transform hover:scale-105 ${isRead ? 'bg-green-600 text-white' : 'bg-gradient-to-r from-[#C5A059] to-[#8B0000] text-white animate-pulse'}`}>
@@ -519,8 +476,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                 </div>
             ) : (
                 <div className="text-center py-20 text-gray-500 dark:text-gray-400">
-                    <Book className="w-16 h-16 mx-auto mb-4 text-[#C5A059] opacity-50"/>
-                    <p className="font-cinzel text-lg">Nenhum estudo disponível ainda.</p>
+                    <Book className="w-16 h-16 mx-auto mb-4 text-[#C5A059] opacity-50"/><p className="font-cinzel text-lg">Nenhum estudo disponível ainda.</p>
                     {isAdmin && <p className="text-sm mt-2 text-[#8B0000] animate-pulse">Use o Editor Chefe acima para gerar o estudo.</p>}
                 </div>
             )}
@@ -528,15 +484,9 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
         {pages.length > 1 && hasAccess && !isEditing && (
             <div className="fixed bottom-16 left-0 w-full bg-white dark:bg-dark-card border-t border-[#C5A059] p-4 flex justify-between items-center z-30 shadow-[0_-5px_20px_rgba(0,0,0,0.1)] safe-bottom">
-                <button onClick={() => setCurrentPage(Math.max(0, currentPage - 1))} disabled={currentPage === 0} className="flex items-center gap-1 px-4 py-3 bg-[#8B0000] text-white rounded-lg font-bold disabled:opacity-50 disabled:bg-gray-400 transition-all">
-                    <ChevronLeft /> Anterior
-                </button>
-                <span className="font-cinzel font-bold text-[#1a0f0f] dark:text-white text-sm md:text-base">
-                    Página {currentPage + 1} de {pages.length}
-                </span>
-                <button onClick={() => setCurrentPage(Math.min(pages.length - 1, currentPage + 1))} disabled={currentPage === pages.length - 1} className="flex items-center gap-1 px-4 py-3 bg-[#8B0000] text-white rounded-lg font-bold disabled:opacity-50 disabled:bg-gray-400 transition-all">
-                    Próxima <ChevronRight />
-                </button>
+                <button onClick={() => setCurrentPage(Math.max(0, currentPage - 1))} disabled={currentPage === 0} className="flex items-center gap-1 px-4 py-3 bg-[#8B0000] text-white rounded-lg font-bold disabled:opacity-50 disabled:bg-gray-400 transition-all"><ChevronLeft /> Anterior</button>
+                <span className="font-cinzel font-bold text-[#1a0f0f] dark:text-white text-sm md:text-base">Página {currentPage + 1} de {pages.length}</span>
+                <button onClick={() => setCurrentPage(Math.min(pages.length - 1, currentPage + 1))} disabled={currentPage === pages.length - 1} className="flex items-center gap-1 px-4 py-3 bg-[#8B0000] text-white rounded-lg font-bold disabled:opacity-50 disabled:bg-gray-400 transition-all">Próxima <ChevronRight /></button>
             </div>
         )}
     </div>

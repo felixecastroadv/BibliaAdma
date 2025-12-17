@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 
 const STORAGE_KEY_API = 'adma_temp_api_key';
@@ -37,7 +36,8 @@ export const generateContent = async (
   prompt: string, 
   jsonSchema?: any,
   isLongOutput: boolean = false,
-  taskType: TaskType = 'general'
+  taskType: TaskType = 'general',
+  systemInstruction?: string
 ) => {
     try {
         const adminKey = getStoredApiKey();
@@ -48,6 +48,7 @@ export const generateContent = async (
                 temperature: 0.7, 
                 topP: 0.95,
                 topK: 40,
+                systemInstruction: systemInstruction || "Você é o Professor Michel Felix."
             };
 
             if (jsonSchema) {
@@ -56,7 +57,7 @@ export const generateContent = async (
             }
 
             const response = await ai.models.generateContent({
-                model: "gemini-3-flash-preview",
+                model: "gemini-3-pro-preview",
                 contents: [{ parts: [{ text: prompt }] }],
                 config: config
             });
@@ -75,7 +76,8 @@ export const generateContent = async (
                 prompt, 
                 schema: jsonSchema, 
                 isLongOutput,
-                taskType
+                taskType,
+                systemInstruction
             }),
             signal: controller.signal
         });

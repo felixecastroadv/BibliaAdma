@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 
 // Configuração para Vercel Serverless Functions
@@ -53,7 +52,8 @@ export default async function handler(request, response) {
             return response.status(400).json({ error: 'Invalid JSON body' });
         }
     }
-    const { prompt, schema } = body || {};
+    
+    const { prompt, schema, systemInstruction } = body || {};
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
     let lastError = null;
@@ -68,7 +68,9 @@ export default async function handler(request, response) {
                 temperature: 0.7, 
                 topP: 0.95,
                 topK: 40,
-                maxOutputTokens: 4096,
+                // O modelo PRO permite mais tokens de saída, ideal para estudos longos
+                maxOutputTokens: 8192, 
+                systemInstruction: systemInstruction || "Você é um assistente teológico especializado.",
                 safetySettings: [
                     { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
@@ -82,8 +84,9 @@ export default async function handler(request, response) {
                 aiConfig.responseSchema = schema;
             }
 
+            // Upgrade para gemini-3-pro-preview para tarefas de texto complexas e persona rigorosa
             const aiResponse = await ai.models.generateContent({
-                model: "gemini-3-flash-preview",
+                model: "gemini-3-pro-preview",
                 contents: [{ parts: [{ text: prompt }] }],
                 config: aiConfig
             });
@@ -97,11 +100,8 @@ export default async function handler(request, response) {
 
         } catch (error) {
             lastError = error;
-            const msg = error.message || '';
-            if (msg.includes('400') || msg.includes('INVALID_ARGUMENT')) {
-                return response.status(400).json({ error: `Erro no formato da requisição: ${msg}` });
-            }
-            await new Promise(resolve => setTimeout(resolve, 200));
+            console.error("API Key Error:", error.message);
+            await new Promise(resolve => setTimeout(resolve, 300));
         }
     }
 
