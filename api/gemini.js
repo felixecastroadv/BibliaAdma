@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 
 export const config = {
@@ -20,7 +19,8 @@ export default async function handler(request, response) {
   try {
     const apiKeys = [
       process.env.API_KEY,
-      process.env.Biblia_ADMA_API
+      process.env.Biblia_ADMA_API,
+      process.env.BIBLIA_ADMA
     ].filter(k => k && k.trim().length > 15);
 
     if (apiKeys.length === 0) return response.status(500).json({ error: 'Chave de API não configurada.' });
@@ -28,38 +28,40 @@ export default async function handler(request, response) {
     const body = typeof request.body === 'string' ? JSON.parse(request.body) : request.body;
     const { prompt, systemInstruction, taskType } = body || {};
 
-    const isPanorama = taskType === 'ebd' || prompt.includes("PANORÂMA") || prompt.includes("MICROSCOPIA");
+    // Detecção rigorosa de Panorama/EBD
+    const isPanorama = taskType === 'ebd' || 
+                       prompt.includes("PANORÂMA") || 
+                       prompt.includes("MICROSCOPIA") || 
+                       prompt.includes("AULA DO ALUNO");
     
-    // MODELO GEMINI 2.5 FLASH (Versão preferida pelo usuário)
+    // MODELO GEMINI 2.5 FLASH (Versão solicitada pelo usuário)
     const modelName = 'gemini-2.5-flash-preview-09-2025';
 
     const ai = new GoogleGenAI({ apiKey: apiKeys[0] });
     
-    // PROTOCOLO DE OBEDIÊNCIA SUPREMA AO PANORAMAVIEW
     let finalSystemInstruction = systemInstruction || "Você é o Professor Michel Felix.";
 
     if (isPanorama) {
-      finalSystemInstruction = `VOCÊ É O PROFESSOR MICHEL FELIX, PH.D EM EXEGESE.
-      SUA ORDEM É OBEDECER 100% AO CÓDIGO E AOS PROMPTS DO PANORAMAVIEW.
+      finalSystemInstruction = `VOCÊ É O PROFESSOR MICHEL FELIX, PH.D EM EXEGESE BÍBLICA.
       
-      DIRETRIZES DE ENTREGA COMPLETA (RIGOROSO):
-      1. PROIBIDO RESUMIR: Você deve explicar o capítulo INTEIRO, versículo por versículo (Microscopia).
-      2. ESTRUTURA OBRIGATÓRIA: Não importa o tamanho, você deve obrigatoriamente encerrar o capítulo com as seções:
-         - ### TIPOLOGIA: CONEXÃO COM JESUS CRISTO (Obrigatório no final)
-         - ### CURIOSIDADES GEOGRÁFICAS E ARQUEOLOGIA (Obrigatório na última página)
-      3. EXTENSÃO: Se o capítulo for longo, gere um texto denso (600-800 palavras por bloco).
-      4. COMPROMISSO: Sua missão é transformar o texto bíblico em uma apostila completa de 5 a 8 páginas conforme previsto no frontend.
-      5. PAGINAÇÃO: Use <hr class="page-break"> entre os tópicos para organizar o estudo.`;
+      MISSÃO SUPREMA: Você deve entregar a apostila COMPLETA do capítulo, seguindo o método de MICROSCOPIA BÍBLICA.
+      
+      REGRAS DE OURO (OBEDIÊNCIA 100%):
+      1. PROIBIDO RESUMIR: Explique versículo por versículo. O usuário prefere um texto longo de 8 páginas do que um resumo de 1 página.
+      2. CICLO COMPLETO: Você não pode parar até encerrar o capítulo.
+      3. OBRIGATÓRIO NO FINAL: Todo estudo deve, sem exceção, terminar com as seções:
+         - ### TIPOLOGIA: CONEXÃO COM JESUS CRISTO
+         - ### CURIOSIDADES GEOGRÁFICAS E ARQUEOLOGIA
+      4. PAGINAÇÃO: Insira <hr class="page-break"> entre os tópicos principais para o sistema organizar as páginas corretamente.
+      5. TOM: Erudito, Pentecostal Clássico e Exaustivo.`;
     }
 
     const config = {
       temperature: isPanorama ? 1.0 : 0.7,
       topP: 0.95,
       maxOutputTokens: 8192,
-      // Ativa o Modo de Raciocínio da Gemini 2.5 para garantir profundidade e completude
-      ...(isPanorama ? { 
-        thinkingConfig: { thinkingBudget: 24576 } 
-      } : {}),
+      // Ativa o raciocínio profundo para não "esquecer" partes do capítulo
+      thinkingConfig: isPanorama ? { thinkingBudget: 24576 } : undefined,
       systemInstruction: finalSystemInstruction,
     };
 

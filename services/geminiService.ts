@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 
 const STORAGE_KEY_API = 'adma_temp_api_key';
@@ -34,7 +33,7 @@ export const generateContent = async (
         const isPanorama = taskType === 'ebd' || prompt.includes('PANORÂMA') || prompt.includes('MICROSCOPIA');
         const adminKey = getStoredApiKey();
         
-        // MODELO FIXO: GEMINI 2.5 FLASH
+        // MODELO FIXO CONFORME SOLICITADO: GEMINI 2.5 FLASH
         const model = 'gemini-2.5-flash-preview-09-2025';
 
         if (adminKey) {
@@ -55,7 +54,7 @@ export const generateContent = async (
         } 
         
         const controller = new AbortController();
-        // Aumentado para 5 minutos para permitir que a Gemini 2.5 processe o raciocínio completo (Thinking)
+        // Aumentado para 5 minutos para suportar o raciocínio completo da Microscopia
         const timeoutMs = isPanorama ? 300000 : 120000; 
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -81,7 +80,7 @@ export const generateContent = async (
         return processResponse(data.text, jsonSchema);
 
     } catch (error: any) {
-        if (error.name === 'AbortError') throw new Error("A IA está processando um estudo muito longo. Aguarde um momento e tente 'Continuar'.");
+        if (error.name === 'AbortError') throw new Error("A IA está processando um estudo muito longo e profundo. Por favor, aguarde e tente 'Continuar' se o texto parar.");
         throw error; 
     }
 };
