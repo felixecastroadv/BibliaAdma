@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, GraduationCap, ShieldCheck, Trophy, Calendar, ListChecks, Mail, CheckCircle2, Moon, Sun, Download, Instagram, X, Share, MoreVertical, Monitor, LogOut, Sparkles, Brain, FileText, Link as LinkIcon, Star } from 'lucide-react';
+import { BookOpen, GraduationCap, ShieldCheck, Trophy, Calendar, ListChecks, Mail, CheckCircle2, Moon, Sun, Download, Instagram, X, Share, MoreVertical, Monitor, LogOut, Sparkles, Brain, FileText, Link as LinkIcon, Star, Smartphone, ArrowUpRight } from 'lucide-react';
 import { CHURCH_NAME, TOTAL_CHAPTERS, APP_VERSION, PASTOR_PRESIDENT } from '../../constants';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppConfig, DynamicModule } from '../../types';
@@ -22,8 +22,10 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
   const [clicks, setClicks] = useState(0);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isStandalone, setIsStandalone] = useState(true);
-  const [showIOSInstructions, setShowIOSInstructions] = useState(false);
-  const [showDesktopInstructions, setShowDesktopInstructions] = useState(false);
+  
+  // Install Instructions State
+  const [showInstallModal, setShowInstallModal] = useState(false);
+  const [installPlatform, setInstallPlatform] = useState<'ios' | 'android' | 'desktop'>('android');
   
   // Dynamic Modules
   const [dynamicModules, setDynamicModules] = useState<DynamicModule[]>([]);
@@ -57,13 +59,18 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
     const handleAppInstalled = () => {
         setIsStandalone(true);
         setDeferredPrompt(null);
-        setShowDesktopInstructions(false);
-        setShowIOSInstructions(false);
+        setShowInstallModal(false);
         onShowToast("Aplicativo instalado com sucesso!", "success");
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
     window.addEventListener('appinstalled', handleAppInstalled);
+
+    // Detect Platform
+    const ua = navigator.userAgent.toLowerCase();
+    if (/iphone|ipad|ipod/.test(ua)) setInstallPlatform('ios');
+    else if (/android/.test(ua)) setInstallPlatform('android');
+    else setInstallPlatform('desktop');
 
     return () => {
         window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
@@ -74,15 +81,14 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
 
   const handleInstallClick = async () => {
     if (deferredPrompt) {
+        // Chrome/Edge/Android Nativo (Suporte Automático)
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
         if (outcome === 'accepted') setDeferredPrompt(null);
-        return;
+    } else {
+        // iOS, Firefox, Navegadores Nativos (Instrução Manual)
+        setShowInstallModal(true);
     }
-    const ua = navigator.userAgent.toLowerCase();
-    const isIOS = /iphone|ipad|ipod/.test(ua);
-    if (isIOS) setShowIOSInstructions(true);
-    else setShowDesktopInstructions(true);
   };
 
   const handleLogoClick = () => {
@@ -135,7 +141,64 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] dark:bg-dark-bg transition-colors duration-500 font-sans">
-        {/* Modais de Instalação omitidos para brevidade (mantém lógica original) */}
+        
+        {/* MODAL DE INSTRUÇÕES DE INSTALAÇÃO */}
+        <AnimatePresence>
+            {showInstallModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <motion.div 
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        onClick={() => setShowInstallModal(false)}
+                    />
+                    <motion.div 
+                        initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+                        className="bg-white dark:bg-[#1E1E1E] w-full max-w-sm rounded-3xl p-6 relative z-10 shadow-2xl border border-[#C5A059]/30"
+                    >
+                        <button onClick={() => setShowInstallModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-red-500"><X /></button>
+                        
+                        <div className="text-center mb-6">
+                            <div className="w-16 h-16 bg-[#F5F5DC] dark:bg-gray-800 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-inner">
+                                {installPlatform === 'ios' ? <Share className="w-8 h-8 text-[#C5A059]" /> : <MoreVertical className="w-8 h-8 text-[#C5A059]" />}
+                            </div>
+                            <h3 className="font-cinzel font-bold text-xl text-[#1a0f0f] dark:text-white">Instalar App</h3>
+                            <p className="text-xs text-gray-500 mt-2 font-montserrat">Siga os passos para adicionar à tela inicial:</p>
+                        </div>
+
+                        <div className="space-y-4 bg-gray-50 dark:bg-black/20 p-4 rounded-xl">
+                            {installPlatform === 'ios' && (
+                                <>
+                                    <div className="flex items-center gap-3">
+                                        <span className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                                        <p className="text-sm dark:text-gray-300">Toque no botão <span className="font-bold text-[#007AFF]">Compartilhar</span> (ícone quadrado com seta) na barra inferior.</p>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                                        <p className="text-sm dark:text-gray-300">Role para baixo e selecione <span className="font-bold">"Adicionar à Tela de Início"</span>.</p>
+                                    </div>
+                                </>
+                            )}
+                            {(installPlatform === 'android' || installPlatform === 'desktop') && (
+                                <>
+                                    <div className="flex items-center gap-3">
+                                        <span className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                                        <p className="text-sm dark:text-gray-300">Toque no menu do navegador (três pontos <MoreVertical className="w-3 h-3 inline"/>).</p>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                                        <p className="text-sm dark:text-gray-300">Selecione <span className="font-bold">"Instalar aplicativo"</span> ou "Adicionar à tela inicial".</p>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        <button onClick={() => setShowInstallModal(false)} className="w-full mt-6 bg-[#8B0000] text-white py-3 rounded-xl font-bold font-cinzel text-sm hover:bg-[#600018]">
+                            Entendi
+                        </button>
+                    </motion.div>
+                </div>
+            )}
+        </AnimatePresence>
         
         {/* HERO SECTION - LUXURY EDITION */}
         <div className="relative bg-[#0F0505] text-white pb-28 rounded-b-[40px] shadow-2xl overflow-hidden isolate">
@@ -153,7 +216,7 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                             onClick={handleInstallClick} 
                             className="bg-white/5 backdrop-blur-md border border-white/10 text-white/90 px-4 py-2 rounded-full flex items-center gap-2 hover:bg-white/10 transition-all active:scale-95 shadow-lg"
                         >
-                            <Download className="w-3 h-3" /> <span className="text-[10px] font-bold uppercase">Instalar</span>
+                            <Download className="w-3 h-3" /> <span className="text-[10px] font-bold uppercase">Instalar App</span>
                         </motion.button>
                     )}
                 </AnimatePresence>

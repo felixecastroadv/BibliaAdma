@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 // Componente de Visualização do Panorama Bíblico
 import { ChevronLeft, GraduationCap, Lock, BookOpen, ChevronRight, Volume2, Sparkles, Loader2, Book, Trash2, Edit, Save, X, CheckCircle, Pause, Play, Settings, FastForward } from 'lucide-react';
 import { db } from '../../services/database';
@@ -27,6 +27,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string>('');
   const [playbackRate, setPlaybackRate] = useState(1);
+  const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   // Swipe State
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -38,23 +39,50 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
   useEffect(() => { loadContent(); }, [book, chapter]);
 
+  // Carregamento inteligente de vozes com prioridade
   useEffect(() => {
     const loadVoices = () => {
-        const available = window.speechSynthesis.getVoices().filter(v => v.lang.includes('pt'));
+        let available = window.speechSynthesis.getVoices().filter(v => v.lang.includes('pt'));
+        
+        // ORDENAÇÃO DE VOZES MAIS HUMANIZADAS
+        available.sort((a, b) => {
+            const getScore = (v: SpeechSynthesisVoice) => {
+                let score = 0;
+                // Prioriza vozes da Google e Microsoft (geralmente melhores)
+                if (v.name.includes('Google')) score += 5;
+                if (v.name.includes('Microsoft')) score += 4;
+                if (v.name.includes('Luciana')) score += 3; // iOS
+                if (v.name.includes('Joana')) score += 3; // iOS
+                return score;
+            };
+            return getScore(b) - getScore(a);
+        });
+
         setVoices(available);
-        if(available.length > 0) setSelectedVoice(available[0].name);
+        if(available.length > 0 && !selectedVoice) setSelectedVoice(available[0].name);
     };
+    
     loadVoices();
-    window.speechSynthesis.onvoiceschanged = loadVoices;
+    // Alguns navegadores carregam vozes assincronamente
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+    
     return () => { window.speechSynthesis.cancel(); }
   }, []);
 
   useEffect(() => {
+    // Parar áudio se mudar a página, livro ou capítulo
+    window.speechSynthesis.cancel();
+    setIsPlaying(false);
+  }, [currentPage, book, chapter, activeTab]);
+
+  useEffect(() => {
     if (isPlaying) {
         window.speechSynthesis.cancel();
-        speakText();
+        speakText(); // Reinicia com nova velocidade/voz
     }
-  }, [playbackRate]);
+  }, [playbackRate, selectedVoice]);
 
   // SWIPE HANDLERS
   const onTouchStart = (e: React.TouchEvent) => {
@@ -102,17 +130,13 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   const processAndPaginate = (html: string) => {
     if (!html) { setPages([]); return; }
     
-    // 1. Tenta dividir pelos marcadores explícitos da IA
     let rawSegments = html.split(/<hr[^>]*>|__CONTINUATION_MARKER__/i)
                           .map(s => cleanText(s))
                           .filter(s => s.length > 50);
 
-    // 2. FALLBACK INTELIGENTE: Se a IA gerou um bloco gigante único (> 4000 caracteres)
     if (rawSegments.length === 1 && rawSegments[0].length > 4000) {
         const bigText = rawSegments[0];
-        // Tenta quebrar pelos Títulos (### ou Numerais Romanos/Arábicos no início de linha)
         const forcedSegments = bigText.split(/(?=\n### |^\s*[IVX]+\.|^\s*\d+\.\s+[A-Z])/gm);
-        
         if (forcedSegments.length > 1) {
             rawSegments = forcedSegments.map(s => cleanText(s)).filter(s => s.length > 100);
         }
@@ -120,13 +144,10 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     
     const finalPages: string[] = [];
     let currentBuffer = "";
-    
-    // META: ~600 palavras (aprox 3500 caracteres)
     const CHAR_LIMIT_MIN = 3500; 
 
     for (let i = 0; i < rawSegments.length; i++) {
         const segment = rawSegments[i];
-        
         if (!currentBuffer) {
             currentBuffer = segment;
         } else {
@@ -149,22 +170,65 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
   const hasAccess = isAdmin || activeTab === 'student'; 
 
+  // --- NOVA LÓGICA DE ÁUDIO (ROBUSTA) ---
   const speakText = () => {
     if (!pages[currentPage]) return;
-    const cleanSpeech = pages[currentPage]
-        .replace('__CONTINUATION_MARKER__', '... Continuação ...')
-        .replace(/#/g, '')
-        .replace(/\*/g, '')
-        .replace(/<[^>]*>/g, '');
-        
-    const utter = new SpeechSynthesisUtterance(cleanSpeech);
-    utter.lang = 'pt-BR';
-    utter.rate = playbackRate;
-    const voice = voices.find(v => v.name === selectedVoice);
-    if (voice) utter.voice = voice;
-    utter.onend = () => setIsPlaying(false);
-    window.speechSynthesis.speak(utter);
+    window.speechSynthesis.cancel(); // Garante limpeza prévia
+
+    // 1. Limpeza Profunda de HTML para Texto Puro
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = pages[currentPage]
+        .replace(/__CONTINUATION_MARKER__/g, '. ')
+        .replace(/<br>/g, '. ')
+        .replace(/<\/p>/g, '. '); // Substitui quebras visuais por pausas de fala
+    
+    let textToSpeak = tempDiv.textContent || tempDiv.innerText || "";
+    // Remove caracteres markdown que sobram
+    textToSpeak = textToSpeak.replace(/\*/g, '').replace(/#/g, '').trim();
+
+    if (!textToSpeak) return;
+
+    // 2. Chunking (Divisão em frases) para evitar travar em textos longos
+    // O navegador muitas vezes para de ler se o texto for maior que ~200-300 caracteres sem pausa.
+    const sentences = textToSpeak.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [textToSpeak];
+    
+    let currentSentenceIndex = 0;
+
+    const speakNextChunk = () => {
+        if (currentSentenceIndex >= sentences.length) {
+            setIsPlaying(false);
+            return;
+        }
+
+        const chunk = sentences[currentSentenceIndex];
+        if (!chunk.trim()) {
+            currentSentenceIndex++;
+            speakNextChunk();
+            return;
+        }
+
+        const utter = new SpeechSynthesisUtterance(chunk);
+        utter.lang = 'pt-BR';
+        utter.rate = playbackRate;
+        const voice = voices.find(v => v.name === selectedVoice);
+        if (voice) utter.voice = voice;
+
+        utter.onend = () => {
+            currentSentenceIndex++;
+            speakNextChunk();
+        };
+
+        utter.onerror = (e) => {
+            console.error("Erro na fala:", e);
+            setIsPlaying(false);
+        };
+
+        speechRef.current = utter;
+        window.speechSynthesis.speak(utter);
+    };
+
     setIsPlaying(true);
+    speakNextChunk();
   };
 
   const togglePlay = () => {
