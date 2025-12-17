@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 const STORAGE_KEY_API = 'adma_temp_api_key';
@@ -33,9 +34,11 @@ export const generateContent = async (
         const isPanorama = taskType === 'ebd' || prompt.includes('PANORÂMA') || prompt.includes('MICROSCOPIA');
         const adminKey = getStoredApiKey();
         
+        // MODELO FIXO: GEMINI 2.5 FLASH
+        const model = 'gemini-2.5-flash-preview-09-2025';
+
         if (adminKey) {
             const ai = new GoogleGenAI({ apiKey: adminKey });
-            const model = 'gemini-3-flash-preview';
             
             const response = await ai.models.generateContent({
                 model: model,
@@ -44,6 +47,7 @@ export const generateContent = async (
                     temperature: isPanorama ? 1.0 : 0.7,
                     maxOutputTokens: 8192,
                     systemInstruction: systemInstruction || "Você é o Professor Michel Felix.",
+                    ...(isPanorama ? { thinkingConfig: { thinkingBudget: 24576 } } : {}),
                     ...(jsonSchema ? { responseMimeType: "application/json", responseSchema: jsonSchema } : {})
                 }
             });
@@ -51,7 +55,8 @@ export const generateContent = async (
         } 
         
         const controller = new AbortController();
-        const timeoutMs = 180000; // 3 minutos para permitir o texto longo de Microscopia
+        // Aumentado para 5 minutos para permitir que a Gemini 2.5 processe o raciocínio completo (Thinking)
+        const timeoutMs = isPanorama ? 300000 : 120000; 
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         const response = await fetch('/api/gemini', {
@@ -76,7 +81,7 @@ export const generateContent = async (
         return processResponse(data.text, jsonSchema);
 
     } catch (error: any) {
-        if (error.name === 'AbortError') throw new Error("A conexão demorou muito. Tente gerar novamente.");
+        if (error.name === 'AbortError') throw new Error("A IA está processando um estudo muito longo. Aguarde um momento e tente 'Continuar'.");
         throw error; 
     }
 };

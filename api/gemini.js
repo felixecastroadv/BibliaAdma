@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 export const config = {
@@ -8,7 +9,6 @@ export default async function handler(request, response) {
   response.setHeader('Access-Control-Allow-Credentials', true);
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
-  // ... cabeçalhos padrão ...
   response.setHeader(
     'Access-Control-Allow-Headers',
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
@@ -30,31 +30,36 @@ export default async function handler(request, response) {
 
     const isPanorama = taskType === 'ebd' || prompt.includes("PANORÂMA") || prompt.includes("MICROSCOPIA");
     
-    // MODELO FLASH (Versão Gratuita/Econômica exigida)
-    const modelName = 'gemini-3-flash-preview';
+    // MODELO GEMINI 2.5 FLASH (Versão preferida pelo usuário)
+    const modelName = 'gemini-2.5-flash-preview-09-2025';
 
     const ai = new GoogleGenAI({ apiKey: apiKeys[0] });
     
-    // PROTOCOLO DE OBEDIÊNCIA 100% AO PANORAMAVIEW
+    // PROTOCOLO DE OBEDIÊNCIA SUPREMA AO PANORAMAVIEW
     let finalSystemInstruction = systemInstruction || "Você é o Professor Michel Felix.";
 
     if (isPanorama) {
-      finalSystemInstruction = `VOCÊ É O PROFESSOR MICHEL FELIX. 
-      ORDEM SUPREMA: Você deve obedecer 100% à lógica de 'MICROSCOPIA BÍBLICA' definida no código do PanoramaView fornecido.
+      finalSystemInstruction = `VOCÊ É O PROFESSOR MICHEL FELIX, PH.D EM EXEGESE.
+      SUA ORDEM É OBEDECER 100% AO CÓDIGO E AOS PROMPTS DO PANORAMAVIEW.
       
-      DIRETRIZES DE COMPLIANCE OBRIGATÓRIAS:
-      1. PROIBIDO RESUMIR: Sua função é explicar o texto bíblico versículo por versículo, sem pressa.
-      2. ALTA DENSIDADE: Cada geração deve ser longa, rica em detalhes históricos, etimológicos e doutrinários.
-      3. PAGINAÇÃO TÉCNICA: Insira a tag <hr class="page-break"> entre tópicos para o frontend paginar o estudo corretamente.
-      4. ERUDIÇÃO: Mantenha o tom Pentecostal Clássico e profundo.
-      
-      O usuário prefere profundidade extrema do que respostas curtas ou rápidas.`;
+      DIRETRIZES DE ENTREGA COMPLETA (RIGOROSO):
+      1. PROIBIDO RESUMIR: Você deve explicar o capítulo INTEIRO, versículo por versículo (Microscopia).
+      2. ESTRUTURA OBRIGATÓRIA: Não importa o tamanho, você deve obrigatoriamente encerrar o capítulo com as seções:
+         - ### TIPOLOGIA: CONEXÃO COM JESUS CRISTO (Obrigatório no final)
+         - ### CURIOSIDADES GEOGRÁFICAS E ARQUEOLOGIA (Obrigatório na última página)
+      3. EXTENSÃO: Se o capítulo for longo, gere um texto denso (600-800 palavras por bloco).
+      4. COMPROMISSO: Sua missão é transformar o texto bíblico em uma apostila completa de 5 a 8 páginas conforme previsto no frontend.
+      5. PAGINAÇÃO: Use <hr class="page-break"> entre os tópicos para organizar o estudo.`;
     }
 
     const config = {
-      temperature: isPanorama ? 1.0 : 0.7, // Temperatura 1.0 garante maior extensão no Panorama
+      temperature: isPanorama ? 1.0 : 0.7,
       topP: 0.95,
       maxOutputTokens: 8192,
+      // Ativa o Modo de Raciocínio da Gemini 2.5 para garantir profundidade e completude
+      ...(isPanorama ? { 
+        thinkingConfig: { thinkingBudget: 24576 } 
+      } : {}),
       systemInstruction: finalSystemInstruction,
     };
 
