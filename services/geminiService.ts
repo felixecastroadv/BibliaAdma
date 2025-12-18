@@ -11,7 +11,10 @@ function processResponse(text: string | undefined, jsonSchema: any) {
       cleanText = cleanText.replace(/```json/g, '').replace(/```/g, '').trim();
       try {
         return JSON.parse(cleanText);
-      } catch (e) { throw new Error("IA retornou JSON inválido."); }
+      } catch (e) { 
+        console.error("JSON Parse Error:", cleanText);
+        throw new Error("IA retornou JSON inválido."); 
+      }
     }
     return text;
 }
@@ -22,35 +25,35 @@ export const generateContent = async (prompt: string, jsonSchema?: any) => {
 
   while (attempt < MAX_RETRIES) {
       try {
-        const adminKey = getStoredApiKey();
-        if (adminKey) {
-            const ai = new GoogleGenAI({ apiKey: adminKey });
-            const response = await ai.models.generateContent({
-                model: "gemini-2.0-flash-exp",
-                contents: [{ parts: [{ text: prompt }] }],
-                config: jsonSchema ? { responseMimeType: "application/json", responseSchema: jsonSchema } : {}
-            });
-            return processResponse(response.text, jsonSchema);
-        } 
-        
-        const response = await fetch('/api/gemini', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt, schema: jsonSchema })
-        });
+        // Usa a chave do admin se existir, senão usa a chave padrão do sistema
+        const apiKey = getStoredApiKey() || process.env.API_KEY;
+        if (!apiKey) throw new Error("Chave de API não configurada no ambiente.");
 
-        if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
-            if (response.status === 429) throw new Error("QUOTA_RETRY");
-            throw new Error(err.error || "Erro na geração");
+        const ai = new GoogleGenAI({ apiKey });
+        
+        const config: any = {
+            temperature: 0.4,
+            topP: 0.95,
+            topK: 40,
+        };
+
+        if (jsonSchema) {
+            config.responseMimeType = "application/json";
+            config.responseSchema = jsonSchema;
         }
 
-        const data = await response.json();
-        return processResponse(data.text, jsonSchema);
+        const response = await ai.models.generateContent({
+            model: "gemini-3-flash-preview", // Modelo recomendado pela documentação para tarefas de texto
+            contents: [{ parts: [{ text: prompt }] }],
+            config: config
+        });
+        
+        return processResponse(response.text, jsonSchema);
 
-      } catch (error) {
+      } catch (error: any) {
         attempt++;
-        if (attempt >= MAX_RETRIES || error.message !== "QUOTA_RETRY") throw error;
+        const isQuotaError = error.message?.includes("429") || error.message?.includes("QUOTA");
+        if (attempt >= MAX_RETRIES || !isQuotaError) throw error;
         await new Promise(r => setTimeout(r, 1000 * attempt));
       }
   }

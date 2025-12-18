@@ -1,3 +1,14 @@
+import { createClient } from '@supabase/supabase-js';
+
+// Configurações do Supabase fornecidas
+const MANUAL_SUPABASE_URL = "https://nnhatyvrtlbkyfadumqo.supabase.co";
+const MANUAL_SUPABASE_KEY = "sb_publishable_0uZeWa8FXTH-u-ki_NRHsQ_nYALzy9j";
+
+const supabase = createClient(
+    process.env.SUPABASE_URL || MANUAL_SUPABASE_URL,
+    process.env.SUPABASE_ANON_KEY || MANUAL_SUPABASE_KEY
+);
+
 const DB_NAME = 'adma_bible_db';
 const STORE_NAME = 'bible_verses';
 const DB_VERSION = 1;
@@ -71,52 +82,47 @@ const localBackup = {
     }
 };
 
-const apiCall = async (action: string, collection: string, payload: any = {}) => {
-    try {
-        const res = await fetch('/api/storage', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action, collection, ...payload })
-        });
-        return res.ok ? await res.json() : null;
-    } catch (e) { return null; }
-};
-
 const createHelpers = (col: string) => ({
     list: async () => {
-        const cloud = await apiCall('list', col);
-        if (cloud) localStorage.setItem(`adma_backup_${col}`, JSON.stringify(cloud));
-        return cloud || localBackup.list(col);
+        const { data, error } = await supabase.from('adma_content').select('data').eq('collection', col);
+        if (error) return localBackup.list(col);
+        const cleanData = data.map(r => r.data);
+        localStorage.setItem(`adma_backup_${col}`, JSON.stringify(cleanData));
+        return cleanData;
     },
     filter: async (criteria: any) => {
-        const all = await apiCall('list', col) || localBackup.list(col);
+        const all = await createHelpers(col).list();
         return all.filter((i: any) => Object.keys(criteria).every(k => i[k] === criteria[k]));
     },
-    get: async (id: string) => await apiCall('get', col, { id }) || localBackup.list(col).find((i: any) => i.id === id),
+    get: async (id: string) => {
+        const { data, error } = await supabase.from('adma_content').select('data').eq('collection', col).eq('id', id).maybeSingle();
+        if (error || !data) return localBackup.list(col).find((i: any) => i.id === id);
+        return data.data;
+    },
     create: async (data: any) => {
         const item = { ...data, id: data.id || Date.now().toString() };
         localBackup.saveItem(col, item);
-        await apiCall('save', col, { item });
+        await supabase.from('adma_content').upsert({ id: item.id.toString(), collection: col, data: item });
         return item;
     },
     update: async (id: string, updates: any) => {
-        const existing = await apiCall('get', col, { id }) || localBackup.list(col).find((i: any) => i.id === id);
+        const existing = await createHelpers(col).get(id);
         if (existing) {
             const merged = { ...existing, ...updates };
             localBackup.saveItem(col, merged);
-            await apiCall('save', col, { item: merged });
+            await supabase.from('adma_content').upsert({ id: id.toString(), collection: col, data: merged });
             return merged;
         }
         return null;
     },
     delete: async (id: string) => {
         localBackup.deleteItem(col, id);
-        await apiCall('delete', col, { id });
+        await supabase.from('adma_content').delete().eq('id', id.toString());
     },
     save: async (data: any) => {
         const item = { ...data, id: data.id || Date.now().toString() };
         localBackup.saveItem(col, item);
-        await apiCall('save', col, { item });
+        await supabase.from('adma_content').upsert({ id: item.id.toString(), collection: col, data: item });
         return item;
     }
 });
@@ -130,12 +136,12 @@ export const db = {
             getOffline: (key: string) => bibleStorage.get(key),
             saveOffline: (key: string, data: any) => bibleStorage.save(key, data),
             getCloud: async (key: string) => {
-                const item = await apiCall('get', 'bible_chapters', { id: key });
-                return item ? item.verses : null;
+                const { data } = await supabase.from('adma_content').select('data').eq('collection', 'bible_chapters').eq('id', key).maybeSingle();
+                return data ? data.data.verses : null;
             },
             saveUniversal: async (key: string, verses: string[]) => {
                 await bibleStorage.save(key, verses);
-                await apiCall('save', 'bible_chapters', { item: { id: key, verses } });
+                await supabase.from('adma_content').upsert({ id: key, collection: 'bible_chapters', data: { id: key, verses } });
             }
         },
         ChapterMetadata: createHelpers('chapter_metadata'),
