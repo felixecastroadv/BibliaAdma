@@ -6,13 +6,13 @@ export const generateContent = async (prompt: string, jsonSchema?: any) => {
 
   while (attempt < MAX_RETRIES) {
     try {
-      // Use process.env.API_KEY directly as per guidelines
+      // Use process.env.API_KEY exclusively as per guidelines
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
       
       const config: any = {
         temperature: 0.4,
         topP: 0.95,
-        topK: 40,
+        topK: 64, // Updated topK as per standard guidelines
       };
 
       if (jsonSchema) {
@@ -20,14 +20,14 @@ export const generateContent = async (prompt: string, jsonSchema?: any) => {
         config.responseSchema = jsonSchema;
       }
 
-      // Using gemini-3-flash-preview for efficiency and quality
+      // Using gemini-3-flash-preview for efficiency and quality as per task instructions
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: [{ parts: [{ text: prompt }] }],
         config: config
       });
       
-      // Correctly access .text property
+      // Correctly access .text property (not a method)
       const text = response.text; 
       
       if (jsonSchema && text) {
@@ -35,7 +35,7 @@ export const generateContent = async (prompt: string, jsonSchema?: any) => {
           return JSON.parse(text);
         } catch (e) {
           console.error("JSON Parse Error:", text);
-          throw new Error("IA retornou JSON inválido.");
+          throw new Error("A IA retornou um formato de dados inválido. Tente novamente.");
         }
       }
       
@@ -45,7 +45,8 @@ export const generateContent = async (prompt: string, jsonSchema?: any) => {
       attempt++;
       const isQuotaError = error.message?.includes("429") || error.message?.includes("QUOTA");
       if (attempt >= MAX_RETRIES || !isQuotaError) throw error;
-      await new Promise(r => setTimeout(r, 1000 * attempt));
+      // Exponential backoff for quota errors
+      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
     }
   }
 };
