@@ -60,11 +60,10 @@ export default async function handler(request, response) {
     for (const apiKey of shuffledKeys) {
         try {
             const ai = new GoogleGenAI({ apiKey });
-            // Using gemini-3-flash-preview as recommended for text tasks
             const modelId = "gemini-3-flash-preview"; 
 
             const aiConfig = {
-                temperature: 0.4,
+                temperature: 0.7, // Aumentado de 0.4 para 0.7 para incentivar maior verbosidade e fluidez
                 topP: 0.95,
                 topK: 40,
             };
