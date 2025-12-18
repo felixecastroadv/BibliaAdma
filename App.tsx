@@ -1,21 +1,21 @@
 
 import React, { useState, useEffect } from 'react';
-import LoginScreen from './components/auth/LoginScreen';
-import DashboardHome from './components/dashboard/DashboardHome';
-import BibleReader from './components/bible/BibleReader';
-import AdminPanel from './components/admin/AdminPanel';
-import PanoramaView from './components/panorama/PanoramaView';
-import DevotionalView from './components/devotional/DevotionalView';
-import PlansView from './components/plans/PlansView';
-import RankingView from './components/ranking/RankingView';
-import MessagesView from './components/messages/MessagesView';
-import DynamicModuleViewer from './components/dynamic/DynamicModuleViewer';
-import AdminPasswordModal from './components/modals/AdminPasswordModal';
-import Toast from './components/ui/Toast';
-import BottomNav from './components/ui/BottomNav';
-import NetworkStatus from './components/ui/NetworkStatus';
-import { db } from './services/database';
-import { AppConfig, DynamicModule } from './types';
+import LoginScreen from './componentes/auth/LoginScreen';
+import DashboardHome from './componentes/dashboard/DashboardHome';
+import BibleReader from './componentes/bible/BibleReader';
+import AdminPanel from './componentes/admin/AdminPanel';
+import PanoramaView from './componentes/panorama/PanoramaView';
+import DevotionalView from './componentes/devotional/DevotionalView';
+import PlansView from './componentes/plans/PlansView';
+import RankingView from './componentes/ranking/RankingView';
+import MessagesView from './componentes/messages/MessagesView';
+import DynamicModuleViewer from './componentes/dynamic/DynamicModuleViewer';
+import AdminPasswordModal from './componentes/modals/AdminPasswordModal';
+import Toast from './componentes/ui/Toast';
+import BottomNav from './componentes/ui/BottomNav';
+import NetworkStatus from './componentes/ui/NetworkStatus';
+import { db } from './serviços/database';
+import { AppConfig, DynamicModule } from './tipos';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -173,7 +173,7 @@ export default function App() {
         case 'messages':
             return <MessagesView onBack={() => setView('dashboard')} isAdmin={isAdmin} user={user} onShowToast={showToast} />;
         case 'dynamic_module':
-            return activeModule ? <DynamicModuleViewer module={activeModule} onBack={() => setView('dashboard')} /> : <div>Módulo não encontrado</div>;
+            return activeModule ? <DynamicModuleViewer module={activeModule} onBack={() => setView('dashboard')} /> : <div className="p-10 text-center dark:text-white">Módulo não encontrado</div>;
         default:
             return <div className="dark:text-white">Página não encontrada</div>;
     }
