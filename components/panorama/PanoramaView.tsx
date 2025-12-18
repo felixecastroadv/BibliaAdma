@@ -445,13 +445,14 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
            (Fatos históricos, culturais e arqueológicos relevantes).
 
         --- INSTRUÇÕES DE PAGINAÇÃO ---
-        1. Texto de TAMANHO MÉDIO (aprox. 600 palavras por geração).
-        2. Insira <hr class="page-break"> entre os tópicos principais para dividir as páginas.
-        3. Se for CONTINUAÇÃO, não repita o título nem a introdução, siga para o próximo tópico numérico ou continue a explicação detalhada do versículo onde parou.
+        1. SAÍDA: TEXTO PURO FORMATADO. PROIBIDO ENVOLVER O TEXTO EM JSON OU QUALQUER OUTRA ESTRUTURA.
+        2. TAMANHO POR GERAÇÃO: Gere aproximadamente 600 a 800 palavras por resposta.
+        3. PAGINAÇÃO: Insira OBRIGATORIAMENTE a tag <hr class="page-break"> entre cada tópico principal ou a cada 2000-2500 caracteres para que o sistema divida o texto em páginas.
+        4. CONTINUIDADE: Se houver conteúdo anterior, continue EXATAMENTE de onde parou. O objetivo é cobrir 100% do capítulo.
     `;
     
     const instructions = customInstructions ? `\nINSTRUÇÕES EXTRAS: ${customInstructions}` : "";
-    const continuationInstructions = `MODO CONTINUAÇÃO. O texto anterior terminou assim: "...${cleanContext.slice(-400)}...". Continue o raciocínio detalhado. Se já cobriu todo o texto bíblico (até o último versículo), GERE AS SEÇÕES FINAIS (Tipologia e Arqueologia).`;
+    const continuationInstructions = `MODO CONTINUAÇÃO. Você já explicou parte do capítulo. Continue EXATAMENTE de onde parou: "...${cleanContext.slice(-500)}...". Continue a exegese dos versículos seguintes. Se já terminou, gere Tipologia e Arqueologia.`;
 
     let specificPrompt = target === 'student' ? 
         `OBJETIVO: AULA DO ALUNO para ${book} ${chapter}. ${WRITING_STYLE} ${instructions} ${mode === 'continue' ? continuationInstructions : 'INÍCIO DO ESTUDO COMPLETO.'}` : 
@@ -463,12 +464,18 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         
         if (!result || result.trim() === 'undefined' || result.length < 50) throw new Error("A IA retornou vazio.");
         
+        let cleanedResult = result.trim();
+        // Remove possíveis invólucros JSON acidentais
+        if (cleanedResult.startsWith('{"text":')) {
+            try { cleanedResult = JSON.parse(cleanedResult).text; } catch(e){}
+        }
+
         let separator = '';
         if (mode === 'continue' && currentText.length > 0 && !currentText.trim().endsWith('>')) {
             separator = '<hr class="page-break">';
         }
 
-        const newTotal = mode === 'continue' ? (currentText + separator + result) : result;
+        const newTotal = mode === 'continue' ? (currentText + separator + cleanedResult) : cleanedResult;
         const data = {
             book, chapter, study_key: studyKey,
             title: existing.title || `Estudo de ${book} ${chapter}`,
@@ -497,7 +504,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     if (!content) return;
 
     // Cria uma nova lista de páginas removendo a atual
-    // Essa é a maneira mais segura: reconstruir o texto baseando-se no que sobrou
     const updatedPages = pages.filter((_, index) => index !== currentPage);
     
     // Reconstrói o conteúdo total juntando as páginas restantes com o separador padrão de quebra
