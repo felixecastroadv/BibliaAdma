@@ -12,7 +12,7 @@ export const generateContent = async (prompt: string, jsonSchema?: any) => {
       const config: any = {
         temperature: 0.4,
         topP: 0.95,
-        topK: 64, // Updated topK as per standard guidelines
+        topK: 40, 
       };
 
       if (jsonSchema) {
@@ -20,10 +20,10 @@ export const generateContent = async (prompt: string, jsonSchema?: any) => {
         config.responseSchema = jsonSchema;
       }
 
-      // Using gemini-3-flash-preview for efficiency and quality as per task instructions
+      // Using gemini-3-flash-preview for efficiency and quality as per instructions
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: [{ parts: [{ text: prompt }] }],
+        contents: prompt,
         config: config
       });
       
