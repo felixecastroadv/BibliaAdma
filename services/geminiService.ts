@@ -25,9 +25,8 @@ export const generateContent = async (prompt: string, jsonSchema?: any) => {
 
   while (attempt < MAX_RETRIES) {
       try {
-        // Usa a chave do admin se existir, senão usa a chave padrão do sistema
         const apiKey = getStoredApiKey() || process.env.API_KEY;
-        if (!apiKey) throw new Error("Chave de API não configurada no ambiente.");
+        if (!apiKey) throw new Error("Chave de API não configurada.");
 
         const ai = new GoogleGenAI({ apiKey });
         
@@ -43,7 +42,7 @@ export const generateContent = async (prompt: string, jsonSchema?: any) => {
         }
 
         const response = await ai.models.generateContent({
-            model: "gemini-3-flash-preview", // Modelo recomendado pela documentação para tarefas de texto
+            model: "gemini-3-flash-preview",
             contents: [{ parts: [{ text: prompt }] }],
             config: config
         });

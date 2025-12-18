@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Configurações do Supabase fornecidas
+// Configurações do Supabase
 const MANUAL_SUPABASE_URL = "https://nnhatyvrtlbkyfadumqo.supabase.co";
 const MANUAL_SUPABASE_KEY = "sb_publishable_0uZeWa8FXTH-u-ki_NRHsQ_nYALzy9j";
 
@@ -144,7 +144,19 @@ export const db = {
                 await supabase.from('adma_content').upsert({ id: key, collection: 'bible_chapters', data: { id: key, verses } });
             }
         },
-        ChapterMetadata: createHelpers('chapter_metadata'),
+        ChapterMetadata: {
+            ...createHelpers('chapter_metadata'),
+            getCloud: async (key: string) => {
+                const { data } = await supabase.from('adma_content').select('data').eq('collection', 'chapter_metadata').eq('id', key).maybeSingle();
+                return data ? data.data : null;
+            },
+            save: async (data: any) => {
+                const item = { ...data, id: data.chapter_key };
+                localBackup.saveItem('chapter_metadata', item);
+                await supabase.from('adma_content').upsert({ id: item.id.toString(), collection: 'chapter_metadata', data: item });
+                return item;
+            }
+        },
         Commentary: createHelpers('commentaries'),
         Dictionary: createHelpers('dictionaries'),
         PanoramaBiblico: createHelpers('panorama_biblico'),
