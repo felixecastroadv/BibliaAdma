@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 const STORAGE_KEY_API = 'adma_temp_api_key';
@@ -32,22 +33,21 @@ export const generateContent = async (
     try {
         const isPanorama = taskType === 'ebd' || prompt.includes('PANORÂMA') || prompt.includes('MICROSCOPIA');
         const adminKey = getStoredApiKey();
-        
-        // MODELO FIXO: GEMINI 2.5 FLASH (Versão preferida pelo usuário)
         const model = 'gemini-2.5-flash-preview-09-2025';
 
         if (adminKey) {
             const ai = new GoogleGenAI({ apiKey: adminKey });
+            const thinkingBudget = isPanorama ? 24576 : 0;
+            const responseTokens = 8192;
             
             const response = await ai.models.generateContent({
                 model: model,
                 contents: [{ parts: [{ text: prompt }] }],
                 config: {
                     temperature: isPanorama ? 1.0 : 0.7,
-                    maxOutputTokens: 8192,
+                    maxOutputTokens: thinkingBudget + responseTokens,
                     systemInstruction: systemInstruction || "Você é o Professor Michel Felix.",
-                    // Thinking Budget ativado para garantir completude em estudos longos
-                    ...(isPanorama ? { thinkingConfig: { thinkingBudget: 24576 } } : {}),
+                    ...(thinkingBudget > 0 ? { thinkingConfig: { thinkingBudget } } : {}),
                     ...(jsonSchema ? { responseMimeType: "application/json", responseSchema: jsonSchema } : {})
                 }
             });
@@ -55,7 +55,6 @@ export const generateContent = async (
         } 
         
         const controller = new AbortController();
-        // Aumentado para 5 minutos (300s) para permitir que a IA gere até 8 páginas de Microscopia
         const timeoutMs = isPanorama ? 300000 : 120000; 
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -74,7 +73,7 @@ export const generateContent = async (
 
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
-            throw new Error(errData.error || `Erro ${response.status}`);
+            throw new Error(errData.detail || errData.error || `Erro ${response.status}`);
         }
 
         const data = await response.json();
@@ -82,7 +81,7 @@ export const generateContent = async (
 
     } catch (error: any) {
         if (error.name === 'AbortError') {
-            throw new Error("A IA está processando um estudo exaustivo. Por favor, aguarde e use o botão 'Continuar' se necessário.");
+            throw new Error("O tempo de resposta excedeu o limite. O estudo é muito profundo, tente 'Continuar'.");
         }
         throw error; 
     }
