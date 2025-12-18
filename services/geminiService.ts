@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 const STORAGE_KEY_API = 'adma_temp_api_key';
@@ -49,7 +50,7 @@ export const generateContent = async (
                 temperature: 0.5, 
                 topP: 0.95,
                 topK: 40,
-                ...(taskType === 'ebd' ? { thinkingConfig: { thinkingBudget: 4000 } } : {})
+                ...(taskType === 'ebd' ? { thinkingConfig: { thinkingBudget: 16000 } } : {})
             };
 
             if (jsonSchema) {
@@ -68,7 +69,8 @@ export const generateContent = async (
         
         // --- MODO SERVER (Rotação Inteligente) ---
         const controller = new AbortController();
-        const timeoutMs = 180000; 
+        // Aumentado para 300s (5 minutos) para suportar Magnum Opus
+        const timeoutMs = 300000; 
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         const response = await fetch('/api/gemini', {
@@ -124,7 +126,7 @@ export const generateContent = async (
     } catch (error: any) {
         console.error("Gemini Service Error:", error);
         if (error.name === 'AbortError') {
-             throw new Error("O servidor demorou muito procurando uma chave livre. Tente novamente.");
+             throw new Error("O tempo limite de 5 minutos foi atingido. A exegese é muito complexa, tente gerar em partes menores.");
         }
         throw error; 
     }
