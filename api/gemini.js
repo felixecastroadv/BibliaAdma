@@ -1,12 +1,10 @@
 import { GoogleGenAI } from "@google/genai";
 
-// Configuração para Vercel Serverless Functions
 export const config = {
-  maxDuration: 60, // Tempo máximo de execução (segundos)
+  maxDuration: 60,
 };
 
 export default async function handler(request, response) {
-  // Configuração de CORS
   response.setHeader('Access-Control-Allow-Credentials', true);
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -24,9 +22,7 @@ export default async function handler(request, response) {
   }
 
   try {
-    // --- 1. COLETA MASSIVA DE CHAVES (POOL) ---
     const allKeys = [];
-
     if (process.env.API_KEY) allKeys.push(process.env.API_KEY);
     if (process.env.Biblia_ADMA_API) allKeys.push(process.env.Biblia_ADMA_API);
 
@@ -42,11 +38,10 @@ export default async function handler(request, response) {
 
     if (validKeys.length === 0) {
          return response.status(500).json({ 
-             error: 'CONFIGURAÇÃO PENDENTE: Nenhuma Chave de API válida encontrada (API_KEY_1...50).' 
+             error: 'CONFIGURAÇÃO PENDENTE: Nenhuma Chave de API válida encontrada.' 
          });
     }
 
-    // --- 2. PREPARAÇÃO DO BODY ---
     let body = request.body;
     if (typeof body === 'string') {
         try {
@@ -58,29 +53,20 @@ export default async function handler(request, response) {
     const { prompt, schema } = body || {};
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
-    // --- 3. LOOP DE ROTAÇÃO DE CHAVES (FAILOVER INTELIGENTE) ---
     const shuffledKeys = validKeys.sort(() => 0.5 - Math.random());
-    
     let lastError = null;
     let successResponse = null;
 
     for (const apiKey of shuffledKeys) {
         try {
             const ai = new GoogleGenAI({ apiKey });
-            
-            const modelId = "gemini-2.0-flash-exp"; 
+            // Using gemini-3-flash-preview as recommended for text tasks
+            const modelId = "gemini-3-flash-preview"; 
 
-            // Configuração otimizada para velocidade
             const aiConfig = {
                 temperature: 0.4,
                 topP: 0.95,
                 topK: 40,
-                safetySettings: [
-                    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-                    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-                    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-                    { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-                ],
             };
 
             if (schema) {
@@ -95,7 +81,7 @@ export default async function handler(request, response) {
             });
 
             if (!aiResponse.text) {
-                throw new Error(aiResponse.candidates?.[0]?.finishReason || "EMPTY_RESPONSE_RETRY");
+                throw new Error("EMPTY_RESPONSE_RETRY");
             }
 
             successResponse = aiResponse.text;
@@ -104,34 +90,17 @@ export default async function handler(request, response) {
         } catch (error) {
             lastError = error;
             const msg = error.message || '';
-            
-            const isQuotaError = msg.includes('429') || msg.includes('Quota') || msg.includes('Too Many Requests') || msg.includes('Exhausted');
-            const isServerError = msg.includes('503') || msg.includes('500') || msg.includes('Overloaded') || msg.includes('EMPTY_RESPONSE');
-
-            if (isQuotaError || isServerError) {
-                continue; 
-            } else {
-                break; 
-            }
+            const isQuotaError = msg.includes('429') || msg.includes('Quota') || msg.includes('Too Many Requests');
+            if (isQuotaError) continue; else break;
         }
     }
 
-    // --- 4. RESPOSTA FINAL ---
     if (successResponse) {
         return response.status(200).json({ text: successResponse });
     } else {
-        const errorMsg = lastError?.message || 'Erro desconhecido.';
-        
-        if (errorMsg.includes('429') || errorMsg.includes('Quota')) {
-            return response.status(429).json({ 
-                error: 'SISTEMA SOBRECARREGADO: Todas as chaves de API atingiram o limite simultaneamente. Tente novamente em 2 minutos.' 
-            });
-        }
-        
-        return response.status(500).json({ error: `Erro na geração: ${errorMsg}` });
+        return response.status(500).json({ error: lastError?.message || 'Erro na geração.' });
     }
-
   } catch (error) {
-    return response.status(500).json({ error: 'Erro interno crítico no servidor.' });
+    return response.status(500).json({ error: 'Erro interno crítico.' });
   }
 }

@@ -6,13 +6,29 @@
   <title>Bíblia ADMA</title>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Cormorant+Garamond:wght@400;700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --primary-color: #8B0000;
+      --secondary-color: #C5A059;
+    }
+  </style>
   <script>
     tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
-          colors: { primary: '#8B0000', secondary: '#C5A059', background: '#F5F5DC', 'dark-bg': '#121212', 'dark-card': '#1E1E1E' },
-          fontFamily: { cinzel: ['Cinzel', 'serif'], cormorant: ['Cormorant Garamond', 'serif'], montserrat: ['Montserrat', 'sans-serif'] }
+          colors: { 
+            primary: 'var(--primary-color)', 
+            secondary: 'var(--secondary-color)', 
+            background: '#F5F5DC', 
+            'dark-bg': '#121212', 
+            'dark-card': '#1E1E1E' 
+          },
+          fontFamily: { 
+            cinzel: ['Cinzel', 'serif'], 
+            cormorant: ['Cormorant Garamond', 'serif'], 
+            montserrat: ['Montserrat', 'sans-serif'] 
+          }
         }
       }
     }
