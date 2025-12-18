@@ -1,4 +1,3 @@
-
 export interface BibleBook {
   name: string;
   abbrev: string;

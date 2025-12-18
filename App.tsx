@@ -1,193 +1,94 @@
 
 import React, { useState, useEffect } from 'react';
-import LoginScreen from './componentes/auth/LoginScreen';
-import DashboardHome from './componentes/dashboard/DashboardHome';
-import BibleReader from './componentes/bible/BibleReader';
-import AdminPanel from './componentes/admin/AdminPanel';
-import PanoramaView from './componentes/panorama/PanoramaView';
-import DevotionalView from './componentes/devotional/DevotionalView';
-import PlansView from './componentes/plans/PlansView';
-import RankingView from './componentes/ranking/RankingView';
-import MessagesView from './componentes/messages/MessagesView';
-import DynamicModuleViewer from './componentes/dynamic/DynamicModuleViewer';
-import AdminPasswordModal from './componentes/modals/AdminPasswordModal';
-import Toast from './componentes/ui/Toast';
-import BottomNav from './componentes/ui/BottomNav';
-import NetworkStatus from './componentes/ui/NetworkStatus';
-import { db } from './serviços/database';
-import { AppConfig, DynamicModule } from './tipos';
+import LoginScreen from './components/auth/LoginScreen';
+import DashboardHome from './components/dashboard/DashboardHome';
+import BibleReader from './components/bible/BibleReader';
+import AdminPanel from './components/admin/AdminPanel';
+import PanoramaView from './components/panorama/PanoramaView';
+import DevotionalView from './components/devotional/DevotionalView';
+import PlansView from './components/plans/PlansView';
+import RankingView from './components/ranking/RankingView';
+import MessagesView from './components/messages/MessagesView';
+import DynamicModuleViewer from './components/dynamic/DynamicModuleViewer';
+import AdminPasswordModal from './components/modals/AdminPasswordModal';
+import Toast from './components/ui/Toast';
+import BottomNav from './components/ui/BottomNav';
+import { db } from './services/database';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [userProgress, setUserProgress] = useState<any>(null);
-  const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem('adma_theme');
-    if (saved) return saved === 'dark';
-    return window.matchMedia?.('(prefers-color-scheme: dark)').matches || false;
-  });
-  
+  const [darkMode, setDarkMode] = useState(false);
   const [view, setView] = useState('dashboard');
   const [toast, setToast] = useState({ msg: '', type: 'info' as any });
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [navParams, setNavParams] = useState<any>({});
-  const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
-  const [activeModule, setActiveModule] = useState<DynamicModule | null>(null);
+  const [appConfig, setAppConfig] = useState<any>(null);
+  const [activeModule, setActiveModule] = useState<any>(null);
 
   useEffect(() => {
-    const loadConfig = async () => {
-        try {
-            const cfg = await db.entities.AppConfig.get();
-            if (cfg) {
-                setAppConfig(cfg);
-                if (cfg.theme) {
-                    document.documentElement.style.setProperty('--primary-color', cfg.theme.primaryColor);
-                    document.documentElement.style.setProperty('--secondary-color', cfg.theme.secondaryColor);
-                }
-            }
-        } catch(e) {}
-    };
-    loadConfig();
-
     const saved = localStorage.getItem('adma_user');
     if (saved) {
-        const u = JSON.parse(saved);
-        setUser(u);
-        setIsAuthenticated(true);
-        loadProgress(u.user_email, u.user_name);
+      const u = JSON.parse(saved);
+      setUser(u);
+      setIsAuthenticated(true);
+      loadProgress(u.user_email, u.user_name);
     }
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) setDarkMode(true);
   }, []);
 
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('adma_theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('adma_theme', 'light');
-    }
+    if (darkMode) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
   }, [darkMode]);
 
-  const loadProgress = async (email: string, nameFallback?: string) => {
+  const loadProgress = async (email: string, name: string) => {
     const p = await db.entities.ReadingProgress.filter({ user_email: email });
     if (p.length) setUserProgress(p[0]);
     else {
-        const displayName = nameFallback || user?.user_name || email;
-        const newP = await db.entities.ReadingProgress.create({ 
-            user_email: email, 
-            user_name: displayName, 
-            chapters_read: [], 
-            total_chapters: 0,
-            active_plans: [],
-            ebd_read: [],
-            total_ebd_read: 0
-        });
-        setUserProgress(newP);
+      const newP = await db.entities.ReadingProgress.create({ user_email: email, user_name: name, chapters_read: [], total_chapters: 0 });
+      setUserProgress(newP);
     }
   };
 
   const handleLogin = (first: string, last: string) => {
-    const fullName = `${first} ${last}`;
-    const email = `${first.toLowerCase()}.${last.toLowerCase()}@adma.local`;
-    const u = { user_name: fullName, user_email: email };
+    const u = { user_name: `${first} ${last}`, user_email: `${first.toLowerCase()}.${last.toLowerCase()}@adma.local` };
     localStorage.setItem('adma_user', JSON.stringify(u));
     setUser(u);
     setIsAuthenticated(true);
-    loadProgress(email, fullName);
+    loadProgress(u.user_email, u.user_name);
   };
 
-  const handleLogout = () => {
-      if(window.confirm("Deseja realmente sair?")) {
-          localStorage.removeItem('adma_user');
-          setUser(null);
-          setIsAuthenticated(false);
-          setIsAdmin(false);
-          setView('dashboard');
-      }
-  };
-
-  const showToast = (msg: string, type: 'success'|'error'|'info') => {
+  const showToast = (msg: string, type: any) => {
     setToast({ msg, type });
-    setTimeout(() => setToast({ msg: '', type: 'info' }), 5000);
-  };
-
-  const toggleDarkMode = () => setDarkMode(!darkMode);
-
-  const handleNavigate = (v: string, params?: any) => {
-      if (v.startsWith('module_')) {
-          if (params?.module) {
-              setActiveModule(params.module);
-              setView('dynamic_module');
-          }
-          return;
-      }
-      setView(v);
-      if(params) setNavParams(params);
-      window.scrollTo(0, 0);
+    setTimeout(() => setToast({ msg: '', type: 'info' }), 3000);
   };
 
   if (!isAuthenticated) return <LoginScreen onLogin={handleLogin} loading={false} />;
 
   const renderView = () => {
     switch(view) {
-        case 'dashboard':
-            return <DashboardHome 
-                onNavigate={handleNavigate} 
-                isAdmin={isAdmin} 
-                onEnableAdmin={() => setShowAdminModal(true)}
-                user={user}
-                userProgress={userProgress}
-                darkMode={darkMode}
-                toggleDarkMode={toggleDarkMode}
-                onShowToast={showToast}
-                onLogout={handleLogout}
-                appConfig={appConfig}
-            />;
-        case 'reader':
-            return <BibleReader 
-                onBack={() => setView('dashboard')} 
-                isAdmin={isAdmin}
-                onShowToast={showToast}
-                initialBook={navParams.book}
-                initialChapter={navParams.chapter}
-                userProgress={userProgress}
-                onProgressUpdate={setUserProgress}
-            />;
-        case 'admin':
-            return <AdminPanel onBack={() => setView('dashboard')} onShowToast={showToast} />;
-        case 'panorama':
-            return <PanoramaView 
-                onBack={() => setView('dashboard')} 
-                isAdmin={isAdmin} 
-                onShowToast={showToast}
-                userProgress={userProgress} 
-                onProgressUpdate={setUserProgress} 
-            />;
-        case 'devotional':
-            return <DevotionalView onBack={() => setView('dashboard')} onShowToast={showToast} isAdmin={isAdmin} />;
-        case 'plans':
-            return <PlansView onBack={() => setView('dashboard')} onNavigate={handleNavigate} userProgress={userProgress} />;
-        case 'ranking':
-            return <RankingView onBack={() => setView('dashboard')} />;
-        case 'messages':
-            return <MessagesView onBack={() => setView('dashboard')} isAdmin={isAdmin} user={user} onShowToast={showToast} />;
-        case 'dynamic_module':
-            return activeModule ? <DynamicModuleViewer module={activeModule} onBack={() => setView('dashboard')} /> : <div className="p-10 text-center dark:text-white">Módulo não encontrado</div>;
-        default:
-            return <div className="dark:text-white">Página não encontrada</div>;
+      case 'dashboard': return <DashboardHome onNavigate={(v: any, p: any) => { setView(v); if(p) setNavParams(p); if(p?.module) setActiveModule(p.module); }} isAdmin={isAdmin} onEnableAdmin={() => setShowAdminModal(true)} user={user} userProgress={userProgress} darkMode={darkMode} toggleDarkMode={() => setDarkMode(!darkMode)} onShowToast={showToast} onLogout={() => { localStorage.removeItem('adma_user'); window.location.reload(); }} appConfig={appConfig} />;
+      case 'reader': return <BibleReader onBack={() => setView('dashboard')} isAdmin={isAdmin} onShowToast={showToast} initialBook={navParams.book} initialChapter={navParams.chapter} userProgress={userProgress} onProgressUpdate={setUserProgress} />;
+      case 'admin': return <AdminPanel onBack={() => setView('dashboard')} onShowToast={showToast} />;
+      case 'panorama': return <PanoramaView onBack={() => setView('dashboard')} />;
+      case 'devotional': return <DevotionalView onBack={() => setView('dashboard')} />;
+      case 'plans': return <PlansView onBack={() => setView('dashboard')} />;
+      case 'ranking': return <RankingView onBack={() => setView('dashboard')} />;
+      case 'messages': return <MessagesView onBack={() => setView('dashboard')} />;
+      case 'dynamic_module': return <DynamicModuleViewer onBack={() => setView('dashboard')} />;
+      default: return <div>Página não encontrada</div>;
     }
   };
 
   return (
-    <div className="font-sans text-gray-900 dark:text-gray-100 min-h-screen bg-background dark:bg-dark-bg transition-colors duration-300 flex flex-col">
-        <div className={`flex-1 ${isAuthenticated ? 'pb-20' : ''}`}>
-            {renderView()}
-        </div>
-        {isAuthenticated && view !== 'dynamic_module' && <BottomNav currentView={view} onNavigate={handleNavigate} />}
-        <AdminPasswordModal isOpen={showAdminModal} onClose={() => setShowAdminModal(false)} onSuccess={() => setIsAdmin(true)} />
-        <NetworkStatus />
-        {toast.msg && <Toast message={toast.msg} type={toast.type} onClose={() => setToast({ ...toast, msg: '' })} />}
+    <div className="min-h-screen bg-background dark:bg-dark-bg text-gray-900 dark:text-gray-100 flex flex-col">
+      <div className="flex-1 pb-20">{renderView()}</div>
+      {view !== 'dynamic_module' && <BottomNav currentView={view} onNavigate={setView} />}
+      <AdminPasswordModal isOpen={showAdminModal} onClose={() => setShowAdminModal(false)} onSuccess={() => { setIsAdmin(true); setShowAdminModal(false); showToast('Admin Ativado!', 'success'); }} />
+      {toast.msg && <Toast message={toast.msg} type={toast.type} onClose={() => setToast({ msg: '', type: 'info' })} />}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ShieldCheck, RefreshCw, Loader2, Upload, Download, Server, HardDrive, Flag, CheckCircle, XCircle, MessageSquare, Languages, GraduationCap, Calendar, CloudUpload, Wand2, StopCircle, Trash2, AlertTriangle, Save, Lock, Unlock, KeyRound, Search, Cloud, Activity, Zap, Battery } from 'lucide-react';
 import { generateContent } from '../../services/geminiService';
@@ -59,7 +60,9 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
 
   const loadAppConfig = async () => {
     try {
-        const cfg = await db.entities.AppConfig.get();
+        // Fix: AppConfig is a singleton, use list() to get the first one instead of get() without ID
+        const configs = await db.entities.AppConfig.list();
+        const cfg = configs[0] || null;
         setAppConfig(cfg);
     } catch(e) {}
   };
@@ -67,7 +70,8 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   const checkDbConnection = async () => {
     setDbStatus('checking');
     try {
-        await db.entities.ReadingProgress.list('chapters', 1);
+        // Fix: list() helper takes 0 arguments in createHelpers implementation
+        await db.entities.ReadingProgress.list();
         setDbStatus('connected');
     } catch (e) {
         setDbStatus('error');
@@ -108,7 +112,8 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   const loadUsers = async () => {
       setLoadingUsers(true);
       try {
-          const data = await db.entities.ReadingProgress.list('chapters', 1000); 
+          // Fix: list() helper takes 0 arguments in createHelpers implementation
+          const data = await db.entities.ReadingProgress.list(); 
           setUsersList(data || []);
       } catch(e) {
           onShowToast("Erro ao carregar usuários.", "error");
@@ -601,7 +606,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       addLog(`Gerando devocional para ${displayDate}...`);
       try {
          const existing = await db.entities.Devotional.filter({ date: dateStr });
-         if(existing.length > 0) await db.entities.Devotional.delete(existing[0].id!);
+         if(existing.length > 0) await db.entities.Devotional.delete(existing[0].id);
          const prompt = `ATUE COMO: Michel Felix. TAREFA: Devocional para ${displayDate}. JSON FORMAT: { title, reference, verse_text, body (com \\n\\n), prayer }.`;
          const schema = {
             type: GenType.OBJECT,

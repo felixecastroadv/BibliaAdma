@@ -19,7 +19,6 @@ export default function AppBuilder({ onBack, onShowToast, currentConfig }: AppBu
         { role: 'model', text: 'Olá! Sou o Construtor do ADMA. Posso alterar cores, ativar/desativar funções ou gerenciar módulos (Criar/Excluir Quizzes e Páginas). O que deseja fazer?' }
     ]);
 
-    // Carrega módulos existentes para que a IA saiba o que pode ser deletado
     useEffect(() => {
         loadModules();
     }, []);
@@ -39,7 +38,6 @@ export default function AppBuilder({ onBack, onShowToast, currentConfig }: AppBu
         setInput('');
         setLoading(true);
 
-        // Define schema para a resposta da IA
         const schema = {
             type: GenType.OBJECT,
             properties: {
@@ -70,8 +68,8 @@ export default function AppBuilder({ onBack, onShowToast, currentConfig }: AppBu
                         data: { 
                             type: GenType.OBJECT,
                             properties: {
-                                html: { type: GenType.STRING, description: "HTML content for pages" },
-                                url: { type: GenType.STRING, description: "URL for links" },
+                                html: { type: GenType.STRING },
+                                url: { type: GenType.STRING },
                                 questions: {
                                     type: GenType.ARRAY,
                                     items: {
@@ -92,31 +90,15 @@ export default function AppBuilder({ onBack, onShowToast, currentConfig }: AppBu
 
         const prompt = `
             ATUE COMO: Um Arquiteto de Software e Gerenciador do App "Bíblia ADMA".
-            
-            --- ESTADO ATUAL ---
             CONFIGURAÇÃO GLOBAL: ${JSON.stringify(currentConfig || {})}
-            MÓDULOS DINÂMICOS EXISTENTES (ID e Título): ${JSON.stringify(existingModules.map(m => ({ id: m.id, title: m.title, type: m.type })))}
-            
-            --- COMANDO DO USUÁRIO ---
-            "${userMsg}"
-            
-            --- OBJETIVO ---
-            Interprete o pedido e gere uma ação estruturada (JSON).
-            
-            --- REGRAS DE AÇÃO ---
-            1. EXCLUIR MÓDULO: Se o usuário pedir para remover/excluir/apagar uma funcionalidade que está na lista de 'MÓDULOS DINÂMICOS EXISTENTES', use 'actionType': 'delete_module' e preencha 'moduleIdToDelete' com o ID correto encontrado na lista.
-            2. DESATIVAR FUNÇÃO NATIVA: Se o usuário pedir para remover uma função nativa (Ranking, Devocional, Planos, Mensagens/Anúncios), use 'update_config' e defina a flag correspondente (ex: enableMessages: false).
-            3. CRIAR MÓDULO: Se for criar Quiz ou Página, use 'create_module' e preencha 'moduleData'.
-            4. ALTERAR CONFIG: Se for mudança de cor ou nome do app, use 'update_config'.
-            
-            Retorne JSON estritamente conforme o schema.
+            MÓDULOS DINÂMICOS EXISTENTES: ${JSON.stringify(existingModules.map(m => ({ id: m.id, title: m.title, type: m.type })))}
+            COMANDO: "${userMsg}"
         `;
 
         try {
             const res = await generateContent(prompt, schema);
             
             if (res.actionType === 'update_config' && res.configChanges) {
-                // Atualiza Config Global
                 const newConfig = {
                     ...currentConfig,
                     theme: {
@@ -137,26 +119,23 @@ export default function AppBuilder({ onBack, onShowToast, currentConfig }: AppBu
                          ...(res.configChanges.requirePasswordLogin !== undefined ? { requirePasswordLogin: res.configChanges.requirePasswordLogin } : {})
                     }
                 };
-                
                 await db.entities.AppConfig.save(newConfig);
-                onShowToast('Configurações atualizadas! Recarregue para ver.', 'success');
+                onShowToast('Configurações atualizadas!', 'success');
             } 
             else if (res.actionType === 'create_module' && res.moduleData) {
-                // Cria Módulo Dinâmico
                 await db.entities.DynamicModules.create(res.moduleData);
-                await loadModules(); // Recarrega lista local
+                await loadModules();
                 onShowToast(`Módulo "${res.moduleData.title}" criado!`, 'success');
             }
             else if (res.actionType === 'delete_module' && res.moduleIdToDelete) {
-                // Exclui Módulo Dinâmico (IMPLEMENTAÇÃO CORRIGIDA)
                 await db.entities.DynamicModules.delete(res.moduleIdToDelete);
-                await loadModules(); // Recarrega lista local para a IA saber que sumiu
-                onShowToast('Funcionalidade excluída com sucesso!', 'success');
+                await loadModules();
+                onShowToast('Funcionalidade excluída!', 'success');
             }
 
-            setMessages(prev => [...prev, { role: 'model', text: res.replyMessage || "Operação realizada com sucesso." }]);
+            setMessages(prev => [...prev, { role: 'model', text: res.replyMessage || "Operação realizada." }]);
 
-        } catch (e: any) {
+        } catch (e) {
             setMessages(prev => [...prev, { role: 'model', text: `Erro: ${e.message}` }]);
         } finally {
             setLoading(false);
@@ -170,7 +149,7 @@ export default function AppBuilder({ onBack, onShowToast, currentConfig }: AppBu
                     <Wand2 className="w-5 h-5 text-[#C5A059]" />
                     <h2 className="font-cinzel font-bold">ADMA Builder AI</h2>
                 </div>
-                <button onClick={onBack} className="text-xs underline text-gray-400 hover:text-white">Fechar</button>
+                <button onClick={onBack} className="text-xs underline">Fechar</button>
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -191,19 +170,19 @@ export default function AppBuilder({ onBack, onShowToast, currentConfig }: AppBu
                 )}
             </div>
 
-            <div className="p-4 bg-white dark:bg-[#1E1E1E] border-t border-gray-200 dark:border-gray-700 flex gap-2">
+            <div className="p-4 bg-white dark:bg-[#1E1E1E] border-t flex gap-2">
                 <input 
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleSend()}
-                    placeholder='Ex: "Excluir Gerenciar Anúncios" ou "Mude a cor para Roxo"'
-                    className="flex-1 p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-[#121212] dark:text-white focus:ring-2 focus:ring-[#C5A059] outline-none"
+                    placeholder='Ex: "Mude a cor para Azul"'
+                    className="flex-1 p-3 rounded-lg border dark:bg-[#121212] dark:text-white outline-none"
                     disabled={loading}
                 />
                 <button 
                     onClick={handleSend}
                     disabled={loading || !input.trim()}
-                    className="bg-[#8B0000] text-white p-3 rounded-lg hover:bg-[#600018] disabled:opacity-50"
+                    className="bg-[#8B0000] text-white p-3 rounded-lg disabled:opacity-50"
                 >
                     <Send className="w-5 h-5" />
                 </button>

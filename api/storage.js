@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
 // --- CONFIGURAÇÃO MANUAL (FALLBACK) ---
-// Se as variáveis de ambiente falharem, o sistema usará estes dados automaticamente.
 const MANUAL_SUPABASE_URL = "https://nnhatyvrtlbkyfadumqo.supabase.co";
 const MANUAL_SUPABASE_KEY = "sb_publishable_0uZeWa8FXTH-u-ki_NRHsQ_nYALzy9j";
 
@@ -29,7 +28,6 @@ export default async function handler(request, response) {
                         MANUAL_SUPABASE_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
-        console.error("Supabase credentials missing.");
         return response.status(500).json({ 
             error: "BANCO DE DADOS DESCONECTADO: As credenciais do Supabase não foram encontradas." 
         });
@@ -42,9 +40,7 @@ export default async function handler(request, response) {
     // Health Check
     if (method === 'POST' && body.action === 'ping') {
         const { error } = await supabase.from('adma_content').select('id').limit(1);
-        
         if (error) {
-             console.error("Supabase Ping Error:", error);
              if (error.message.includes('relation "adma_content" does not exist') || error.code === '42P01') {
                  return response.status(500).json({ error: 'TABELA INEXISTENTE: A conexão funcionou, mas a tabela "adma_content" não existe. Crie-a no SQL Editor do Supabase.' });
              }
@@ -53,7 +49,7 @@ export default async function handler(request, response) {
         return response.status(200).json({ status: 'ok', message: 'Conectado ao Supabase com sucesso.' });
     }
 
-    // LIST (Busca tudo de uma coleção)
+    // LIST
     if (method === 'POST' && body.action === 'list') {
         const { collection } = body;
         const { data, error } = await supabase
@@ -66,7 +62,7 @@ export default async function handler(request, response) {
         return response.status(200).json(cleanList);
     }
 
-    // GET (Busca um item específico por ID - NOVO)
+    // GET
     if (method === 'POST' && body.action === 'get') {
         const { collection, id } = body;
         const { data, error } = await supabase
@@ -74,13 +70,13 @@ export default async function handler(request, response) {
             .select('data')
             .eq('collection', collection)
             .eq('id', id.toString())
-            .maybeSingle(); // Usa maybeSingle para não estourar erro se não achar
+            .maybeSingle();
 
         if (error) throw error;
         return response.status(200).json(data ? data.data : null);
     }
 
-    // SAVE (Cria ou Atualiza)
+    // SAVE
     if (method === 'POST' && body.action === 'save') {
         const { collection, item } = body;
         if (!item.id) item.id = Date.now().toString();
@@ -112,7 +108,6 @@ export default async function handler(request, response) {
     return response.status(400).json({ error: 'Ação desconhecida' });
 
   } catch (error) {
-    console.error("Supabase Handler Error:", error);
     return response.status(500).json({ error: error.message || "Erro interno no servidor de banco de dados" });
   }
 }
