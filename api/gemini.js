@@ -26,9 +26,12 @@ export default async function handler(request, response) {
   try {
     // --- 1. COLETA E ORDENAÇÃO SEQUENCIAL DE CHAVES ---
     const allKeys = [];
+
+    // Prioridade 0: Chaves principais
     if (process.env.API_KEY) allKeys.push({ k: process.env.API_KEY, i: 0 });
     if (process.env.Biblia_ADMA_API) allKeys.push({ k: process.env.Biblia_ADMA_API, i: 0.1 });
 
+    // Prioridade 1 a 50: Chaves numeradas
     for (let i = 1; i <= 50; i++) {
         const keyName = `API_KEY_${i}`;
         const val = process.env[keyName];
@@ -38,34 +41,39 @@ export default async function handler(request, response) {
     }
 
     if (allKeys.length === 0) {
-         return response.status(500).json({ error: 'Nenhuma Chave de API configurada.' });
+         return response.status(500).json({ 
+             error: 'CONFIGURAÇÃO PENDENTE: Nenhuma Chave de API válida encontrada.' 
+         });
     }
 
+    // ORDENAÇÃO: Garante que API_KEY_1 venha antes de API_KEY_2, etc.
     const sortedKeys = allKeys.sort((a, b) => a.i - b.i).map(item => item.k);
 
     // --- 2. PREPARAÇÃO DO BODY ---
     let body = request.body;
     if (typeof body === 'string') {
-        try { body = JSON.parse(body); } catch (e) { return response.status(400).json({ error: 'Invalid JSON body' }); }
+        try {
+            body = JSON.parse(body);
+        } catch (e) {
+            return response.status(400).json({ error: 'Invalid JSON body' });
+        }
     }
-    const { prompt, schema, isLongOutput, taskType } = body || {};
+    const { prompt, schema, taskType } = body || {};
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
-    // --- 3. SELEÇÃO DE MODELO E CONFIG ---
-    // EBD e Comentários exigem o PRO para maior profundidade e seguimento de instruções
-    const isHighQuality = taskType === 'ebd' || taskType === 'commentary';
-    const modelId = isHighQuality ? "gemini-3-pro-preview" : "gemini-3-flash-preview";
-    
+    // --- 3. LOOP DE TENTATIVA SEQUENCIAL ---
     let lastError = null;
     let successResponse = null;
+    
+    // Tenta no máximo 15 chaves em sequência
     const keysToTry = sortedKeys.slice(0, 15);
 
     for (const apiKey of keysToTry) {
         try {
-            const ai = new GoogleGenAI({ apiKey });
+            const ai = new GoogleGenAI({ apiKey: apiKey });
             
             const aiConfig = {
-                temperature: isHighQuality ? 0.8 : 0.5, 
+                temperature: 0.5, 
                 topP: 0.95,
                 topK: 40,
                 maxOutputTokens: 8192,
@@ -75,48 +83,36 @@ export default async function handler(request, response) {
                     { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
                 ],
+                // Ativa o pensamento para tarefas de exegese profunda (EBD) no 2.5 Flash
+                ...(taskType === 'ebd' ? { thinkingConfig: { thinkingBudget: 4000 } } : {})
             };
-
-            // Adiciona Thinking Budget para tarefas complexas
-            if (isHighQuality) {
-                aiConfig.thinkingConfig = { thinkingBudget: 4000 };
-            }
 
             if (schema) {
                 aiConfig.responseMimeType = "application/json";
                 aiConfig.responseSchema = schema;
             }
 
-            // MODO STREAMING PARA CONTEÚDOS LONGOS (EBD)
-            if (isLongOutput && !schema) {
-                const streamResponse = await ai.models.generateContentStream({
-                    model: modelId,
-                    contents: [{ parts: [{ text: prompt }] }],
-                    config: aiConfig
-                });
-
-                response.setHeader('Content-Type', 'text/plain; charset=utf-8');
-                for await (const chunk of streamResponse) {
-                    if (chunk.text) response.write(chunk.text);
-                }
-                return response.end();
-            }
-
+            // MODELO DEFINIDO PELO USUÁRIO: GEMINI 2.5 FLASH
             const aiResponse = await ai.models.generateContent({
-                model: modelId,
+                model: "gemini-2.5-flash",
                 contents: [{ parts: [{ text: prompt }] }],
                 config: aiConfig
             });
 
-            if (!aiResponse.text) throw new Error("Resposta vazia");
+            if (!aiResponse.text) {
+                throw new Error("Resposta vazia da IA (Retry)");
+            }
 
             successResponse = aiResponse.text;
-            break; 
+            break; // SUCESSO!
 
         } catch (error) {
             lastError = error;
             const msg = error.message || '';
-            if (msg.includes('400')) return response.status(400).json({ error: `Erro de formato: ${msg}` });
+            if (msg.includes('400') || msg.includes('INVALID_ARGUMENT')) {
+                return response.status(400).json({ error: `Erro no formato: ${msg}` });
+            }
+            // Pausa curta para respiração do servidor
             await new Promise(resolve => setTimeout(resolve, 200));
         }
     }
@@ -124,10 +120,15 @@ export default async function handler(request, response) {
     if (successResponse) {
         return response.status(200).json({ text: successResponse });
     } else {
-        return response.status(500).json({ error: lastError?.message || 'Falha na geração.' });
+        const errorMsg = lastError?.message || 'Erro desconhecido.';
+        if (errorMsg.includes('429') || errorMsg.includes('Quota')) {
+            return response.status(429).json({ 
+                error: 'SISTEMA OCUPADO: Chaves esgotadas temporariamente. Tente em instantes.' 
+            });
+        }
+        return response.status(500).json({ error: `Falha na geração: ${errorMsg}` });
     }
-
   } catch (error) {
-    return response.status(500).json({ error: 'Erro interno crítico.' });
+    return response.status(500).json({ error: 'Erro interno crítico no servidor.' });
   }
 }

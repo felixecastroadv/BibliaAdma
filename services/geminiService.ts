@@ -46,9 +46,10 @@ export const generateContent = async (
         if (adminKey) {
             const ai = new GoogleGenAI({ apiKey: adminKey });
             const config: any = {
-                temperature: 0.9, 
+                temperature: 0.5, 
                 topP: 0.95,
                 topK: 40,
+                ...(taskType === 'ebd' ? { thinkingConfig: { thinkingBudget: 4000 } } : {})
             };
 
             if (jsonSchema) {
@@ -57,7 +58,7 @@ export const generateContent = async (
             }
 
             const response = await ai.models.generateContent({
-                model: "gemini-3-flash-preview",
+                model: "gemini-2.5-flash",
                 contents: [{ parts: [{ text: prompt }] }],
                 config: config
             });
@@ -67,7 +68,6 @@ export const generateContent = async (
         
         // --- MODO SERVER (Rotação Inteligente) ---
         const controller = new AbortController();
-        // Aumentado para 180s (3 minutos) para dar tempo de rodar várias chaves
         const timeoutMs = 180000; 
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -123,11 +123,9 @@ export const generateContent = async (
 
     } catch (error: any) {
         console.error("Gemini Service Error:", error);
-        
         if (error.name === 'AbortError') {
              throw new Error("O servidor demorou muito procurando uma chave livre. Tente novamente.");
         }
-        
         throw error; 
     }
 };
