@@ -1,7 +1,7 @@
 {
-  "name": "biblia-adma",
+  "name": "bíblia-adma---prof.-michel-felix",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,17 +9,20 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/genai": "^1.33.0",
     "react": "^19.2.3",
-    "react-dom": "^19.2.3",
-    "lucide-react": "^0.562.0",
-    "framer-motion": "^12.23.26",
+    "@supabase/supabase-js": "^2.88.0",
     "date-fns": "^4.1.0",
-    "@google/genai": "^1.34.0",
-    "@supabase/supabase-js": "^2.48.1"
+    "framer-motion": "^12.23.26",
+    "lucide-react": "^0.561.0",
+    "react-dom": "^19.2.3",
+    "vite": "^7.3.0",
+    "@vitejs/plugin-react": "^5.1.2"
   },
   "devDependencies": {
-    "vite": "^6.0.0",
-    "@vitejs/plugin-react": "^4.3.4",
-    "typescript": "^5.0.0"
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
   }
 }
