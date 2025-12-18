@@ -50,29 +50,56 @@ export default async function handler(request, response) {
             return response.status(400).json({ error: 'Invalid JSON body' });
         }
     }
-    const { prompt, schema } = body || {};
+    const { prompt, schema, isLongOutput, taskType } = body || {};
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
     const shuffledKeys = validKeys.sort(() => 0.5 - Math.random());
     let lastError = null;
-    let successResponse = null;
+
+    // Determine model and thinking config based on task complexity
+    const isComplex = taskType === 'ebd' || taskType === 'commentary';
+    const modelId = isComplex ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
 
     for (const apiKey of shuffledKeys) {
         try {
             const ai = new GoogleGenAI({ apiKey });
-            const modelId = "gemini-3-flash-preview"; 
-
+            
             const aiConfig = {
-                temperature: 0.7, // Aumentado de 0.4 para 0.7 para incentivar maior verbosidade e fluidez
+                temperature: isComplex ? 0.8 : 0.7,
                 topP: 0.95,
                 topK: 40,
             };
+
+            // Use thinking budget for complex theological exegesis to ensure depth
+            if (isComplex) {
+                aiConfig.thinkingConfig = { thinkingBudget: 4000 };
+            }
 
             if (schema) {
                 aiConfig.responseMimeType = "application/json";
                 aiConfig.responseSchema = schema;
             }
 
+            // TRUE STREAMING FOR LONG OUTPUTS
+            if (isLongOutput && !schema) {
+                const streamResponse = await ai.models.generateContentStream({
+                    model: modelId,
+                    contents: [{ parts: [{ text: prompt }] }],
+                    config: aiConfig
+                });
+
+                response.setHeader('Content-Type', 'text/plain; charset=utf-8');
+                response.setHeader('Transfer-Encoding', 'chunked');
+
+                for await (const chunk of streamResponse) {
+                    if (chunk.text) {
+                        response.write(chunk.text);
+                    }
+                }
+                return response.end();
+            }
+
+            // STANDARD JSON RESPONSE
             const aiResponse = await ai.models.generateContent({
                 model: modelId,
                 contents: [{ parts: [{ text: prompt }] }],
@@ -83,8 +110,7 @@ export default async function handler(request, response) {
                 throw new Error("EMPTY_RESPONSE_RETRY");
             }
 
-            successResponse = aiResponse.text;
-            break; 
+            return response.status(200).json({ text: aiResponse.text });
 
         } catch (error) {
             lastError = error;
@@ -94,11 +120,7 @@ export default async function handler(request, response) {
         }
     }
 
-    if (successResponse) {
-        return response.status(200).json({ text: successResponse });
-    } else {
-        return response.status(500).json({ error: lastError?.message || 'Erro na geração.' });
-    }
+    return response.status(500).json({ error: lastError?.message || 'Erro na geração.' });
   } catch (error) {
     return response.status(500).json({ error: 'Erro interno crítico.' });
   }
