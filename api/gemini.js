@@ -63,8 +63,8 @@ export default async function handler(request, response) {
         try {
             const ai = new GoogleGenAI({ apiKey: apiKey });
             
-            // CONFORME SOLICITADO: Uso exclusivo do Gemini 2.5 Flash para todas as tarefas.
-            const modelToUse = 'gemini-2.5-flash';
+            // RESTAURAÇÃO: Uso exclusivo do Gemini 3 Flash (Versão gratuita/padrão)
+            const modelToUse = 'gemini-3-flash-preview';
 
             const aiConfig = {
                 temperature: 0.5, 
@@ -76,8 +76,8 @@ export default async function handler(request, response) {
                     { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
                 ],
-                // Thinking Budget de 24k para o modelo Flash (Garante raciocínio na versão gratuita)
-                ...(taskType === 'ebd' ? { thinkingConfig: { thinkingBudget: 24576 } } : {})
+                // Thinking Budget de 24k para o modelo Flash série 3 (Garante raciocínio na versão gratuita)
+                ...(taskType === 'ebd' || taskType === 'commentary' ? { thinkingConfig: { thinkingBudget: 24576 } } : {})
             };
 
             if (schema) {
@@ -112,7 +112,7 @@ export default async function handler(request, response) {
         return response.status(200).json({ text: successResponse });
     } else {
         const errorMsg = lastError?.message || 'Erro desconhecido.';
-        if (errorMsg.includes('429') || errorMsg.includes('Quota')) {
+        if (errorMsg.includes('429') || errorMsg.includes('Quota') || errorMsg.includes('Exhausted')) {
             return response.status(429).json({ 
                 error: 'SISTEMA OCUPADO: Chaves esgotadas temporariamente. Tente em instantes.' 
             });
