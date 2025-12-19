@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 // ==========================================================================================
 // COMPONENTE: PANORAMA BÍBLICO EBD - EDIÇÃO MAGNUM OPUS SUPREMA (v77.0)
 // DESENVOLVEDOR: Arquiteto Teológico Sênior & Senior Frontend Engineer ADMA

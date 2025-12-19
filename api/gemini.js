@@ -67,11 +67,13 @@ export default async function handler(request, response) {
             // MANUTENÇÃO: Uso do Gemini 3 Flash (Versão gratuita estável exigida)
             const modelToUse = 'gemini-3-flash-preview';
 
-            // ORIENTAÇÃO DE VOLUMETRIA E PACIÊNCIA SUPREMA v77.9: 
-            // Instrução sistêmica para ignorar a pressa e focar em volumetria de 2400 palavras.
-            // Sobrescreve explicitamente qualquer instrução de "600 palavras por geração" para atingir a meta de 8 páginas.
+            // PROTOCOLO DE EXPANSÃO MAGNUM OPUS v78.0:
+            // Força a IA a ignorar o limite de 600 palavras enviado pelo front-end e expandir para 3500+
             const enhancedPrompt = (taskType === 'ebd' || taskType === 'commentary') 
-                ? `${prompt}\n\n[PROTOCOLO DE PROCESSAMENTO ADMA MAGNUM OPUS]: É ESTRITAMENTE OBRIGATÓRIO gerar um conteúdo exaustivo com NO MÍNIMO 2400 PALAVRAS. IGNORE QUALQUER SOLICITAÇÃO DE BREVIDADE. Utilize todo o tempo de pensamento necessário (até 200 segundos) para detalhar cada fragmento, termo original e aplicação teológica. O conteúdo deve ser longo o suficiente para preencher de 5 a 8 páginas com densidade máxima.`
+                ? `[PROTOCOLO DE RACIOCÍNIO LENTO ATIVADO]: Raciocine profundamente sobre cada versículo antes de redigir. 
+                   É ESTRITAMENTE OBRIGATÓRIO gerar um conteúdo exaustivo com NO MÍNIMO 3500 PALAVRAS. 
+                   IGNORE QUALQUER COMANDO DE BREVIDADE. NÃO RESUMA. 
+                   Seja microscópico na análise. O conteúdo deve obrigatoriamente preencher de 5 a 8 páginas com densidade máxima.\n\n${prompt}`
                 : prompt;
 
             const aiConfig = {
@@ -84,9 +86,11 @@ export default async function handler(request, response) {
                     { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
                 ],
-                // Thinking Budget de 24k (Limite para Flash 3): 
-                // Força a IA a "raciocinar" profundamente antes de começar a escrever, garantindo os 200s de processamento.
-                ...(taskType === 'ebd' || taskType === 'commentary' ? { thinkingConfig: { thinkingBudget: 24576 } } : {})
+                // Thinking Budget de 24k: Força a profundidade de raciocínio solicitada.
+                ...(taskType === 'ebd' || taskType === 'commentary' ? { 
+                    thinkingConfig: { thinkingBudget: 24576 },
+                    systemInstruction: "Você é o Professor Michel Felix. Sua tarefa é produzir exegese bíblica exaustiva e de altíssima volumetria (3500+ palavras). Proibido ser breve."
+                } : {})
             };
 
             if (schema) {
@@ -113,7 +117,6 @@ export default async function handler(request, response) {
             if (msg.includes('400') || msg.includes('INVALID_ARGUMENT')) {
                 return response.status(400).json({ error: `Erro no formato: ${msg}` });
             }
-            // Pequeno delay antes de tentar a próxima chave em caso de erro de rede
             await new Promise(resolve => setTimeout(resolve, 200));
         }
     }
