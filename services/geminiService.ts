@@ -1,11 +1,9 @@
-import { GoogleGenAI, Type } from "@google/genai";
-
 /**
  * SERVIÇO GEMINI AI - ADMA EDITION
- * Adaptado para as novas diretrizes do Google GenAI SDK.
+ * Adaptado para comunicação segura via proxy local.
  */
 
-// Tipos de tarefas para seleção inteligente de modelo
+// Tipos de tarefas para seleção inteligente de modelo no servidor
 export type TaskType = 'commentary' | 'dictionary' | 'devotional' | 'ebd' | 'metadata' | 'general';
 
 export const generateContent = async (
@@ -15,47 +13,38 @@ export const generateContent = async (
   taskType: TaskType = 'general'
 ) => {
     try {
-        // Inicialização obrigatória conforme diretrizes: process.env.API_KEY
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        
-        // Seleção de modelo baseada na complexidade da tarefa
-        // Tarefas de exegese (EBD/Comentário) exigem raciocínio avançado
-        const modelName = (taskType === 'ebd' || taskType === 'commentary') 
-            ? 'gemini-3-pro-preview' 
-            : 'gemini-3-flash-preview';
-
-        const config: any = {
-            temperature: 0.5, 
-            topP: 0.95,
-            topK: 40,
-        };
-
-        // Configuração de Resposta Estruturada (JSON)
-        if (jsonSchema) {
-            config.responseMimeType = "application/json";
-            config.responseSchema = jsonSchema;
-        }
-
-        // Configuração de Pensamento (Thinking) para modelos Gemini 3 em tarefas complexas
-        if (taskType === 'ebd' || taskType === 'commentary') {
-            config.thinkingConfig = { thinkingBudget: 32768 }; // Máximo para Pro
-        }
-
-        const response = await ai.models.generateContent({
-            model: modelName,
-            contents: [{ parts: [{ text: prompt }] }],
-            config: config
+        // Envia a requisição para o endpoint local da Vercel
+        // Isso evita o erro de "API Key must be set in browser" e protege as chaves
+        const response = await fetch('/api/gemini', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                prompt,
+                schema: jsonSchema,
+                taskType
+            })
         });
 
-        const text = response.text;
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "Erro na comunicação com o servidor de IA.");
+        }
+
+        const data = await response.json();
+        const text = data.text;
+
         if (!text) throw new Error("A IA retornou uma resposta vazia.");
 
+        // Se houver um schema, tentamos o parse final (embora o endpoint já deva garantir)
         if (jsonSchema) {
             try {
-                // O SDK já tenta garantir JSON válido com responseSchema, mas fazemos o parse final
-                return JSON.parse(text);
+                // Remove blocos de código se a IA os incluiu por engano
+                const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                return JSON.parse(cleanJson);
             } catch (e) {
-                console.error("Erro ao processar JSON:", text);
+                console.error("Erro ao processar JSON da IA:", text);
                 throw new Error("Erro de formatação na resposta da IA.");
             }
         }
@@ -63,12 +52,12 @@ export const generateContent = async (
         return text;
 
     } catch (error: any) {
-        console.error("Gemini SDK Error:", error);
+        console.error("Gemini Proxy Error:", error);
         throw new Error(error.message || "Falha na comunicação com o Professor Virtual.");
     }
 };
 
 // Helpers de compatibilidade mantidos
-export const getStoredApiKey = (): string | null => process.env.API_KEY || null;
+export const getStoredApiKey = (): string | null => "internal_proxy";
 export const setStoredApiKey = (key: string) => {}; 
 export const clearStoredApiKey = () => {};
