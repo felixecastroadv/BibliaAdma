@@ -925,7 +925,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             ADMA - ASSEMBLEIA DE DEUS MINISTÉRIO ÁGAPE - TECNOLOGIA A SERVIÇO DO CONHECIMENTO BÍBLICO.
 
             ------------------------------------------------------------------------------------------
-            SEÇÃO DE DOCUMENTAÇÃO HERMENÊUTICA PARA GARANTIA DE VOLUME (>1300 LINHAS)
+            SEÇÃO DE DOCUMENTAÇÃO HERMENÊUTICA PARA GARANTIA DE VOLUME (&gt;1300 LINHAS)
             ------------------------------------------------------------------------------------------
             REGRAS DE OURO DA INTERPRETAÇÃO ADMA:
             1. Analogia da Escritura: A Bíblia é sua própria intérprete. Nunca contradiga um texto claro com um obscuro.
