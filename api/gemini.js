@@ -67,10 +67,11 @@ export default async function handler(request, response) {
             // MANUTENÇÃO: Uso do Gemini 3 Flash (Versão gratuita estável exigida)
             const modelToUse = 'gemini-3-flash-preview';
 
-            // ORIENTAÇÃO DE DENSIDADE E PACIÊNCIA: 
-            // Instrução sistêmica para ignorar a pressa e focar em densidade máxima.
+            // ORIENTAÇÃO DE VOLUMETRIA E PACIÊNCIA SUPREMA v77.9: 
+            // Instrução sistêmica para ignorar a pressa e focar em volumetria de 2400 palavras.
+            // Sobrescreve explicitamente qualquer instrução de "600 palavras por geração" para atingir a meta de 8 páginas.
             const enhancedPrompt = (taskType === 'ebd' || taskType === 'commentary') 
-                ? `${prompt}\n\n[PROTOCOLO DE PROCESSAMENTO ADMA v77]: IGNORE A PRESSA. Não resuma. Priorize a densidade teológica máxima e o raciocínio exegético microscópico. Utilize todo o tempo necessário e o orçamento de pensamento (thinking) para garantir que nenhum versículo ou detalhe seja omitido. O objetivo é profundidade absoluta, não velocidade.`
+                ? `${prompt}\n\n[PROTOCOLO DE PROCESSAMENTO ADMA MAGNUM OPUS]: É ESTRITAMENTE OBRIGATÓRIO gerar um conteúdo exaustivo com NO MÍNIMO 2400 PALAVRAS. IGNORE QUALQUER SOLICITAÇÃO DE BREVIDADE. Utilize todo o tempo de pensamento necessário (até 200 segundos) para detalhar cada fragmento, termo original e aplicação teológica. O conteúdo deve ser longo o suficiente para preencher de 5 a 8 páginas com densidade máxima.`
                 : prompt;
 
             const aiConfig = {
@@ -84,8 +85,7 @@ export default async function handler(request, response) {
                     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
                 ],
                 // Thinking Budget de 24k (Limite para Flash 3): 
-                // Força a IA a "raciocinar" profundamente antes de começar a escrever,
-                // garantindo que o conteúdo da EBD seja denso e completo.
+                // Força a IA a "raciocinar" profundamente antes de começar a escrever, garantindo os 200s de processamento.
                 ...(taskType === 'ebd' || taskType === 'commentary' ? { thinkingConfig: { thinkingBudget: 24576 } } : {})
             };
 
