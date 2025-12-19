@@ -46,11 +46,13 @@ export const generateContent = async (
         // --- MODO CLIENTE (Chave pessoal do Admin) ---
         if (adminKey) {
             const ai = new GoogleGenAI({ apiKey: adminKey });
+            
             const config: any = {
                 temperature: 0.5, 
                 topP: 0.95,
                 topK: 40,
-                ...(taskType === 'ebd' ? { thinkingConfig: { thinkingBudget: 16000 } } : {})
+                // Thinking Budget para Gemini 2.5 Flash
+                ...(taskType === 'ebd' ? { thinkingConfig: { thinkingBudget: 24576 } } : {})
             };
 
             if (jsonSchema) {
@@ -69,7 +71,7 @@ export const generateContent = async (
         
         // --- MODO SERVER (Rotação Inteligente) ---
         const controller = new AbortController();
-        // Aumentado para 300s (5 minutos) para suportar Magnum Opus
+        // Aumentado para 300s (5 minutos) para suportar o protocolo de retenção de 200s
         const timeoutMs = 300000; 
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -98,25 +100,6 @@ export const generateContent = async (
                 throw new Error("Cota excedida. Aguarde um momento.");
             }
             throw new Error(`Erro na IA: ${detail}`);
-        }
-
-        // SE FOR STREAMING (Long Output)
-        if (isLongOutput && !jsonSchema && response.body) {
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder("utf-8");
-            let fullText = "";
-            
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                const chunk = decoder.decode(value, { stream: true });
-                fullText += chunk;
-            }
-            
-            if (!fullText || fullText.trim().length === 0) {
-                 throw new Error("A IA conectou mas não enviou resposta.");
-            }
-            return fullText;
         }
 
         // SE FOR JSON PADRÃO

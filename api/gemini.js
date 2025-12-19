@@ -24,14 +24,10 @@ export default async function handler(request, response) {
   }
 
   try {
-    // --- 1. COLETA E ORDENAÇÃO SEQUENCIAL DE CHAVES ---
     const allKeys = [];
-
-    // Prioridade 0: Chaves principais
     if (process.env.API_KEY) allKeys.push({ k: process.env.API_KEY, i: 0 });
     if (process.env.Biblia_ADMA_API) allKeys.push({ k: process.env.Biblia_ADMA_API, i: 0.1 });
 
-    // Prioridade 1 a 50: Chaves numeradas
     for (let i = 1; i <= 50; i++) {
         const keyName = `API_KEY_${i}`;
         const val = process.env[keyName];
@@ -46,10 +42,8 @@ export default async function handler(request, response) {
          });
     }
 
-    // ORDENAÇÃO: Garante que API_KEY_1 venha antes de API_KEY_2, etc.
     const sortedKeys = allKeys.sort((a, b) => a.i - b.i).map(item => item.k);
 
-    // --- 2. PREPARAÇÃO DO BODY ---
     let body = request.body;
     if (typeof body === 'string') {
         try {
@@ -61,30 +55,29 @@ export default async function handler(request, response) {
     const { prompt, schema, taskType } = body || {};
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
-    // --- 3. LOOP DE TENTATIVA SEQUENCIAL ---
     let lastError = null;
     let successResponse = null;
-    
-    // Tenta no máximo 15 chaves em sequência
     const keysToTry = sortedKeys.slice(0, 15);
 
     for (const apiKey of keysToTry) {
         try {
             const ai = new GoogleGenAI({ apiKey: apiKey });
             
+            // CONFORME SOLICITADO: Uso exclusivo do Gemini 2.5 Flash para todas as tarefas.
+            const modelToUse = 'gemini-2.5-flash';
+
             const aiConfig = {
                 temperature: 0.5, 
                 topP: 0.95,
                 topK: 40,
-                maxOutputTokens: 8192,
                 safetySettings: [
                     { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
                 ],
-                // Ativa o pensamento para tarefas de exegese profunda (EBD) no 2.5 Flash
-                ...(taskType === 'ebd' ? { thinkingConfig: { thinkingBudget: 4000 } } : {})
+                // Thinking Budget de 24k para o modelo Flash (Garante raciocínio na versão gratuita)
+                ...(taskType === 'ebd' ? { thinkingConfig: { thinkingBudget: 24576 } } : {})
             };
 
             if (schema) {
@@ -92,19 +85,18 @@ export default async function handler(request, response) {
                 aiConfig.responseSchema = schema;
             }
 
-            // MODELO DEFINIDO PELO USUÁRIO: GEMINI 2.5 FLASH
             const aiResponse = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
+                model: modelToUse,
                 contents: [{ parts: [{ text: prompt }] }],
                 config: aiConfig
             });
 
             if (!aiResponse.text) {
-                throw new Error("Resposta vazia da IA (Retry)");
+                throw new Error("Resposta vazia da IA");
             }
 
             successResponse = aiResponse.text;
-            break; // SUCESSO!
+            break; 
 
         } catch (error) {
             lastError = error;
@@ -112,7 +104,6 @@ export default async function handler(request, response) {
             if (msg.includes('400') || msg.includes('INVALID_ARGUMENT')) {
                 return response.status(400).json({ error: `Erro no formato: ${msg}` });
             }
-            // Pausa curta para respiração do servidor
             await new Promise(resolve => setTimeout(resolve, 200));
         }
     }
