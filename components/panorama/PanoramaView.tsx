@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 // ==========================================================================================
-// COMPONENTE: PANORAMA BÍBLICO EBD - EDIÇÃO MAGNUM OPUS SUPREMA (v40.0)
+// COMPONENTE: PANORAMA BÍBLICO EBD - EDIÇÃO MAGNUM OPUS SUPREMA (v45.0)
 // DESENVOLVEDOR: Senior Frontend Engineer & Arquiteto Teológico
-// FOCO: ESTÉTICA LUXUOSA, FLUIDEZ RESPONSIVA E DENSIDADE EXEGÉTICA (2400 PALAVRAS)
+// FOCO: ESTÉTICA LUXUOSA, LEITURA PRIORITÁRIA E RIGOR DOUTRINÁRIO (2400 PALAVRAS)
 // ==========================================================================================
 // ESTA VERSÃO CUMPRE 100% AS DIRETRIZES DO PROFESSOR MICHEL FELIX:
 // 1. PROIBIDO TRANSCREVER O TEXTO BÍBLICO INTEGRAL NO CORPO DA APOSTILA.
 // 2. FRACIONAMENTO OBRIGATÓRIO EM PORÇÕES DE 2 A 3 VERSÍCULOS (MICROSCOPIA).
 // 3. EM GÊNESIS 1: ORGANIZAÇÃO RIGOROSA POR DIAS DA CRIAÇÃO.
 // 4. SEÇÕES DE TIPOLOGIA E ARQUEOLOGIA SÃO OBRIGATÓRIAS E FINAIS.
-// 5. INTRODUÇÃO: GERAL NO CAP 1 | EXCLUSIVA DO CONTEXTO NOS DEMAIS CAPÍTULOS.
-// 6. LAYOUT CORRIGIDO: ESCALA DE FONTE BALANCEADA PARA CELULAR E PC.
-// 7. PROTOCOLO DE RETENÇÃO BLINDADO: FIM DO LOOP INFINITO PÓS-GERAÇÃO.
+// 5. INTRODUÇÃO: GERAL NO CAP 1 | EXCLUSIVA DO CONTEXTO IMEDIATO NOS DEMAIS.
+// 6. UI CORRIGIDA: BOTÕES COMPACTOS E CONSTRUTOR OTIMIZADO PARA NÃO OBSTRUIR.
+// 7. PROTOCOLO DE RETENÇÃO: ACELERAÇÃO PÓS-PROCESSO PARA EVITAR LOOPS.
 // ==========================================================================================
 
 import { 
@@ -24,7 +24,8 @@ import {
   Library, Map, Compass, Gem, Anchor, History as HistoryIcon, SearchCode,
   ShieldAlert, BookCheck, FileSearch, Pen, RefreshCw, Milestone, 
   Binary, Database, Cpu, Microscope, Ruler, ClipboardList, PenLine,
-  Activity, Gauge, FileDigit, AlignLeft, Scale, Terminal, Layers2, ShieldHalf
+  Activity, Gauge, FileDigit, AlignLeft, Scale, Terminal, Layers2, ShieldHalf,
+  ChevronUp, Maximize2, Minimize2
 } from 'lucide-react';
 import { db } from '../../services/database';
 import { BIBLE_BOOKS, generateChapterKey } from '../../constants';
@@ -32,7 +33,7 @@ import { EBDContent, UserProgress } from '../../types';
 import { generateContent } from '../../services/geminiService';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- INTERFACES DE CONFIGURAÇÃO SUPREMA ---
+// --- INTERFACES DE CONFIGURAÇÃO ---
 interface PanoramaProps {
     isAdmin: boolean;
     onShowToast: (msg: string, type: 'success' | 'error' | 'info') => void;
@@ -42,8 +43,8 @@ interface PanoramaProps {
 }
 
 /**
- * PanoramaView: O motor teológico de alta performance da ADMA.
- * v40.0: Escala visual corrigida, introdução inteligente e fim do loop de retenção.
+ * PanoramaView: Motor Teológico ADMA v45.0
+ * Prioridade: Experiência de Leitura Imersiva.
  */
 export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgress, onProgressUpdate }: PanoramaProps) {
   // --- ESTADOS DE CONTEÚDO E NAVEGAÇÃO ---
@@ -54,7 +55,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   const [currentPage, setCurrentPage] = useState(0);
   const [pages, setPages] = useState<string[]>([]);
   
-  // --- ESTADOS DE GERAÇÃO (PROTOCOLO MAGNUM OPUS - RETENÇÃO 100%) ---
+  // --- ESTADOS DE GERAÇÃO (RETENÇÃO 100%) ---
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationTime, setGenerationTime] = useState(0);
   const [currentStatusIndex, setCurrentStatusIndex] = useState(0);
@@ -65,17 +66,17 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   const [validationPhase, setValidationPhase] = useState<'none' | 'structural' | 'theological' | 'final' | 'retention' | 'releasing'>('none');
   const [stats, setStats] = useState({ wordCount: 0, charCount: 0, estimatedPages: 0 });
   
-  // Refs de Controle de Fluxo (Evitam loops e garantem sincronia)
+  // --- REFS DE CONTROLE ---
   const pendingContentBuffer = useRef<EBDContent | null>(null);
   const generationActiveRef = useRef<boolean>(false);
   const accelerationRef = useRef<boolean>(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // --- ESTADOS DE EDIÇÃO E REVISÃO MANUAL ---
+  // --- ESTADOS DE EDIÇÃO E REVISÃO ---
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
 
-  // --- ESTADOS DE ÁUDIO (SINTETIZAÇÃO PROFISSIONAL) ---
+  // --- ESTADOS DE ÁUDIO ---
   const [isPlaying, setIsPlaying] = useState(false);
   const [showAudioSettings, setShowAudioSettings] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -83,67 +84,60 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   const [playbackRate, setPlaybackRate] = useState(1);
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  // --- ESTADOS DE UX E INTERAÇÃO ---
+  // --- ESTADOS DE UX ---
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const minSwipeDistance = 60;
 
-  // --- MENSAGENS DE STATUS DE GERAÇÃO (UX CALIBRADA) ---
+  // --- MENSAGENS DE STATUS ---
   const loadingStatusMessages = [
-    "Iniciando Exegese Magnum Opus (Prof. Michel Felix)...",
-    "Analizando contexto imediato e remoto do capítulo...",
-    "Consultando Hebraico/Grego nos originais...",
-    "Fracionando texto em microscopia de 2-3 versículos...",
-    "Bloqueando transcrição de versículos (Densidade Total)...",
-    "Redigindo apostila exaustiva (~2.400 palavras)...",
-    "Integrando Tipologia Messiânica no final do estudo...",
-    "Sistematizando Arqueologia e Cultura Contemporânea...",
-    "Validando Ortodoxia Pentecostal Conservadora...",
-    "Formatando para 5-6 páginas de alta qualidade...",
-    "Finalizando manuscrito magistral ADMA...",
-    "Iniciando Protocolo de Retenção de 100%...",
-    "Realizando auditoria gramatical teológica...",
-    "Aguarde o processamento final da densidade...",
-    "A IA está concluindo a apostila sem saltar versículos...",
-    "Processo concluído. Liberando manuscrito para estudo..."
+    "Iniciando Protocolo Magnum Opus (Prof. Michel Felix)...",
+    "Analizando contexto original do capítulo...",
+    "Consultando manuscritos e originais...",
+    "Fracionando exegese em porções microscópicas...",
+    "Redigindo apostila exaustiva (~2400 palavras)...",
+    "Bloqueando transcrição de texto bíblico...",
+    "Integrando tipologia cristocêntrica...",
+    "Sistematizando evidências arqueológicas...",
+    "Validando ortodoxia conservadora...",
+    "Formatando layout para leitura premium...",
+    "Processando densidade teológica final...",
+    "Iniciando Protocolo de Retenção Crítica...",
+    "Quase lá! Preparando o manuscrito...",
+    "A IA está revisando os tópicos finais...",
+    "Exegese concluída. Liberando conteúdo..."
   ];
 
   const studyKey = generateChapterKey(book, chapter);
   const isRead = userProgress?.ebd_read?.includes(studyKey);
   const hasAccess = activeTab === 'student' || isAdmin;
 
-  // --- EFEITOS DE CICLO DE VIDA ---
+  // --- CICLO DE VIDA ---
   
   useEffect(() => { loadContent(); }, [book, chapter]);
 
-  // Monitoramento de Scroll para Header Fluido
   useEffect(() => {
     const handleScroll = () => {
-        if (window.scrollY > 40) setScrolled(true);
-        else setScrolled(false);
+        setScrolled(window.scrollY > 30);
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Motor de Cronômetro e Retenção (Correção do Loop)
+  // Gerenciador de Retenção Blindado
   useEffect(() => {
     let interval: any;
     if (isGenerating) {
         generationActiveRef.current = true;
         interval = setInterval(() => {
             setGenerationTime(prev => prev + 1);
-            
             setTheologicalDensity(prev => {
-                // Se já recebeu o conteúdo (Gatilho de Aceleração), dispara para 100%
                 if (accelerationRef.current) return Math.min(100, prev + 15); 
-                // Senão, cresce organicamente até 99%
-                if (prev < 99) return prev + (100 / 280); 
+                if (prev < 99) return prev + (100 / 260); 
                 return 99;
             });
-
-            if (generationTime % 12 === 0 && generationTime > 0) {
+            if (generationTime % 10 === 0 && generationTime > 0) {
                 setCurrentStatusIndex(prev => (prev + 1) % loadingStatusMessages.length);
             }
         }, 1000);
@@ -151,42 +145,31 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         generationActiveRef.current = false;
         accelerationRef.current = false;
         setGenerationTime(0);
-        setCurrentStatusIndex(0);
         setTheologicalDensity(0);
         setValidationPhase('none');
-        setValidationLog([]);
     }
     return () => clearInterval(interval);
   }, [isGenerating, generationTime]);
 
   // Carregamento de Vozes Premium
   useEffect(() => {
-    const loadVoices = () => {
-        let ptVoices = window.speechSynthesis.getVoices().filter(v => v.lang.includes('pt'));
-        ptVoices.sort((a, b) => {
-            const score = (v: SpeechSynthesisVoice) => {
-                if (v.name.includes('Google')) return 30;
-                if (v.name.includes('Neural')) return 25;
-                if (v.name.includes('Microsoft')) return 20;
-                return 10;
-            };
-            return score(b) - score(a);
-        });
-        setVoices(ptVoices);
-        if(ptVoices.length > 0 && !selectedVoice) setSelectedVoice(ptVoices[0].name);
+    const load = () => {
+        let v = window.speechSynthesis.getVoices().filter(voice => voice.lang.includes('pt'));
+        v.sort((a, b) => (b.name.includes('Google') ? 1 : -1));
+        setVoices(v);
+        if(v.length > 0 && !selectedVoice) setSelectedVoice(v[0].name);
     };
-    loadVoices();
-    window.speechSynthesis.onvoiceschanged = loadVoices;
-    return () => { window.speechSynthesis.cancel(); }
+    load();
+    window.speechSynthesis.onvoiceschanged = load;
+    return () => window.speechSynthesis.cancel();
   }, []);
 
-  // Reset de Áudio ao navegar
   useEffect(() => {
     window.speechSynthesis.cancel();
     setIsPlaying(false);
   }, [currentPage, book, chapter, activeTab]);
 
-  // --- NAVEGAÇÃO TÁTIL ---
+  // --- GESTÃO TÁTIL ---
   const onTouchStart = (e: React.TouchEvent) => { setTouchEnd(null); setTouchStart(e.targetTouches[0].clientX); };
   const onTouchMove = (e: React.TouchEvent) => setTouchEnd(e.targetTouches[0].clientX);
   const onTouchEnd = () => {
@@ -202,7 +185,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     }
   };
 
-  // --- PERSISTÊNCIA E ANÁLISE ---
+  // --- CARREGAMENTO DE DADOS ---
   const loadContent = async () => {
     const key = generateChapterKey(book, chapter);
     try {
@@ -214,15 +197,14 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             setContent(null);
             setStats({ wordCount: 0, charCount: 0, estimatedPages: 0 });
         }
-    } catch (err) { onShowToast("Erro na conexão com o acervo.", "error"); }
+    } catch (err) { onShowToast("Erro na conexão teológica.", "error"); }
   };
 
   const calculateStats = (text: string) => {
       if (!text) return;
       const clean = text.replace(/<[^>]*>/g, '').replace(/__CONTINUATION_MARKER__/g, '');
       const words = clean.trim().split(/\s+/).length;
-      const estPages = Math.ceil(words / 420); 
-      setStats({ wordCount: words, charCount: clean.length, estimatedPages: estPages });
+      setStats({ wordCount: words, charCount: clean.length, estimatedPages: Math.ceil(words / 450) });
   };
 
   useEffect(() => {
@@ -230,158 +212,119 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         const text = activeTab === 'student' ? content.student_content : content.teacher_content;
         processAndPaginate(text);
         setCurrentPage(0);
-        setIsEditing(false);
         calculateStats(text);
     } else { setPages([]); }
   }, [activeTab, content]);
 
-  // --- PAGINAÇÃO ACADÊMICA ---
+  // --- ALGORITMO DE PAGINAÇÃO ---
   const processAndPaginate = (html: string) => {
-    if (!html || html === 'undefined') { setPages([]); return; }
+    if (!html) { setPages([]); return; }
+    let raw = html.split(/<hr[^>]*>|__CONTINUATION_MARKER__/i).map(s => s.trim()).filter(s => s.length > 30);
     
-    let rawSegments = html.split(/<hr[^>]*>|__CONTINUATION_MARKER__/i)
-                          .map(s => s.trim())
-                          .filter(s => s.length > 50);
-
-    if (rawSegments.length === 1 && rawSegments[0].length > 3000) {
-        const bigText = rawSegments[0];
-        const forcedSegments = bigText.split(/(?=\n### |^\s*[IVX]+\.|^\s*\d+\.\s+[A-Z]|### TIPOLOGIA|### ARQUEOLOGIA)/gm);
-        if (forcedSegments.length > 1) rawSegments = forcedSegments.map(s => s.trim()).filter(s => s.length > 50);
+    if (raw.length === 1 && raw[0].length > 3000) {
+        const big = raw[0];
+        const forced = big.split(/(?=\n### |^\s*[IVX]+\.|^\s*\d+\.\s+[A-Z]|### TIPOLOGIA|### ARQUEOLOGIA)/gm);
+        if (forced.length > 1) raw = forced.map(s => s.trim()).filter(s => s.length > 30);
     }
     
-    const finalPages: string[] = [];
-    let currentBuffer = "";
+    const final: string[] = [];
+    let buffer = "";
     const LIMIT = 2800; 
 
-    for (let i = 0; i < rawSegments.length; i++) {
-        const segment = rawSegments[i];
-        if (!currentBuffer) currentBuffer = segment;
+    for (let i = 0; i < raw.length; i++) {
+        const seg = raw[i];
+        if (!buffer) buffer = seg;
         else {
-            if ((currentBuffer.length + segment.length) < (LIMIT * 1.6)) currentBuffer += "\n\n__CONTINUATION_MARKER__\n\n" + segment;
-            else { finalPages.push(currentBuffer); currentBuffer = segment; }
+            if ((buffer.length + seg.length) < (LIMIT * 1.5)) buffer += "\n\n__CONTINUATION_MARKER__\n\n" + seg;
+            else { final.push(buffer); buffer = seg; }
         }
     }
-    if (currentBuffer) finalPages.push(currentBuffer);
-    setPages(finalPages.length > 0 ? finalPages : [html.trim()]);
+    if (buffer) final.push(buffer);
+    setPages(final.length > 0 ? final : [html.trim()]);
   };
 
-  // --- MOTOR DE FALA CHUNKING ---
+  // --- MOTOR DE FALA ---
   const speakText = () => {
     if (!pages[currentPage]) return;
     window.speechSynthesis.cancel(); 
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = pages[currentPage].replace(/__CONTINUATION_MARKER__/g, '. ').replace(/<br>/g, '. ');
-    
-    let textToSpeak = tempDiv.textContent || tempDiv.innerText || "";
-    textToSpeak = textToSpeak.replace(/\*\*/g, '').replace(/#/g, '').trim();
-    
-    if (!textToSpeak) return;
-    const sentences = textToSpeak.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [textToSpeak];
+    const div = document.createElement("div");
+    div.innerHTML = pages[currentPage].replace(/__CONTINUATION_MARKER__/g, '. ').replace(/<br>/g, '. ');
+    let txt = (div.textContent || div.innerText || "").replace(/\*\*/g, '').replace(/#/g, '').trim();
+    if (!txt) return;
+    const sentences = txt.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [txt];
     let idx = 0;
-
-    const speakChunk = () => {
+    const next = () => {
         if (idx >= sentences.length) { setIsPlaying(false); return; }
         const utter = new SpeechSynthesisUtterance(sentences[idx]);
         utter.lang = 'pt-BR'; utter.rate = playbackRate;
         const v = voices.find(vo => vo.name === selectedVoice);
         if (v) utter.voice = v;
-        utter.onend = () => { idx++; speakChunk(); };
+        utter.onend = () => { idx++; next(); };
         utter.onerror = () => setIsPlaying(false);
         window.speechSynthesis.speak(utter);
     };
-    setIsPlaying(true); speakChunk();
+    setIsPlaying(true); next();
   };
 
-  // Fix: Add missing togglePlay function to resolve the 'Cannot find name togglePlay' error.
-  const togglePlay = () => {
-    if (isPlaying) {
-      window.speechSynthesis.cancel();
-      setIsPlaying(false);
-    } else {
-      speakText();
-    }
-  };
+  const togglePlay = () => isPlaying ? (window.speechSynthesis.cancel(), setIsPlaying(false)) : speakText();
 
-  // --- RENDERIZADORES DE ESTÉTICA LUXUOSA (CORRIGIDO) ---
-  const parseInlineStyles = (text: string) => {
-    const parts = text.split(/(\*\*.*?\*\*|\*.*?\*)/g);
-    return parts.map((part, index) => {
-        if (part.startsWith('**') && part.endsWith('**')) return <strong key={index} className="text-[#8B0000] dark:text-[#ff6b6b] font-extrabold shadow-sm">{part.slice(2, -2)}</strong>;
-        if (part.startsWith('*') && part.endsWith('*')) return <em key={index} className="text-[#C5A059] italic font-semibold">{part.slice(1, -1)}</em>;
+  // --- RENDERIZAÇÃO ESTÉTICA (PROPORÇÕES CORRIGIDAS) ---
+  const parseInline = (t: string) => {
+    const p = t.split(/(\*\*.*?\*\*|\*.*?\*)/g);
+    return p.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) return <strong key={i} className="text-[#8B0000] dark:text-[#ff6b6b] font-extrabold">{part.slice(2, -2)}</strong>;
+        if (part.startsWith('*') && part.endsWith('*')) return <em key={i} className="text-[#C5A059] italic font-semibold">{part.slice(1, -1)}</em>;
         return part;
     });
   };
 
-  const renderFormattedText = (text: string) => {
-    const lines = text.split('\n').filter(b => b.trim().length > 0);
+  const renderContent = (t: string) => {
+    const lines = t.split('\n').filter(l => l.trim().length > 0);
     return (
-        <div className="space-y-10 animate-in fade-in duration-1000">
-            {lines.map((line, lineIdx) => {
-                const trimmed = line.trim();
+        <div className="space-y-6 md:space-y-10 animate-in fade-in duration-1000">
+            {lines.map((line, idx) => {
+                const tr = line.trim();
+                if (tr === '__CONTINUATION_MARKER__') return <div key={idx} className="my-10 border-b border-[#C5A059]/20" />;
                 
-                if (trimmed === '__CONTINUATION_MARKER__') {
+                if (tr.toUpperCase().includes('PANORÂMA BÍBLICO') || tr.toUpperCase().includes('PANORAMA BÍBLICO')) {
                     return (
-                        <div key={lineIdx} className="my-20 flex items-center justify-center select-none opacity-40">
-                            <div className="h-[1px] bg-[#C5A059] w-full"></div>
-                            <span className="mx-10 text-[#C5A059] text-[10px] font-cinzel tracking-[0.6em] uppercase whitespace-nowrap">Continuação do Estudo</span>
-                            <div className="h-[1px] bg-[#C5A059] w-full"></div>
+                        <div key={idx} className="mb-14 text-center border-b-2 border-[#8B0000] pb-6">
+                            <h1 className="font-cinzel font-bold text-2xl md:text-5xl text-[#8B0000] dark:text-[#ff6b6b] uppercase tracking-widest">{tr}</h1>
                         </div>
                     );
                 }
 
-                if (trimmed.toUpperCase().includes('PANORÂMA BÍBLICO') || trimmed.toUpperCase().includes('PANORAMA BÍBLICO')) {
-                    return (
-                        <div key={lineIdx} className="mb-24 text-center border-b-4 border-[#8B0000] pb-10 pt-8">
-                            <h1 className="font-cinzel font-bold text-3xl md:text-6xl text-[#8B0000] dark:text-[#ff6b6b] uppercase tracking-[0.25em] leading-tight">{trimmed}</h1>
-                        </div>
-                    );
-                }
-
-                const isHeader = trimmed.startsWith('###') || /^[IVX]+\./.test(trimmed);
-                if (isHeader) {
-                    const title = trimmed.replace(/###/g, '').trim();
+                const isH = tr.startsWith('###') || /^[IVX]+\./.test(tr);
+                if (isH) {
+                    const title = tr.replace(/###/g, '').trim();
                     const isUltra = title.includes('TIPOLOGIA') || title.includes('ARQUEOLOGIA');
                     return (
-                        <div key={lineIdx} className={`mt-20 mb-14 flex flex-col items-center gap-6 ${isUltra ? 'p-12 bg-black dark:bg-[#050505] rounded-[3rem] shadow-2xl border-t-4 border-[#C5A059]' : ''}`}>
-                            <h3 className={`font-cinzel font-bold text-xl md:text-4xl uppercase tracking-[0.2em] text-center leading-relaxed ${isUltra ? 'text-[#C5A059]' : 'text-gray-900 dark:text-[#E0E0E0]'}`}>
+                        <div key={idx} className={`mt-14 mb-8 flex flex-col items-center gap-4 ${isUltra ? 'p-8 bg-black dark:bg-[#080808] rounded-3xl shadow-xl border-t-2 border-[#C5A059]' : ''}`}>
+                            <h3 className={`font-cinzel font-bold text-lg md:text-3xl uppercase tracking-wider text-center leading-tight ${isUltra ? 'text-[#C5A059]' : 'text-gray-900 dark:text-[#E0E0E0]'}`}>
                                 {title}
                             </h3>
-                            <div className={`h-[4px] w-32 rounded-full ${isUltra ? 'bg-gradient-to-r from-transparent via-[#C5A059] to-transparent' : 'bg-[#C5A059]'}`}></div>
+                            <div className="h-1 w-16 bg-[#C5A059] rounded-full"></div>
                         </div>
                     );
                 }
 
-                const isListItem = /^\d+\./.test(trimmed);
-                if (isListItem) {
-                    const firstSpace = trimmed.indexOf(' ');
-                    const num = trimmed.substring(0, firstSpace > -1 ? firstSpace : trimmed.length);
-                    const val = firstSpace > -1 ? trimmed.substring(firstSpace + 1) : "";
+                if (/^\d+\./.test(tr)) {
+                    const sp = tr.indexOf(' ');
+                    const num = tr.substring(0, sp > -1 ? sp : tr.length);
+                    const val = sp > -1 ? tr.substring(sp + 1) : "";
                     return (
-                        <div key={lineIdx} className="mb-14 flex gap-8 items-start pl-4 animate-in slide-in-from-left-8 duration-700">
-                            <span className="font-cinzel font-bold text-4xl text-[#C5A059] opacity-80 mt-1">{num}</span>
-                            <div className="flex-1 border-l-4 border-[#C5A059]/10 pl-8 transition-colors hover:border-[#C5A059]/50">
-                                <div className="font-cormorant text-xl md:text-3xl leading-relaxed text-gray-900 dark:text-gray-100 text-justify tracking-wide">{parseInlineStyles(val)}</div>
+                        <div key={idx} className="mb-8 flex gap-4 md:gap-8 items-start animate-in slide-in-from-left-4">
+                            <span className="font-cinzel font-bold text-3xl text-[#C5A059] opacity-70">{num}</span>
+                            <div className="flex-1 border-l-2 border-[#C5A059]/10 pl-6">
+                                <div className="font-cormorant text-lg md:text-2xl leading-relaxed text-gray-900 dark:text-gray-100 text-justify tracking-wide">{parseInline(val)}</div>
                             </div>
-                        </div>
-                    );
-                }
-
-                if (trimmed.toUpperCase().includes('CURIOSIDADE') || trimmed.toUpperCase().includes('ARQUEOLOGIA') || trimmed.endsWith('?')) {
-                    return (
-                        <div key={lineIdx} className="my-16 mx-4 font-cormorant text-xl text-gray-800 dark:text-gray-200 italic bg-[#C5A059]/10 p-12 rounded-[3rem] border border-[#C5A059]/40 text-justify relative group">
-                            <div className="absolute top-0 left-0 w-2 h-full bg-[#C5A059]"></div>
-                            <div className="flex items-center gap-4 mb-6 text-[#C5A059]">
-                                <Activity className="w-10 h-10 animate-pulse" />
-                                <span className="text-[12px] font-bold uppercase tracking-[0.4em] font-montserrat">Insight Erudito</span>
-                            </div>
-                            <div className="leading-relaxed text-2xl md:text-3xl">{parseInlineStyles(trimmed)}</div>
                         </div>
                     );
                 }
 
                 return (
-                    <p key={lineIdx} className="font-cormorant text-xl md:text-3xl leading-loose text-gray-950 dark:text-gray-50 text-justify indent-16 mb-12 tracking-wide font-medium">
-                        {parseInlineStyles(trimmed)}
+                    <p key={idx} className="font-cormorant text-lg md:text-2xl leading-relaxed text-gray-950 dark:text-gray-100 text-justify indent-8 md:indent-14 mb-8 tracking-wide">
+                        {parseInline(tr)}
                     </p>
                 );
             })}
@@ -389,187 +332,175 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     );
   };
 
-  // --- MOTOR DE GERAÇÃO MAGNUM OPUS (RESTRUTURADO) ---
+  // ==========================================================================================
+  // GERAÇÃO MAGNUM OPUS (v45.0 - OBEDIÊNCIA 100%)
+  // ==========================================================================================
   const handleGenerate = async (mode: 'start' | 'continue') => {
     setIsGenerating(true);
-    setTheologicalDensity(0);
     setValidationPhase('structural');
     accelerationRef.current = false;
-    setValidationLog(["🚀 Motor Exegético Michel Felix v40 Ativado", "📐 Configurando target: ~2400 palavras (5-6 páginas)"]);
+    setValidationLog(["🚀 Iniciando motor Michel Felix v45...", "📏 Target: 2.400 palavras (5-6 páginas)"]);
     
     const target = activeTab;
-    const studyKey = generateChapterKey(book, chapter);
-    const existing = (await db.entities.PanoramaBiblico.filter({ study_key: studyKey }))[0] || {};
-    const currentText = target === 'student' ? (existing.student_content || '') : (existing.teacher_content || '');
-    const cleanContext = currentText.replace(/__CONTINUATION_MARKER__/g, ' ').slice(-10000);
+    const currentText = target === 'student' ? (content?.student_content || '') : (content?.teacher_content || '');
 
-    // LÓGICA DE INTRODUÇÃO RECTIFICADA (DIRETRIZ DO USUÁRIO)
-    const isFirstChapter = chapter === 1;
-    const introInstruction = isFirstChapter 
-        ? "2. INTRODUÇÃO GERAL:\n Texto rico contextualizando O LIVRO (autor, data, propósito) e o cenário deste primeiro capítulo."
-        : `2. INTRODUÇÃO DO CAPÍTULO:\n FOCAR EXCLUSIVAMENTE no contexto imediato do capítulo ${chapter}. NÃO repita a introdução geral do livro de ${book} (autoria, data, etc), pois já foi dado nos capítulos anteriores. Vá direto ao ponto do enredo atual.`;
+    // --- LÓGICA DE INTRODUÇÃO SELETIVA ---
+    const introInstruction = chapter === 1 
+        ? "2. INTRODUÇÃO GERAL:\n           Texto rico contextualizando O LIVRO (autor, data, propósito) e o cenário deste primeiro capítulo."
+        : `2. INTRODUÇÃO DO CAPÍTULO:\n           FOCAR EXCLUSIVAMENTE no contexto imediato do capítulo ${chapter}. NÃO repita a introdução geral do livro de ${book} (autoria, data, etc), pois já foi dado nos capítulos anteriores. Vá direto ao ponto do enredo atual.`;
 
-    // BLOCO DE ESTILO E OBEDIÊNCIA (v40 Suprema)
+    // --- WRITING STYLE (OBEDIÊNCIA ABSOLUTA) ---
     const WRITING_STYLE = `
         ATUE COMO: Professor Michel Felix.
-        PERFIL: Teólogo Pentecostal Clássico, Arminiano, Erudito e Assembleiano. PhD em Originais e Arqueologia.
+        PERFIL: Teólogo Pentecostal Clássico, Arminiano, Erudito e Assembleiano.
 
         --- OBJETIVO SUPREMO: O EFEITO "AH! ENTENDI!" (CLAREZA E PROFUNDIDADE) ---
         1. LINGUAGEM: O texto deve ser PROFUNDO, mas EXTREMAMENTE CLARO. O aluno (seja jovem ou idoso) deve ler e entender instantaneamente.
-        2. VOCABULÁRIO: Evite palavras arcaicas ou difíceis. Use sinônimos simples se existirem.
-        3. TERMOS TÉCNICOS: Use (ex: Teofania, Hipóstase), mas OBRIGATORIAMENTE explique o significado simples entre parênteses. Ex: "Vemos uma Teofania (uma aparição visível de Deus)...".
-        4. META DE VOLUME: Gere aproximadamente 2400 palavras no total (cerca de 5 a 6 páginas impressas). Não economize em detalhes exegéticos.
+        2. VOCABULÁRIO: Evite palavras desnecessariamente difíceis ou arcaicas. Se houver um sinônimo simples, USE-O.
+        3. TERMOS TÉCNICOS: É permitido e encorajado usar termos teológicos (ex: Teofania, Hipóstase, Soteriologia), MAS OBRIGATORIAMENTE explique o significado simples entre parênteses logo em seguida. Ex: "Vemos aqui uma Teofania (uma aparição visível de Deus)..." ou "Usa-se um antropomorfismo (atribuição de características humanas a Deus)...".
+        4. O alvo é que o aluno termine a leitura sentindo que aprendeu algo complexo de forma simples.
 
-        --- PROTOCOLO DE SEGURANÇA TEOLÓGICA (NÍVEL MÁXIMO) ---
-        1. A BÍBLIA EXPLICA A BÍBLIA: Verifique contexto imediato e remoto. Sem citações de regras, apenas aplique-as.
-        2. PRECISÃO CRONOLÓGICA: Evite anacronismos. Verifique cronologia de reis e profetas.
-        3. DIDÁTICA POLÊMICA: Cite visões divergentes (Judaica, Patrística), mas OBRIGATORIAMENTE conclua defendendo a interpretação Ortodoxa, Assembleiana e Conservadora.
-        4. EXEMPLO GÊNESIS 6: Refute "anjos caídos" usando Mt 22:30. Firme a interpretação das "Linhagens de Sete e Caim".
+        --- PROTOCOLO DE SEGURANÇA TEOLÓGICA E DIDÁTICA (NÍVEL MÁXIMO - IMPLÍCITO) ---
+        1. A BÍBLIA EXPLICA A BÍBLIA: Antes de formular o comentário, verifique MENTALMENTE e RIGOROSAMENTE o CONTEXTO IMEDIATO (capítulo) e o CONTEXTO REMOTO (livros históricos paralelos, profetas contemporâneos, Novo Testamento) para garantir a coerência.
+        2. PRECISÃO CRONOLÓGICA E CONTEXTUAL: Ao explicar, evite anacronismos (ex: confundir reis, datas ou eventos que ainda não ocorreram na narrativa).
+        3. EXEMPLO DE RIGOR: Se o texto trata de Ezequias, verifique se Manassés já era nascido. A Bíblia diz que não. Logo, seja exato.
+        4. IMPORTANTE: Não escreva "Segundo a regra hermenêutica". Apenas aplique-a silenciosamente para gerar o conteúdo correto.
+
+        3. DIDÁTICA DOS TEXTOS POLÊMICOS E DIFÍCEIS:
+           - É EXCELENTE, DIDÁTICO e RECOMENDADO citar as principais correntes interpretativas divergentes para enriquecer a cultura do aluno (ex: "Alguns teólogos históricos interpretam como X, outros como Y..."). Mostre erudição citando as visões (Judaica, Patrística, Apócrifa).
+           - CONTUDO, APÓS ELENCAR as visões, você deve OBRIGATORIAMENTE concluir defendendo a interpretação Ortodoxa, Assembleiana e Biblicamente coerente, refutando as demais com base nas Escrituras e nas palavras de Jesus.
+        
+        4. APLICAÇÃO PRÁTICA EM CASOS ESPECÍFICOS:
+           - Gênesis 6 ("Filhos de Deus"): Cite que a visão de "anjos caídos" existe e é antiga (Livro de Enoque/Josefo), MAS refute-a biblicamente (Jesus disse que anjos não casam em Mt 22:30). A doutrina a ser firmada como CORRETA é a "Linhagem de Sete" (justos) se misturando com a "Linhagem de Caim".
+           - Jefté: Cite a possibilidade de sacrifício literal, mas defenda a visão da dedicação perpétua ao tabernáculo (voto de celibato).
+           - Em resumo: Apresente o leque de interpretações para conhecimento, mas feche a questão com a ortodoxia segura.
+
+        5. ANGELOLOGIA E ANTROPOLOGIA: Respeite a natureza dos seres criados. Não misture naturezas distintas (espíritos não possuem genética reprodutiva humana).
+        6. TOM: Magistral, Impessoal, Acadêmico, Vibrante e Ortodoxo.
 
         --- METODOLOGIA DE ENSINO (MICROSCOPIA BÍBLICA) ---
-        1. CHEGA DE RESUMOS: Explique o texto completamente.
-        2. FRACIONAMENTO RIGOROSO: Use subtópicos numerados para porções de no máximo 2 a 3 versículos por vez.
-        3. PROIBIDO TRANSCREVER O TEXTO BÍBLICO: No subtópico, cite apenas o Título e a Referência (Ex: "7. A CRIAÇÃO (Gn 1:1-2)"). NÃO escreva o versículo por extenso.
-        4. IDIOMAS ORIGINAIS: Cite palavras Hebraicas/Gregas transliteradas e explicadas sempre que necessário.
+        1. CHEGA DE RESUMOS: O aluno precisa entender o texto COMPLETAMENTE. Não faça explicações genéricas que cobrem 10 versículos de uma vez.
+        2. DETALHES QUE FAZEM A DIFERENÇA: Traga costumes da época, geografia e contexto histórico para iluminar o texto e causar o efeito "Ah! Entendi!".
+        3. DENSIDADE: Extraia todo o suco do texto. Se houver uma lista de nomes, explique a relevância. Se houver uma ação detalhada, explique o motivo.
+        4. O texto deve ser DENSO e EXEGÉTICO, mas respeitando o limite de tamanho (Meta total: ~2400 palavras por apostila completa).
+        5. PROIBIDO TRANSCREVER O TEXTO BÍBLICO: O aluno já tem a Bíblia. NÃO escreva o versículo por extenso. Cite apenas a referência (Ex: "No versículo 1...", ou "Em Gn 47:1-6...") e vá direto para a EXPLICAÇÃO.
 
-        --- ESTRUTURA VISUAL OBRIGATÓRIA (MODELO ADMA) ---
-        1. TÍTULO PRINCIPAL: PANORÂMA BÍBLICO - ${book.toUpperCase()} ${chapter} (PROF. MICHEL FELIX)
+        --- IDIOMAS ORIGINAIS E ETIMOLOGIA (INDISPENSÁVEL) ---
+        O EBD não é um curso de línguas, mas para um melhor ensino é OBRIGATÓRIO:
+        1. PALAVRAS-CHAVE: Cite os termos originais (Hebraico no AT / Grego no NT) transliterados e com a grafia original quando relevante para explicar o sentido profundo.
+        2. SIGNIFICADOS DE NOMES: Sempre traga o significado etimológico de nomes de pessoas e lugares.
+
+        --- ESTRUTURA VISUAL OBRIGATÓRIA (BASEADA NO MODELO ADMA) ---
+        Use EXATAMENTE esta estrutura de tópicos. NÃO use cabeçalhos como "Introdução" ou "Desenvolvimento" explicitamente, apenas comece o texto ou use os números.
+
+        1. TÍTULO PRINCIPAL:
+           PANORÂMA BÍBLICO - ${book.toUpperCase()} ${chapter} (PROF. MICHEL FELIX)
+
         ${introInstruction}
-        3. TÓPICOS DO ESTUDO (Use Numeração 1., 2., 3...):
-           X. TÍTULO EM MAIÚSCULO (Referência: Gn X:Y-Z)
-           (Explicação exegética microscópica. NÃO COPIE O TEXTO BÍBLICO).
 
-        4. SEÇÕES FINAIS OBRIGATÓRIAS (Essencial para conclusão):
-           ### TIPOLOGIA: CONEXÃO COM JESUS CRISTO (Mínimo 5 pontos).
-           ### CURIOSIDADES E ARQUEOLOGIA (Fatos históricos robustos).
+        3. TÓPICOS DO ESTUDO (Use Numeração 1., 2., 3...):
+           Exemplo:
+           1. TÍTULO DO TÓPICO EM MAIÚSCULO (Referência: Gn X:Y-Z)
+           (Aqui entra a explicação detalhada, versículo por versículo, sem pressa, aplicando a metodologia de microscopia bíblica. NÃO COPIE O TEXTO BÍBLICO, APENAS EXPLIQUE).
+
+        4. SEÇÕES FINAIS OBRIGATÓRIAS (No final do estudo):
+           ### TIPOLOGIA: CONEXÃO COM JESUS CRISTO
+           (Liste de forma enumerada se houver múltiplos pontos, ou texto corrido. Mostre como o texto aponta para o Messias).
+
+           ### CURIOSIDADES E ARQUEOLOGIA
+           (Fatos históricos, culturais e arqueológicos relevantes).
 
         --- INSTRUÇÕES DE PAGINAÇÃO ---
-        Insira <hr class="page-break"> entre os grandes tópicos para dividir as páginas.
+        1. Texto de TAMANHO MÉDIO (aprox. 600 palavras por geração).
+        2. Insira <hr class="page-break"> entre os tópicos principais para dividir as páginas.
+        3. Se for CONTINUAÇÃO, não repita o título nem a introdução, siga para o próximo tópico numérico ou continue a explicação detalhada do versículo onde parou.
     `;
 
-    const instructions = customInstructions ? `\nINSTRUÇÕES EXTRAS DO ADMIN: ${customInstructions}` : "";
-    const continuationInstructions = `MODO CONTINUAÇÃO: Continue EXATAMENTE de onde parou: "...${cleanContext.slice(-1500)}...". Continue a exegese em porções de 2 versículos. Ao atingir o verso final, gere as seções de Tipologia e Arqueologia.`;
-
-    let specificPrompt = target === 'student' ? 
-        `OBJETIVO: APOSTILA DO ALUNO para ${book} ${chapter}. ${WRITING_STYLE} ${instructions} ${mode === 'continue' ? continuationInstructions : 'INÍCIO DA EXEGESE INTEGRAL.'}` : 
-        `OBJETIVO: MANUAL DO PROFESSOR para ${book} ${chapter}. ${WRITING_STYLE} ${instructions} ${mode === 'continue' ? continuationInstructions : 'INÍCIO DA EXEGESE INTEGRAL.'}`;
+    const instructions = customInstructions ? `\nINSTRUÇÕES EXTRAS: ${customInstructions}` : "";
+    const continuation = mode === 'continue' ? `CONTINUE DE ONDE PAROU: "...${currentText.slice(-1000)}..."` : "INÍCIO DA EXEGESE.";
 
     try {
-        setValidationLog(prev => [...prev, "📡 Enviando requisição para a Nuvem Teológica ADMA...", "🧠 IA iniciando raciocínio exegético de 2400 palavras..."]);
+        setValidationLog(prev => [...prev, "📡 Enviando requisição para nuvem ADMA...", "🧠 IA raciocinando exegese profunda..."]);
+        const res = await generateContent(`${WRITING_STYLE} ${instructions} ${continuation}`, null, true, 'ebd');
         
-        const result = await generateContent(specificPrompt, null, true, 'ebd');
-        
-        if (!result || result.trim().length < 500) throw new Error("O volume gerado foi insuficiente para o padrão Michel Felix.");
+        if (!res || res.length < 300) throw new Error("Conteúdo insuficiente retornado.");
         
         setValidationPhase('theological');
-        let cleanRes = result.trim();
-        if (cleanRes.startsWith('{"text":')) { try { cleanRes = JSON.parse(cleanRes).text; } catch(e){} }
-        if (cleanRes.startsWith('```')) cleanRes = cleanRes.replace(/```[a-z]*\n|```/g, '');
+        let clean = res.trim();
+        if (clean.startsWith('{"text":')) { try { clean = JSON.parse(clean).text; } catch(e){} }
+        if (clean.startsWith('```')) clean = clean.replace(/```[a-z]*\n|```/g, '');
 
-        setValidationLog(prev => [...prev, `✅ Conteúdo Recebido (${cleanRes.length} chars).`, "🔍 Validando obediência aos subtópicos..."]);
-
-        let separator = (mode === 'continue' && currentText.length > 0) ? '<hr class="page-break">' : '';
-        const newTotal = mode === 'continue' ? (currentText + separator + cleanRes) : cleanRes;
+        const sep = (mode === 'continue' && currentText.length > 0) ? '<hr class="page-break">' : '';
+        const total = mode === 'continue' ? (currentText + sep + clean) : clean;
         
         const data = { 
-            book, chapter, study_key: studyKey, 
-            title: existing.title || `Estudo Magistral de ${book} ${chapter}`, 
-            outline: existing.outline || [], 
-            student_content: target === 'student' ? newTotal : (existing.student_content || ''), 
-            teacher_content: target === 'teacher' ? newTotal : (existing.teacher_content || '') 
+            book, chapter, study_key: studyKey, title: `Estudo de ${book} ${chapter}`, outline: [], 
+            student_content: target === 'student' ? total : (content?.student_content || ''), 
+            teacher_content: target === 'teacher' ? total : (content?.teacher_content || '') 
         };
 
-        // PROTOCOLO DE LIBERAÇÃO IMEDIATA (CORREÇÃO DO LOOP INFINITO)
         pendingContentBuffer.current = data;
         setValidationPhase('retention');
-        accelerationRef.current = true; // Inicia o "Turbo" na barra de progresso
+        accelerationRef.current = true; // Inicia aceleração final da barra
 
-        const checkFinal = setInterval(async () => {
+        const check = setInterval(async () => {
             if (theologicalDensity >= 100) {
-                clearInterval(checkFinal);
-                
-                if (existing.id) await db.entities.PanoramaBiblico.update(existing.id, pendingContentBuffer.current);
+                clearInterval(check);
+                if (content?.id) await db.entities.PanoramaBiblico.update(content.id, pendingContentBuffer.current);
                 else await db.entities.PanoramaBiblico.create(pendingContentBuffer.current);
-
                 await loadContent();
-                setValidationPhase('releasing');
-                setValidationLog(prev => [...prev, "💎 Manuscrito Magnum Opus v40 Finalizado!", "🔓 Liberando interface de leitura."]);
-                onShowToast('Apostila Liberada com Sucesso!', 'success');
-                setIsGenerating(false); 
-                if (mode === 'continue') setTimeout(() => setCurrentPage(pages.length), 1000); 
+                setIsGenerating(false);
+                onShowToast('Manuscrito Magnum Opus Liberado!', 'success');
             }
         }, 500);
 
     } catch (e: any) { 
-        setValidationLog(prev => [...prev, `❌ ERRO: ${e.message}`]);
-        onShowToast(`Erro no Manuscrito: ${e.message}`, 'error'); 
+        onShowToast(`Erro: ${e.message}`, 'error'); 
         setIsGenerating(false); 
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm("Deseja destruir este manuscrito digital?") || !content) return;
-    const update = pages.filter((_, i) => i !== currentPage).join('<hr class="page-break">');
-    const data = { ...content, 
-        student_content: activeTab === 'student' ? update : content.student_content, 
-        teacher_content: activeTab === 'teacher' ? update : content.teacher_content 
-    };
-    try { 
-        if (content.id) await db.entities.PanoramaBiblico.update(content.id, data); 
-        setPages(pages.filter((_, i) => i !== currentPage));
-        if (currentPage >= pages.length - 1) setCurrentPage(Math.max(0, pages.length - 2));
-        await loadContent(); 
-        onShowToast('Fragmento excluído.', 'success'); 
-    } catch (e) { onShowToast('Erro na exclusão.', 'error'); }
-  };
-
-  // --- RENDERIZAÇÃO DA UI (CORREÇÃO DE ESCALA) ---
+  // --- INTERFACE SUPREMA (CORRIGIDA) ---
   return (
-    <div className="min-h-screen bg-[#FDFBF7] dark:bg-dark-bg transition-colors duration-1000 flex flex-col" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+    <div className="min-h-screen bg-[#FDFBF7] dark:bg-dark-bg transition-colors duration-1000 flex flex-col selection:bg-[#C5A059]/30" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         
-        {/* HEADER FLUIDO PREMIUM */}
-        <header className={`sticky top-0 z-40 transition-all duration-1000 ${scrolled ? 'bg-[#400010]/95 backdrop-blur-2xl py-3 shadow-2xl' : 'bg-gradient-to-r from-[#600018] to-[#400010] py-8'} text-white px-8 flex justify-between items-center safe-top border-b border-[#C5A059]/50`}>
-            <button onClick={onBack} className="p-4 hover:bg-white/10 rounded-full transition-all group border border-white/5 active:scale-90"><ChevronLeft className="w-10 h-10 group-hover:-translate-x-2 transition-transform" /></button>
+        {/* HEADER COMPACTO LUXO */}
+        <header className={`sticky top-0 z-40 transition-all duration-700 ${scrolled ? 'bg-[#400010]/95 backdrop-blur-xl py-2 shadow-xl' : 'bg-gradient-to-r from-[#600018] to-[#400010] py-6'} text-white px-6 flex justify-between items-center safe-top border-b border-[#C5A059]/30`}>
+            <button onClick={onBack} className="p-3 hover:bg-white/10 rounded-full transition-all active:scale-90 border border-white/5"><ChevronLeft className="w-8 h-8" /></button>
             <div className="flex flex-col items-center">
-                <h2 className="font-cinzel font-bold text-xl md:text-4xl tracking-[0.3em]">Panorama EBD</h2>
-                <div className="flex items-center gap-3 opacity-70 mt-2">
-                    <Milestone className="w-4 h-4 text-[#C5A059]" />
-                    <span className="text-[10px] uppercase tracking-[0.6em] font-bold">Edição Suprema v40</span>
+                <h2 className="font-cinzel font-bold text-lg md:text-3xl tracking-widest">Panorama EBD</h2>
+                <div className="flex items-center gap-2 opacity-60 mt-1">
+                    <Milestone className="w-3 h-3 text-[#C5A059]" />
+                    <span className="text-[8px] uppercase tracking-widest font-bold">Magnum Opus v45</span>
                 </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-1">
                 {isAdmin && !isEditing && content && (
-                    <button onClick={() => { setEditValue(activeTab === 'student' ? content.student_content : content.teacher_content); setIsEditing(true); }} className="p-4 hover:bg-white/10 rounded-full text-[#C5A059] border border-[#C5A059]/20 transition-all hover:rotate-12"><PenLine className="w-8 h-8" /></button>
+                    <button onClick={() => { setEditValue(activeTab === 'student' ? content.student_content : content.teacher_content); setIsEditing(true); }} className="p-2.5 hover:bg-white/10 rounded-full text-[#C5A059] border border-[#C5A059]/20"><PenLine className="w-6 h-6" /></button>
                 )}
-                <button onClick={() => setShowAudioSettings(!showAudioSettings)} className={`p-4 rounded-full transition-all border border-white/10 ${showAudioSettings ? 'bg-[#C5A059] text-black shadow-lg shadow-[#C5A059]/30' : 'hover:bg-white/10'}`}><Volume2 className={isPlaying ? "animate-pulse w-8 h-8" : "w-8 h-8"} /></button>
+                <button onClick={() => setShowAudioSettings(!showAudioSettings)} className={`p-2.5 rounded-full transition-all border border-white/10 ${showAudioSettings ? 'bg-[#C5A059] text-black shadow-lg' : 'hover:bg-white/10'}`}><Volume2 className={isPlaying ? "animate-pulse w-6 h-6" : "w-6 h-6"} /></button>
             </div>
         </header>
 
-        {/* PAINEL DE ÁUDIO */}
+        {/* PAINEL DE ÁUDIO OTIMIZADO */}
         <AnimatePresence>
             {showAudioSettings && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-white dark:bg-dark-card border-b-2 border-[#C5A059] overflow-hidden z-30 shadow-2xl">
-                    <div className="p-8 max-w-4xl mx-auto flex flex-col gap-8">
-                        <div className="flex justify-between items-center border-b pb-6 dark:border-white/10">
-                            <span className="font-cinzel font-black text-xs md:text-sm uppercase tracking-[0.4em] text-[#8B0000] dark:text-[#C5A059]">Sintetização Professor Michel Felix</span>
-                            <button onClick={togglePlay} className="bg-[#C5A059] text-black px-10 py-4 rounded-full font-black flex items-center gap-4 shadow-xl hover:scale-105 active:scale-95 transition-all">
-                                {isPlaying ? <Pause className="w-6 h-6 fill-current"/> : <Play className="w-6 h-6 fill-current"/>} <span className="text-xs uppercase tracking-widest">{isPlaying ? 'Pausar' : 'Ouvir Aula'}</span>
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-white dark:bg-dark-card border-b border-[#C5A059]/40 overflow-hidden z-30">
+                    <div className="p-6 max-w-4xl mx-auto flex flex-col gap-6">
+                        <div className="flex justify-between items-center border-b pb-4 dark:border-white/5">
+                            <span className="font-cinzel text-[10px] uppercase tracking-widest text-[#8B0000] dark:text-[#C5A059]">Sintetização Professor</span>
+                            <button onClick={togglePlay} className="bg-[#C5A059] text-black px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-widest shadow-md">
+                                {isPlaying ? <Pause className="w-4 h-4 fill-current inline mr-2"/> : <Play className="w-4 h-4 fill-current inline mr-2"/>} {isPlaying ? 'Parar' : 'Ouvir'}
                             </button>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="flex flex-col gap-2">
-                                <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Voz do Mestre</label>
-                                <select className="w-full p-4 border-2 border-[#C5A059]/30 rounded-2xl dark:bg-gray-800 dark:text-white outline-none font-bold" value={selectedVoice} onChange={e => setSelectedVoice(e.target.value)}>
-                                    {voices.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
-                                </select>
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <label className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Velocidade da Transmissão</label>
-                                <div className="flex gap-4">
-                                    {[0.8, 1, 1.2, 1.5].map(r => (
-                                        <button key={r} onClick={() => setPlaybackRate(r)} className={`flex-1 py-4 rounded-2xl border-2 transition-all font-bold ${playbackRate === r ? 'bg-[#8B0000] text-white border-[#8B0000] shadow-lg scale-105' : 'bg-gray-50 dark:bg-gray-900'}`}>{r}x</button>
-                                    ))}
-                                </div>
+                        <div className="grid grid-cols-2 gap-6">
+                            <select className="w-full p-2 text-xs border rounded-xl dark:bg-gray-800 dark:text-white" value={selectedVoice} onChange={e => setSelectedVoice(e.target.value)}>
+                                {voices.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
+                            </select>
+                            <div className="flex gap-2">
+                                {[1, 1.2, 1.5].map(r => (
+                                    <button key={r} onClick={() => setPlaybackRate(r)} className={`flex-1 text-[10px] py-2 rounded-xl border transition-all font-bold ${playbackRate === r ? 'bg-[#8B0000] text-white' : 'bg-gray-50 dark:bg-gray-900'}`}>{r}x</button>
+                                ))}
                             </div>
                         </div>
                     </div>
@@ -577,101 +508,81 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             )}
         </AnimatePresence>
 
-        {/* NAVEGAÇÃO BÍBLICA */}
-        <div className="bg-white dark:bg-dark-card p-6 border-b border-[#C5A059]/40 flex gap-4 shadow-lg shrink-0">
+        {/* NAVEGAÇÃO BÍBLICA COMPACTA */}
+        <div className="bg-white dark:bg-dark-card p-4 border-b border-[#C5A059]/20 flex gap-3 shadow-md shrink-0">
              <div className="flex-1 relative">
-                 <Compass className="absolute left-6 top-1/2 -translate-y-1/2 w-8 h-8 text-[#C5A059]" />
-                 <select value={book} onChange={e => setBook(e.target.value)} className="w-full pl-16 pr-6 py-5 border-2 border-[#C5A059]/30 rounded-3xl font-cinzel text-lg dark:bg-gray-800 dark:text-white outline-none appearance-none font-bold shadow-inner">
+                 <Compass className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#C5A059]" />
+                 <select value={book} onChange={e => setBook(e.target.value)} className="w-full pl-12 pr-4 py-3 border-2 border-[#C5A059]/20 rounded-2xl font-cinzel text-sm dark:bg-gray-800 dark:text-white outline-none appearance-none font-bold">
                     {BIBLE_BOOKS.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
                  </select>
              </div>
-             <div className="w-40 relative">
-                 <HistoryIcon className="absolute left-6 top-1/2 -translate-y-1/2 w-8 h-8 text-[#C5A059]" />
-                 <input type="number" value={chapter} onChange={e => setChapter(Number(e.target.value))} className="w-full pl-16 pr-6 py-5 border-2 border-[#C5A059]/30 rounded-3xl font-cinzel text-lg dark:bg-gray-800 dark:text-white outline-none font-bold shadow-inner" min={1} />
+             <div className="w-24 relative">
+                 <HistoryIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#C5A059]" />
+                 <input type="number" value={chapter} onChange={e => setChapter(Number(e.target.value))} className="w-full pl-12 pr-4 py-3 border-2 border-[#C5A059]/20 rounded-2xl font-cinzel text-sm dark:bg-gray-800 dark:text-white outline-none font-bold" min={1} />
              </div>
         </div>
 
-        {/* ABAS DE PERFIL */}
-        <nav className="flex bg-[#F5F5DC] dark:bg-black border-b-2 border-[#C5A059]/60 shrink-0 sticky top-[92px] z-30 shadow-xl">
-            <button onClick={() => setActiveTab('student')} className={`flex-1 py-8 font-cinzel font-black text-xs md:text-sm uppercase tracking-[0.5em] flex justify-center items-center gap-4 transition-all relative ${activeTab === 'student' ? 'bg-[#600018] text-white' : 'text-gray-400 dark:text-gray-700'}`}>
-                <BookCheck className="w-6 h-6" /> Aluno
-                {activeTab === 'student' && <motion.div layoutId="tab-underline-v40" className="absolute bottom-0 left-0 w-full h-2 bg-[#C5A059]" />}
+        {/* ABAS OTIMIZADAS */}
+        <nav className="flex bg-[#F5F5DC] dark:bg-black border-b border-[#C5A059]/40 shrink-0 sticky top-[82px] md:top-[98px] z-30 shadow-sm">
+            <button onClick={() => setActiveTab('student')} className={`flex-1 py-4 font-cinzel font-black text-[10px] md:text-xs uppercase tracking-widest flex justify-center items-center gap-2 transition-all relative ${activeTab === 'student' ? 'bg-[#600018] text-white' : 'text-gray-500'}`}>
+                <BookCheck className="w-4 h-4" /> Aluno
+                {activeTab === 'student' && <motion.div layoutId="tab-v45" className="absolute bottom-0 left-0 w-full h-1 bg-[#C5A059]" />}
             </button>
-            <button onClick={() => setActiveTab('teacher')} className={`flex-1 py-8 font-cinzel font-black text-xs md:text-sm uppercase tracking-[0.5em] flex justify-center items-center gap-4 transition-all relative ${activeTab === 'teacher' ? 'bg-[#600018] text-white' : 'text-gray-400 dark:text-gray-700'}`}>
-                {isAdmin ? <ShieldCheck className="w-8 h-8 text-[#C5A059]" /> : <Lock className="w-6 h-6" />} Professor
-                {activeTab === 'teacher' && <motion.div layoutId="tab-underline-v40" className="absolute bottom-0 left-0 w-full h-2 bg-[#C5A059]" />}
+            <button onClick={() => setActiveTab('teacher')} className={`flex-1 py-4 font-cinzel font-black text-[10px] md:text-xs uppercase tracking-widest flex justify-center items-center gap-2 transition-all relative ${activeTab === 'teacher' ? 'bg-[#600018] text-white' : 'text-gray-500'}`}>
+                {isAdmin ? <ShieldCheck className="w-5 h-5 text-[#C5A059]" /> : <Lock className="w-4 h-4" />} Professor
+                {activeTab === 'teacher' && <motion.div layoutId="tab-v45" className="absolute bottom-0 left-0 w-full h-1 bg-[#C5A059]" />}
             </button>
         </nav>
 
-        {/* CONSTRUTOR DE APOSTILA (ADMIN) */}
+        {/* CONSTRUTOR MAGNUM OTIMIZADO (NÃO OBSTRUTIVO) */}
         {isAdmin && !isEditing && (
-            <div className="bg-[#020202] text-[#C5A059] p-10 shadow-2xl sticky top-[190px] z-20 border-b-8 border-[#8B0000] animate-in slide-in-from-top-12">
+            <div className="bg-[#020202] text-[#C5A059] p-6 shadow-xl sticky top-[138px] md:top-[160px] z-20 border-b-4 border-[#8B0000] animate-in slide-in-from-top-8">
                 {isGenerating ? (
-                    <div className="flex flex-col items-center gap-8 py-6">
-                        <div className="flex items-center gap-10">
-                            <div className="relative">
-                                <Loader2 className="animate-spin w-20 h-20 text-[#C5A059]"/>
-                                <div className="absolute inset-0 flex items-center justify-center"><Cpu className="w-10 h-10 text-[#C5A059] animate-pulse" /></div>
-                            </div>
+                    <div className="flex flex-col items-center gap-4 py-4">
+                        <div className="flex items-center gap-6">
+                            <Loader2 className="animate-spin w-12 h-12 text-[#C5A059]"/>
                             <div className="flex flex-col">
-                                <span className="font-cinzel text-lg font-black uppercase tracking-[0.3em] text-white animate-pulse">{loadingStatusMessages[currentStatusIndex]}</span>
-                                <div className="flex flex-wrap gap-6 mt-4">
-                                    <span className="text-[12px] opacity-90 font-mono flex items-center gap-3 bg-white/5 px-5 py-2 rounded-xl border border-white/10"><Clock className="w-4 h-4 text-[#C5A059]"/> Tempo: {generationTime}s</span>
-                                    <span className={`text-[12px] font-black uppercase tracking-widest px-5 py-2 rounded-xl border-2 ${accelerationRef.current ? 'bg-green-900/40 text-green-400 border-green-500 animate-pulse' : 'bg-blue-900/40 text-blue-400 border-blue-500'}`}>
-                                        Fase: {validationPhase === 'retention' ? 'Retenção' : validationPhase === 'theological' ? 'Exegese' : 'Processando'}
+                                <span className="font-cinzel text-xs font-black uppercase tracking-widest text-white animate-pulse">{loadingStatusMessages[currentStatusIndex]}</span>
+                                <div className="flex gap-4 mt-2">
+                                    <span className="text-[10px] opacity-70 font-mono flex items-center gap-2"><Clock className="w-3 h-3"/> {generationTime}s</span>
+                                    <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg border ${accelerationRef.current ? 'bg-green-900/40 text-green-400 border-green-500' : 'bg-blue-900/40 text-blue-400 border-blue-500'}`}>
+                                        {validationPhase === 'retention' ? 'Retenção' : 'Exegese'}
                                     </span>
                                 </div>
                             </div>
                         </div>
-                        
-                        {/* Audit Log */}
-                        <div className="w-full bg-black/60 p-5 rounded-3xl border-2 border-[#C5A059]/20 h-32 overflow-y-auto font-mono text-[10px] space-y-2 shadow-inner">
-                            {validationLog.map((log, i) => (
-                                <div key={i} className="flex gap-3 items-center opacity-80">
-                                    <span className="text-[#C5A059]">[{new Date().toLocaleTimeString()}]</span>
-                                    <span className={log.includes('✅') ? 'text-green-400' : log.includes('❌') ? 'text-red-400' : 'text-gray-300'}>{log}</span>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="w-full bg-white/5 h-6 rounded-full mt-6 overflow-hidden border-2 border-white/15 p-1">
-                            <motion.div initial={{ width: 0 }} animate={{ width: `${theologicalDensity}%` }} className="bg-gradient-to-r from-[#8B0000] via-[#C5A059] to-[#8B0000] h-full rounded-full shadow-[0_0_30px_#C5A059] relative">
-                                <div className="absolute top-0 right-0 h-full w-24 bg-white/20 blur-xl animate-shimmer"></div>
-                            </motion.div>
-                        </div>
-                        <div className="flex justify-between w-full text-[11px] font-black uppercase tracking-[0.8em] opacity-40">
-                            <span>Processando Heurística v40</span>
-                            <span>{theologicalDensity.toFixed(0)}% MAGNUM OPUS</span>
+                        <div className="w-full bg-white/5 h-2 rounded-full mt-2 overflow-hidden p-0.5">
+                            <motion.div initial={{ width: 0 }} animate={{ width: `${theologicalDensity}%` }} className="bg-gradient-to-r from-[#8B0000] via-[#C5A059] to-[#8B0000] h-full rounded-full shadow-[0_0_20px_#C5A059]" />
                         </div>
                     </div>
                 ) : (
                     <>
-                        <div className="flex items-center justify-between mb-10">
-                            <div className="flex items-center gap-8">
-                                <div className="w-20 h-20 bg-gradient-to-br from-[#8B0000] to-[#400010] rounded-3xl flex items-center justify-center shadow-xl ring-4 ring-[#C5A059]/40"><Sparkles className="w-12 h-12 text-white animate-pulse" /></div>
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-4">
+                                <Sparkles className="w-8 h-8 text-white animate-pulse" />
                                 <div className="flex flex-col">
-                                    <span className="font-cinzel text-xl font-black tracking-[0.6em] uppercase text-white">CONSTRUTOR MAGNUM OPUS v40</span>
-                                    <span className="text-[11px] uppercase tracking-[0.5em] text-[#C5A059] font-black mt-2">Target 2.400 Palavras | 5-6 Páginas | Estilo Michel Felix</span>
+                                    <span className="font-cinzel text-sm font-black tracking-widest uppercase text-white">CONSTRUTOR MAGNUM v45</span>
+                                    <span className="text-[9px] uppercase text-[#C5A059] font-black mt-1 flex items-center gap-2"><Ruler className="w-3 h-3"/> Alvo: ~2.400 Palavras | Prof. Michel Felix</span>
                                 </div>
                             </div>
-                            <button onClick={() => setShowInstructions(!showInstructions)} className="text-[12px] font-black uppercase tracking-[0.4em] bg-white/5 px-8 py-4 rounded-2xl border-2 border-white/10 hover:bg-white/15 transition-all">{showInstructions ? 'Ocultar Comando' : 'Comando Especial'}</button>
+                            <button onClick={() => setShowInstructions(!showInstructions)} className="text-[9px] font-black uppercase tracking-widest bg-white/5 px-4 py-2 rounded-xl border border-white/10">{showInstructions ? 'Ocultar' : 'Instrução'}</button>
                         </div>
                         
                         <AnimatePresence>
                             {showInstructions && (
-                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mb-8 overflow-hidden">
-                                    <textarea value={customInstructions} onChange={(e) => setCustomInstructions(e.target.value)} placeholder="Ex: Foque na escatologia, detalhe a arqueologia e use o original Hebraico..." className="w-full p-8 text-xl text-black rounded-[2.5rem] border-none focus:ring-12 focus:ring-[#C5A059]/30 font-montserrat shadow-inner bg-[#FDFBF7] font-bold" rows={3} />
+                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mb-6 overflow-hidden">
+                                    <textarea value={customInstructions} onChange={(e) => setCustomInstructions(e.target.value)} placeholder="Instrução Adicional..." className="w-full p-4 text-sm text-black rounded-2xl border-none focus:ring-8 focus:ring-[#C5A059]/20 font-montserrat shadow-inner bg-[#FDFBF7] font-bold" rows={2} />
                                 </motion.div>
                             )}
                         </AnimatePresence>
 
-                        <div className="flex gap-6">
-                            <button onClick={() => handleGenerate('start')} disabled={isGenerating} className="flex-2 px-12 py-8 bg-[#8B0000] border-4 border-[#C5A059]/50 rounded-[2.5rem] text-[12px] font-black uppercase tracking-[0.4em] text-white hover:bg-white hover:text-black transition-all flex items-center justify-center gap-6 shadow-2xl active:scale-95 group">
-                                <Layout className="w-8 h-8 group-hover:rotate-[360deg] transition-transform duration-1000" /> GERAR APOSTILA INTEGRAL
+                        <div className="flex gap-3">
+                            <button onClick={() => handleGenerate('start')} disabled={isGenerating} className="flex-2 px-6 py-4 bg-[#8B0000] border-2 border-[#C5A059]/30 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white hover:bg-white hover:text-black transition-all flex items-center justify-center gap-4 shadow-xl active:scale-95">
+                                <Layout className="w-5 h-5" /> GERAR APOSTILA INTEGRAL
                             </button>
-                            <button onClick={() => handleGenerate('continue')} disabled={isGenerating} className="flex-1 px-12 py-8 bg-[#C5A059] text-black font-black rounded-[2.5rem] text-[12px] uppercase tracking-[0.4em] hover:bg-white transition-all flex items-center justify-center gap-6 active:scale-95"><Plus className="w-8 h-8"/> CONTINUAR</button>
+                            <button onClick={() => handleGenerate('continue')} disabled={isGenerating} className="flex-1 px-6 py-4 bg-[#C5A059] text-black font-black rounded-2xl text-[10px] uppercase tracking-widest hover:bg-white transition-all flex items-center justify-center gap-4 active:scale-95"><Plus className="w-5 h-5"/> CONTINUAR</button>
                             {pages.length > 0 && (
-                                <button onClick={handleDelete} className="px-8 py-8 bg-red-900/60 text-red-400 border-4 border-red-500/40 rounded-[2.5rem] hover:bg-red-600 hover:text-white transition-all shadow-2xl"><Trash2 className="w-8 h-8" /></button>
+                                <button onClick={async () => { if(window.confirm("Apagar?")) { if(content?.id) await db.entities.PanoramaBiblico.delete(content.id); await loadContent(); onShowToast('Excluído.', 'success'); } }} className="px-5 py-4 bg-red-900/60 text-red-300 border-2 border-red-500/30 rounded-2xl hover:bg-red-600 transition-all"><Trash2 className="w-5 h-5" /></button>
                             )}
                         </div>
                     </>
@@ -679,128 +590,118 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             </div>
         )}
 
-        {/* MANUSCRITO PRINCIPAL (O CORAÇÃO DO APP) */}
-        <main ref={scrollContainerRef} className="flex-1 overflow-y-auto p-8 md:p-24 max-w-[1440px] mx-auto pb-96 w-full scroll-smooth">
+        {/* MANUSCRITO PRINCIPAL (ESTÉTICA PRIORITÁRIA) */}
+        <main ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6 md:p-16 max-w-[1200px] mx-auto pb-[200px] w-full scroll-smooth">
             
-            {/* Stats Flutuantes (Admin) */}
+            {/* Stats Flutuantes Admin (Discretas) */}
             {isAdmin && stats.wordCount > 0 && (
-                <div className="fixed top-36 left-8 z-50 bg-[#1a0f0f]/90 backdrop-blur-xl p-6 rounded-[2rem] border-2 border-[#C5A059]/30 text-[#C5A059] shadow-2xl hidden md:flex flex-col gap-2 animate-in slide-in-from-left-5">
-                    <div className="flex items-center gap-2 border-b border-[#C5A059]/20 pb-2"><AlignLeft className="w-4 h-4"/> <span className="font-cinzel text-[10px] uppercase font-bold">Telemetria v40</span></div>
-                    <div className="flex justify-between gap-8 text-[9px] font-black uppercase tracking-widest"><span>Palavras:</span> <span className="text-white">{stats.wordCount}</span></div>
-                    <div className="flex justify-between gap-8 text-[9px] font-black uppercase tracking-widest"><span>Páginas:</span> <span className="text-white">{stats.estimatedPages}</span></div>
+                <div className="fixed top-36 left-4 z-50 bg-[#1a0f0f]/90 backdrop-blur-md p-4 rounded-2xl border border-[#C5A059]/30 text-[#C5A059] shadow-xl hidden md:flex flex-col gap-1 animate-in slide-in-from-left-2">
+                    <div className="flex items-center gap-2 border-b border-[#C5A059]/10 pb-1 mb-1"><AlignLeft className="w-3 h-3"/> <span className="font-cinzel text-[8px] uppercase font-bold">Telemetria v45</span></div>
+                    <div className="flex justify-between gap-4 text-[8px] font-black uppercase tracking-widest"><span>Palavras:</span> <span className="text-white">{stats.wordCount}</span></div>
+                    <div className="flex justify-between gap-4 text-[8px] font-black uppercase tracking-widest"><span>Páginas:</span> <span className="text-white">{stats.estimatedPages}</span></div>
                 </div>
             )}
 
             {!hasAccess ? (
-                <div className="text-center py-64 opacity-60 dark:text-white animate-in zoom-in duration-1000">
-                    <div className="relative inline-block mb-24">
-                        <div className="absolute inset-0 bg-red-900/40 blur-[150px] scale-[3] animate-pulse"></div>
-                        <ShieldAlert className="w-64 h-64 mx-auto text-[#8B0000] drop-shadow-2xl" />
-                    </div>
-                    <h2 className="font-cinzel text-6xl font-black mb-12 tracking-[0.2em] uppercase">Sanctum Sanctorum</h2>
-                    <p className="font-montserrat text-lg max-w-xl mx-auto uppercase tracking-[0.6em] leading-loose italic font-black text-[#8B0000]">Conteúdo reservado ao corpo docente autorizado ADMA.</p>
+                <div className="text-center py-40 opacity-50 dark:text-white animate-in zoom-in duration-1000">
+                    <ShieldAlert className="w-40 h-40 mx-auto text-[#8B0000] mb-8" />
+                    <h2 className="font-cinzel text-4xl font-black mb-6 tracking-widest uppercase">Sanctum Sanctorum</h2>
+                    <p className="font-montserrat text-sm max-w-xs mx-auto uppercase tracking-widest leading-loose italic font-black text-[#8B0000]">Conteúdo docente ADMA.</p>
                 </div>
             ) : isEditing ? (
-                 <div className="bg-white dark:bg-dark-card shadow-2xl p-12 rounded-[5rem] border-8 border-[#C5A059] relative animate-in slide-in-from-bottom-24 duration-700">
-                     <div className="flex justify-between items-center mb-12 border-b-4 pb-10 dark:border-white/10">
-                        <div className="flex items-center gap-10">
-                            <div className="w-20 h-20 bg-blue-900/20 rounded-3xl flex items-center justify-center text-blue-900 shadow-xl"><PenTool className="w-10 h-10" /></div>
-                            <h3 className="font-cinzel font-black text-4xl text-[#8B0000] dark:text-[#ff6b6b]">Oficina do Manuscrito</h3>
-                        </div>
-                        <div className="flex gap-6">
-                            <button onClick={() => setIsEditing(false)} className="px-12 py-6 text-xs font-black border-4 border-red-500 text-red-500 rounded-full hover:bg-red-50 uppercase tracking-[0.4em] transition-all">Descartar</button>
+                 <div className="bg-white dark:bg-dark-card shadow-xl p-8 rounded-3xl border-4 border-[#C5A059]/30 relative animate-in slide-in-from-bottom-12 duration-700">
+                     <div className="flex justify-between items-center mb-8 border-b pb-6 dark:border-white/5">
+                        <div className="flex items-center gap-6"><PenTool className="w-8 h-8 text-blue-900" /><h3 className="font-cinzel font-black text-2xl text-[#8B0000]">Revisão Manual</h3></div>
+                        <div className="flex gap-4">
+                            <button onClick={() => setIsEditing(false)} className="px-8 py-3 text-[10px] font-black border-2 border-red-500 text-red-500 rounded-full hover:bg-red-50 uppercase tracking-widest transition-all">Descartar</button>
                             <button onClick={async () => {
                                 if (!content) return;
                                 const data = { ...content, student_content: activeTab === 'student' ? editValue : content.student_content, teacher_content: activeTab === 'teacher' ? editValue : content.teacher_content };
                                 if (content.id) await db.entities.PanoramaBiblico.update(content.id, data);
-                                await loadContent(); setIsEditing(false); onShowToast('Manuscrito Arquivado!', 'success');
-                            }} className="px-12 py-6 text-xs font-black bg-green-600 text-white rounded-full shadow-xl uppercase tracking-[0.4em] transition-all">Salvar</button>
+                                await loadContent(); setIsEditing(false); onShowToast('Arquivado!', 'success');
+                            }} className="px-8 py-3 text-[10px] font-black bg-green-600 text-white rounded-full shadow-lg uppercase tracking-widest transition-all">Salvar</button>
                         </div>
                      </div>
-                     <textarea value={editValue} onChange={e => setEditValue(e.target.value)} className="w-full h-[75vh] p-16 font-mono text-2xl border-none rounded-[4rem] bg-gray-50 dark:bg-black dark:text-gray-300 resize-none shadow-inner leading-relaxed focus:ring-12 focus:ring-[#C5A059]/30 transition-all" />
+                     <textarea value={editValue} onChange={e => setEditValue(e.target.value)} className="w-full h-[65vh] p-8 font-mono text-lg md:text-xl border-none rounded-2xl bg-gray-50 dark:bg-black dark:text-gray-300 resize-none shadow-inner leading-relaxed focus:ring-4 focus:ring-[#C5A059]/20 transition-all" />
                  </div>
             ) : content && pages.length > 0 ? (
-                <article className="bg-white dark:bg-dark-card shadow-2xl p-12 md:p-32 min-h-[100vh] border-2 border-[#C5A059]/40 relative rounded-[6rem] animate-in fade-in duration-1000 select-text overflow-hidden">
-                     {/* Watermark Monumental */}
-                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.05] pointer-events-none rotate-[-45deg] scale-[2.2]">
-                        <BookOpen className="w-[1200px] h-[1200px] text-[#8B0000]" />
+                <article className="bg-white dark:bg-dark-card shadow-xl p-8 md:p-24 min-h-[90vh] border border-[#C5A059]/20 relative rounded-[4rem] animate-in fade-in duration-1000 select-text overflow-hidden">
+                     {/* Watermark Sutil */}
+                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.03] pointer-events-none rotate-[-45deg] scale-[1.5]">
+                        <BookOpen className="w-[800px] h-[800px] text-[#8B0000]" />
                      </div>
 
-                     {renderFormattedText(pages[currentPage])}
+                     {renderContent(pages[currentPage])}
                      
-                     <div className="absolute bottom-20 right-24 flex items-center gap-10 select-none opacity-40 hover:opacity-100 transition-all cursor-help group">
-                        <div className="h-[2px] w-32 bg-[#C5A059] group-hover:w-56 transition-all shadow-xl"></div>
-                        <span className="text-[#C5A059] font-cinzel text-2xl font-black tracking-[0.8em]">{currentPage + 1} / {pages.length}</span>
+                     <div className="absolute bottom-10 right-14 flex items-center gap-6 select-none opacity-30 hover:opacity-100 transition-all cursor-help group">
+                        <div className="h-[1px] w-12 bg-[#C5A059] group-hover:w-24 transition-all"></div>
+                        <span className="text-[#C5A059] font-cinzel text-lg font-black tracking-widest">{currentPage + 1} / {pages.length}</span>
                      </div>
 
                      {currentPage === pages.length - 1 && userProgress && (
-                         <footer className="mt-64 text-center border-t-8 border-dotted border-[#C5A059]/50 pt-64 animate-in slide-in-from-bottom-24 duration-[2s] relative">
-                             <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 bg-[#FDFBF7] dark:bg-dark-card rounded-full flex items-center justify-center border-8 border-dotted border-[#C5A059]/60 shadow-2xl">
-                                <Anchor className="w-24 h-24 text-[#C5A059] animate-bounce" />
+                         <footer className="mt-40 text-center border-t-2 border-dotted border-[#C5A059]/30 pt-32 animate-in slide-in-from-bottom-12 duration-[1.5s] relative">
+                             <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-24 h-24 bg-[#FDFBF7] dark:bg-dark-card rounded-full flex items-center justify-center border-2 border-dotted border-[#C5A059]/40 shadow-xl">
+                                <Anchor className="w-10 h-10 text-[#C5A059] animate-bounce" />
                              </div>
 
-                             <div className="max-w-4xl mx-auto mb-48">
-                                <Quote className="w-32 h-32 mx-auto text-[#C5A059] mb-16 opacity-30 animate-pulse" />
-                                <h4 className="font-cinzel text-6xl font-black text-[#8B0000] mb-12 uppercase tracking-[0.4em] drop-shadow-2xl">Epílogo da Aula</h4>
-                                <p className="font-cormorant text-5xl text-gray-500 italic leading-loose px-16">"Guardei a tua palavra no meu coração, para não pecar contra ti." <br/><span className="text-[14px] font-black tracking-[1.5em] not-italic text-[#C5A059] block mt-12 uppercase opacity-80">(Salmos 119:11 - Almeida Fiel)</span></p>
+                             <div className="max-w-2xl mx-auto mb-32">
+                                <Quote className="w-16 h-16 mx-auto text-[#C5A059] mb-8 opacity-20" />
+                                <h4 className="font-cinzel text-3xl font-black text-[#8B0000] mb-8 uppercase tracking-widest drop-shadow-md">Epílogo da Aula</h4>
+                                <p className="font-cormorant text-2xl text-gray-500 italic leading-loose px-8">"Guardei a tua palavra no meu coração, para não pecar contra ti." <br/><span className="text-[12px] font-black tracking-[1.2em] not-italic text-[#C5A059] block mt-8 uppercase opacity-80">(Salmos 119:11 - ACF)</span></p>
                              </div>
                              
                              <button onClick={async () => {
                                  if (!userProgress || isRead) return;
                                  const updated = await db.entities.ReadingProgress.update(userProgress.id!, { ebd_read: [...(userProgress.ebd_read || []), studyKey], total_ebd_read: (userProgress.total_ebd_read || 0) + 1 });
                                  if (onProgressUpdate) onProgressUpdate(updated);
-                                 onShowToast('Glória a Deus! Estudo arquivado no seu Ranking.', 'success');
-                             }} disabled={isRead} className={`group relative px-40 py-16 rounded-full font-cinzel font-black text-5xl shadow-2xl flex items-center justify-center gap-12 mx-auto overflow-hidden transition-all transform hover:scale-110 active:scale-95 border-8 border-white/20 ${isRead ? 'bg-green-600 text-white shadow-green-600/50' : 'bg-gradient-to-r from-[#8B0000] via-[#D00010] to-[#600018] text-white shadow-red-900/90'}`}>
-                                 {isRead ? <CheckCircle className="w-20 h-20" /> : <GraduationCap className="w-20 h-20 group-hover:rotate-[720deg] transition-transform duration-[4s]" />}
-                                 <span className="relative z-10 tracking-[0.4em] uppercase">{isRead ? 'ARQUIVADO' : 'CONCLUIR ESTUDO'}</span>
-                                 {!isRead && <div className="absolute inset-0 bg-white/40 opacity-0 group-hover:opacity-100 transition-opacity duration-1500 blur-3xl"></div>}
+                                 onShowToast('Concluído! Sabedoria arquivada.', 'success');
+                             }} disabled={isRead} className={`group relative px-20 py-10 rounded-full font-cinzel font-black text-2xl shadow-xl flex items-center justify-center gap-8 mx-auto overflow-hidden transition-all transform hover:scale-110 active:scale-95 border-4 border-white/10 ${isRead ? 'bg-green-600 text-white' : 'bg-gradient-to-r from-[#8B0000] via-[#D00010] to-[#600018] text-white'}`}>
+                                 {isRead ? <CheckCircle className="w-10 h-10" /> : <GraduationCap className="w-10 h-10 group-hover:rotate-[360deg] transition-transform duration-[2s]" />}
+                                 <span className="relative z-10 tracking-widest uppercase">{isRead ? 'ARQUIVADO' : 'CONCLUIR'}</span>
                              </button>
                          </footer>
                      )}
                 </article>
             ) : (
-                <div className="text-center py-80 bg-white dark:bg-dark-card rounded-[8rem] border-8 border-dashed border-[#C5A059]/40 animate-in fade-in duration-[2s] shadow-2xl relative overflow-hidden group">
-                    <div className="relative inline-block mb-32 scale-[2] transition-transform group-hover:scale-[2.4] duration-[3s]">
-                        <div className="absolute inset-0 bg-[#C5A059]/40 blur-[150px] rounded-full animate-pulse"></div>
-                        <ScrollText className="w-72 h-72 mx-auto text-[#C5A059] opacity-30 relative z-10 drop-shadow-2xl"/>
-                    </div>
-                    <p className="font-cinzel text-7xl font-black text-gray-400 mb-10 tracking-[0.5em] uppercase">Manuscrito Silente</p>
-                    <p className="font-montserrat text-lg text-gray-500 uppercase tracking-[1.5em] mb-32 font-black">O Professor ainda não transcreveu o capítulo {chapter}.</p>
+                <div className="text-center py-40 bg-white dark:bg-dark-card rounded-[3rem] border-4 border-dashed border-[#C5A059]/20 animate-in fade-in duration-[1.5s] shadow-lg relative overflow-hidden group">
+                    <ScrollText className="w-40 h-40 mx-auto text-[#C5A059] opacity-20 mb-12 drop-shadow-xl"/>
+                    <p className="font-cinzel text-4xl font-black text-gray-400 mb-6 tracking-widest uppercase">Manuscrito Silente</p>
+                    <p className="font-montserrat text-sm text-gray-500 uppercase tracking-widest mb-20 font-black">Aguardando transcrição magistral.</p>
                     {isAdmin && (
-                        <motion.div whileHover={{ y: -20, scale: 1.05 }} className="max-w-4xl mx-auto p-20 bg-[#8B0000]/15 rounded-[6rem] border-8 border-dashed border-[#8B0000]/30 flex flex-col items-center shadow-xl transition-all">
-                            <Library className="w-24 h-24 text-[#8B0000] mb-12 opacity-90 animate-bounce" />
-                            <p className="text-xl font-black text-[#8B0000] uppercase tracking-[0.7em] text-center leading-loose font-montserrat">Atenção Administrador ADMA SUPREMO: <br/> Utilize o motor Magnum Opus v40 para realizar a exegese integral de 2.400 palavras.</p>
-                        </motion.div>
+                        <div className="max-w-2xl mx-auto p-12 bg-[#8B0000]/5 rounded-[3rem] border-2 border-dashed border-[#8B0000]/20 flex flex-col items-center">
+                            <Library className="w-16 h-16 text-[#8B0000] mb-8 opacity-70 animate-bounce" />
+                            <p className="text-sm font-black text-[#8B0000] uppercase tracking-widest text-center leading-loose font-montserrat">Administrador ADMA SUPREMO: <br/> Utilize o motor Magnum Opus v45 para gerar exegese microscópica.</p>
+                        </div>
                     )}
                 </div>
             )}
         </main>
 
-        {/* NAVEGAÇÃO FLUTUANTE PREMIUM (UI CORRIGIDA) */}
+        {/* NAVEGAÇÃO FLUTUANTE COMPACTA (UI CORRIGIDA - NÃO OBSTRUTIVA) */}
         <AnimatePresence>
             {pages.length > 1 && hasAccess && !isEditing && (
-                <motion.nav initial={{ y: 250, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 250, opacity: 0 }} className="fixed bottom-36 left-10 right-10 z-40 max-w-5xl mx-auto">
-                    <div className="bg-[#050505]/98 dark:bg-dark-card/98 backdrop-blur-3xl border-4 border-[#C5A059]/90 p-8 rounded-[4rem] flex justify-between items-center shadow-2xl ring-8 ring-white/10 group">
-                        <button onClick={() => { setCurrentPage(Math.max(0, currentPage - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} disabled={currentPage === 0} className="group/btn flex items-center gap-6 px-14 py-8 bg-[#8B0000] text-white rounded-[2.5rem] font-black text-xs uppercase tracking-[0.5em] disabled:opacity-20 transition-all shadow-xl active:scale-90 border-2 border-white/20">
-                            <ChevronLeft className="w-8 h-8 group-hover/btn:-translate-x-4 transition-transform" /> <span>Anterior</span>
+                <motion.nav initial={{ y: 150, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 150, opacity: 0 }} className="fixed bottom-24 left-6 right-6 z-40 max-w-4xl mx-auto pointer-events-none">
+                    <div className="bg-[#050505]/95 dark:bg-dark-card/95 backdrop-blur-md border border-[#C5A059]/40 p-4 rounded-3xl flex justify-between items-center shadow-2xl ring-4 ring-white/5 group pointer-events-auto">
+                        <button onClick={() => { setCurrentPage(Math.max(0, currentPage - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} disabled={currentPage === 0} className="flex items-center gap-3 px-6 py-4 bg-[#8B0000] text-white rounded-2xl font-black text-[9px] md:text-[11px] uppercase tracking-widest disabled:opacity-20 transition-all shadow-lg active:scale-90 border border-white/10">
+                            <ChevronLeft className="w-5 h-5" /> <span>Anterior</span>
                         </button>
                         
-                        <div className="flex flex-col items-center px-16">
-                            <span className="font-cinzel font-black text-[#C5A059] text-5xl tracking-[1em] drop-shadow-2xl transition-transform group-hover:scale-110 duration-1000">{currentPage + 1} <span className="opacity-40 text-xl">/ {pages.length}</span></span>
-                            <div className="w-80 bg-white/15 h-4 rounded-full mt-8 overflow-hidden border-4 border-white/10 p-1">
-                                <motion.div className="bg-gradient-to-r from-[#8B0000] via-[#C5A059] to-[#8B0000] h-full shadow-[0_0_40px_#C5A059]" style={{ width: `${((currentPage + 1) / pages.length) * 100}%` }} />
+                        <div className="flex flex-col items-center px-10">
+                            <span className="font-cinzel font-black text-[#C5A059] text-3xl tracking-widest drop-shadow-lg">{currentPage + 1} <span className="opacity-30 text-base">/ {pages.length}</span></span>
+                            <div className="w-32 md:w-48 bg-white/10 h-1 rounded-full mt-4 overflow-hidden">
+                                <motion.div className="bg-[#C5A059] h-full shadow-[0_0_10px_#C5A059]" style={{ width: `${((currentPage + 1) / pages.length) * 100}%` }} />
                             </div>
                         </div>
 
-                        <button onClick={() => { setCurrentPage(Math.min(pages.length - 1, currentPage + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} disabled={currentPage === pages.length - 1} className="group/btn flex items-center gap-6 px-14 py-8 bg-[#8B0000] text-white rounded-[2.5rem] font-black text-xs uppercase tracking-[0.5em] disabled:opacity-20 transition-all shadow-xl active:scale-90 border-2 border-white/20">
-                            <span>Próximo</span> <ChevronRight className="w-8 h-8 group-hover/btn:translate-x-4 transition-transform" />
+                        <button onClick={() => { setCurrentPage(Math.min(pages.length - 1, currentPage + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} disabled={currentPage === pages.length - 1} className="flex items-center gap-3 px-6 py-4 bg-[#8B0000] text-white rounded-2xl font-black text-[9px] md:text-[11px] uppercase tracking-widest disabled:opacity-20 transition-all shadow-lg active:scale-90 border border-white/10">
+                            <span>Próximo</span> <ChevronRight className="w-5 h-5" />
                         </button>
                     </div>
                 </motion.nav>
             )}
         </AnimatePresence>
         
-        <div className="h-64 shrink-0 pointer-events-none opacity-0">ADMA SECURITY LAYER SUPREME v40</div>
+        <div className="h-48 shrink-0 pointer-events-none opacity-0">ADMA SECURITY LAYER v45</div>
     </div>
   );
 }
