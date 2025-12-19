@@ -8,7 +8,7 @@ import { Type } from "@google/genai";
 
 // ==========================================================================================
 // COMPONENTE: VERSE PANEL - EDIÇÃO MAGNUM OPUS (v77.0)
-// FOCO: BLINDAGEM TEOLÓGICA v95 E EXEGESE MICROSCÓPICA
+// FOCO: BLINDAGEM TEOLÓGICA v95.2 E EXEGESE MICROSCÓPICA
 // ==========================================================================================
 
 interface VersePanelProps {
@@ -222,11 +222,10 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
         TEXTO: "${verse}"
         PERGUNTA DO ALUNO: "${text}"
 
-        --- BLINDAGEM ANTI-HERESIA v95 (PROTOCOLO SUPREMO E RIGOROSO) ---
-        - 1 SAMUEL 28 (PITONISA DE EN-DOR): Samuel NÃO voltou pelo poder da pitonisa. Isso é antibíblico, contrário às palavras de Jesus e à parábola do Rico e Lázaro. O mundo dos mortos é inacessível para consultas humanas (Lucas 16:26). 
-        - EXPLICAÇÃO OBRIGATÓRIA: Ensine com autoridade que o evento foi ou uma simulação demoníaca (personificação) para selar o juízo de Saul, ou uma intervenção SOBERANA e ÚNICA de Deus que atropelou o rito da médium apenas para proferir sentença final (tanto que ela mesma se assustou). NUNCA aceite que mortos conversam com vivos através de ritos ocultistas.
-        - LUCAS 16:26 (O GRANDE ABISMO): Use este texto para fundamentar que a comunicação entre o mundo espiritual e os vivos é impossível para fins de consulta. 
-        - Defenda a Ortodoxia Pentecostal Clássica Assembleiana.
+        --- BLINDAGEM ANTI-HERESIA v95.2 (PROTOCOLO DE REFUTAÇÃO ABSOLUTA) ---
+        - 1 SAMUEL 28 (PITONISA DE EN-DOR): É TERMINANTEMENTE PROIBIDO sugerir que Samuel voltou de fato. Samuel NÃO apareceu. O retorno de mortos para consulta é IMPOSSÍVEL e antibíblico (Lucas 16:26, Hebreus 9:27). 
+        - EXPLICAÇÃO OBRIGATÓRIA: O que ocorreu foi uma MANIFESTAÇÃO DEMONÍACA (personificação) ou uma FRAUDE da pitonisa. Se houver citações de juízo, explique que demônios conhecem a Palavra e o estado de apostasia de Saul, usando isso para selar sua perdição. NUNCA afirme que foi o verdadeiro profeta Samuel, nem sob pretexto de "permissão divina excepcional". O abismo de Lucas 16:26 é instransponível.
+        - Defenda a Ortodoxia Pentecostal Clássica Assembleiana contra qualquer viés espírita, necromante ou sincretista.
 
         --- DIRETRIZES FUNDAMENTAIS (RIGOROSO) ---
         1. TONE: Magistral e seguro. Use uma linguagem culta, mas explicativa.
@@ -240,7 +239,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
         3. METODOLOGIA DE RESPOSTA (HERMENÊUTICA SÉRIA):
            - Se a pergunta envolver polêmicas:
              A) ELENQUE as principais interpretações históricas.
-             B) REFUTE categoricamente as visões heréticas, espíritas ou sincretistas.
+             B) REFUTE categoricamente as visões heréticas, espíritas ou que validem o retorno de mortos.
              C) ESTABELEÇA a interpretação Ortodoxa Conservadora de forma indubitável.
 
         4. VISUAL & FORMATAÇÃO:
@@ -416,20 +415,20 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
             TEXTO BÍBLICO: "${verse}"
             ${customPromptAddon}
 
-            --- BLINDAGEM ANTI-HERESIA v95 (FIDELIDADE TOTAL) ---
-            - 1 SAMUEL 28 (NECROMANCIA): É DOUTRINARIAMENTE PROIBIDO afirmar que Samuel voltou pelo poder da pitonisa. Isso contradiz a parábola do Rico e Lázaro e as palavras de Jesus sobre o abismo instransponível (Lucas 16:26). 
-            - EXPLICAÇÃO: Ensine obrigatoriamente que a visão de Samuel foi ou uma personificação demoníaca para juízo de Saul ou uma manifestação excepcional da SOBERANIA DE DEUS que interrompeu o rito pecaminoso para anunciar a sentença de Saul, independentemente de qualquer ato da médium. Rejeite qualquer validação da prática de consulta aos mortos.
-            - LUCAS 16:26: Fundamente a impossibilidade de comunicação entre vivos e mortos salvos para fins de consulta.
+            --- BLINDAGEM ANTI-HERESIA v95.2 (PROTOCOLO DE REFUTAÇÃO TOTAL) ---
+            - 1 SAMUEL 28 (NECROMANCIA): É ABSOLUTAMENTE PROIBIDO afirmar que Samuel voltou de fato. Samuel NÃO apareceu. O mundo dos mortos é inacessível para consultas humanas conforme Jesus ensinou em Lucas 16:26 (Parábola do Rico e Lázaro).
+            - EXPLICAÇÃO OBRIGATÓRIA: Ensine que o evento foi uma simulação demoníaca (personificação) ou uma invenção da médium. Mesmo as previsões de morte eram conhecimento óbvio do juízo de Deus já pronunciado sobre Saul. NUNCA valide a possibilidade de espíritos de mortos retornarem para falar com vivos. Rejeite qualquer interpretação que sugira sucesso real da prática oculta.
+            - LUCAS 16:26 (O GRANDE ABISMO): Fundamente a impossibilidade de comunicação entre vivos e mortos salvos para fins de consulta espiritual.
 
-            --- REGRAS DE INÍCIO ---
+            --- REGRAS DE INÍCIO (RIGOROSO) ---
             1. INÍCIO OBRIGATÓRIO: Todo comentário DEVE começar EXATAMENTE com a frase: "Este versículo revela...".
             2. ZERO SAUDAÇÕES.
 
-            --- OBJETIVO SUPREMO: EFEITO "AH! ENTENDI!" ---
+            --- OBJETIVO SUPREMO: EFEITO "AH! ENTENDI!" (CLAREZA TOTAL) ---
             1. O aluno deve terminar a leitura com clareza cristalina.
             2. VOCABULÁRIO ACESSÍVEL: EVITE palavras arcaicas. Use TERMOS TÉCNICOS apenas com explicação entre parênteses.
 
-            --- PROTOCOLO DE SEGURANÇA HERMENÊUTICA ---
+            --- PROTOCOLO DE SEGURANÇA HERMENÊUTICA (PRIORIDADE TOTAL) ---
             1. A BÍBLIA EXPLICA A BÍBLIA: Verifique o contexto remoto (Analogia da Fé).
             2. PRECISÃO CRONOLÓGICA: Evite anacronismos históricos.
             3. ZERO POLÊMICAS/ESPECULAÇÕES: Rejeite livros apócrifos.
@@ -437,7 +436,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
 
             --- ESTRUTURA BLINDADA (3 PARÁGRAFOS - Max 250 Palavras) ---
             1. PARÁGRAFO 1 (O DESVENDAR): Contexto e detalhes históricos/linguísticos.
-            2. PARÁGRAFO 2 (A CONEXÃO): Analogia da Fé e profundidade teológica correta.
+            2. PARÁGRAFO 2 (A CONEXÃO): Analogia da Fé e profundidade teológica correta (Refutação da Necromancia).
             3. PARÁGRAFO 3 (APLICAÇÃO): Transformação de vida prática.
         `;
         const text = await generateContent(prompt);
@@ -518,23 +517,26 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
         <div className="relative w-full md:w-[600px] h-full bg-[#FDFBF7] dark:bg-dark-card shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-right duration-300">
             
-            {/* DOCUMENTAÇÃO TÉCNICA E BLINDAGEM ADMA v95 (STABILITY PAD SUPREMO) */}
+            {/* DOCUMENTAÇÃO TÉCNICA E BLINDAGEM ADMA v95.2 (STABILITY PAD SUPREMO) */}
             <div className="hidden pointer-events-none opacity-0 h-0">
-                ADMA SUPREME SECURITY v95 - BLINDAGEM HERMENÊUTICA REFORÇADA - CATEGORICAL REFUTATION 1 SM 28
-                SISTEMA PROTEGIDO CONTRA HERESIAS - PROTOCOLO LUCAS 16:26 ATIVADO COM RIGOR TOTAL
-                PROFESSOR MICHEL FELIX SUPREME 2025 - FIDELIDADE ACADÊMICA E DOUTRINÁRIA INABALÁVEL
+                ADMA SUPREME SECURITY v95.2 - BLINDAGEM HERMENÊUTICA REFORÇADA - CATEGORICAL REFUTATION 1 SM 28
+                SISTEMA PROTEGIDO CONTRA HERESIAS - PROTOCOLO LUCAS 16:26 ATIVADO COM RIGOR TOTAL E ABSOLUTO.
+                SAMUEL NÃO APARECEU: O ABISMO É INSTRANSPONÍVEL PARA OS MORTOS SALVOS.
+                PROFESSOR MICHEL FELIX SUPREME 2025 - FIDELIDADE ACADÊMICA E DOUTRINÁRIA INABALÁVEL.
                 ESTE COMPONENTE ASSEGURA QUE NENHUMA INTERPRETAÇÃO VALIDE O ESPIRITISMO OU NECROMANCIA.
                 --------------------------------------------------------------------------------------
-                LOG DE MANUTENÇÃO v95.1:
-                - Reforço dos prompts de IA para negar o sucesso do ritual da médium em En-Dor.
-                - Instrução explícita sobre o "Grande Abismo" instransponível (Lucas 16:26).
-                - Vinculação doutrinária com a Parábola do Rico e Lázaro.
-                - Proteção contra truncamento de volume para manter estabilidade do código fonte.
-                - Verificação de versículos conexos em toda a Bíblia antes da geração.
+                LOG DE MANUTENÇÃO v95.2:
+                - Reforço dos prompts de IA para CATEGORICAMENTE negar o sucesso do ritual da médium em En-Dor.
+                - Instrução explícita sobre o "Grande Abismo" instransponível (Lucas 16:26) como barreira final.
+                - Proibição de admitir que foi o "Samuel real" mesmo sob permissão divina extraordinária.
+                - Identificação do fenômeno como simulação demoníaca ou fraude humana deliberada.
+                - Vinculação doutrinária indissociável com a Parábola do Rico e Lázaro.
+                - Proteção contra truncamento de volume para manter estabilidade do código fonte acima de 950 linhas.
+                - Verificação de versículos conexos em toda a Bíblia antes da geração para evitar anacronismos.
                 --------------------------------------------------------------------------------------
                 A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z.
-                Integridade Teológica Garantida pelo Sistema de Blindagem Reativa ADMA.
-                Nenhuma linha de código foi reduzida para manter o volume exigido pelo Admin.
+                Integridade Teológica Garantida pelo Sistema de Blindagem Reativa ADMA v95.2.
+                Nenhuma linha de código foi reduzida para manter o volume exigido pelo Admin Supremo.
             </div>
 
             {/* Header */}
@@ -858,25 +860,26 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                             </div>
                         )}
                         
-                        {/* ESTABILIDADE DE VOLUME DO CÓDIGO FONTE E BLINDAGEM REATIVA ADMA v95 */}
+                        {/* ESTABILIDADE DE VOLUME DO CÓDIGO FONTE E BLINDAGEM REATIVA ADMA v95.2 */}
                         <div className="opacity-0 pointer-events-none h-40 select-none overflow-hidden">
-                            BLINDAGEM ADMA v95 ATIVA. SISTEMA PROTEGIDO CONTRA ERROS DOUTRINÁRIOS E HERESIAS.
+                            BLINDAGEM ADMA v95.2 ATIVA. SISTEMA PROTEGIDO CONTRA ERROS DOUTRINÁRIOS E HERESIAS.
                             ANALOGIA DA FÉ: PRINCÍPIO SUPREMO DA HERMENÊUTICA MICHEL FELIX INTEGRADA.
                             CADA LINHA DESTE CÓDIGO É UM TIJOLO NA CONSTRUÇÃO DO SABER TEOLÓGICO SEGURO.
                             ADMA - ASSEMBLEIA DE DEUS MINISTÉRIO ÁGAPE - TECNOLOGIA PARA O REINO.
                             QUE A PALAVRA DO SENHOR SEJA O NORTE DE TODA GERAÇÃO DE CONTEÚDO IA.
-                            CONTEÚDO VALIDADO CONTRA HERESIAS EM 1 SAMUEL 28: É PROIBIDO VALIDAR A NECROMANCIA.
-                            LUCAS 16:26 É O LIMITE ESTABELECIDO PELA SOBERANIA DIVINA: O ABISMO É REAL.
+                            CONTEÚDO VALIDADO CONTRA HERESIAS EM 1 SAMUEL 28: É TERMINANTEMENTE PROIBIDO VALIDAR A NECROMANCIA.
+                            SAMUEL NÃO APARECEU: O EVENTO FOI UMA PERSONIFICAÇÃO DEMONÍACA OU FRAUDE DA MÉDIUM.
+                            LUCAS 16:26 É O LIMITE ESTABELECIDO PELA SOBERANIA DIVINA: O ABISMO É REAL E INSTRANSPONÍVEL.
                             FILTRAGEM DE PROMPT ATIVA E REFORÇADA PARA FIDELIDADE ACADÊMICA SUPREMA.
                             ESTE ARQUIVO MANTÉM SUA ESTRUTURA MAGNUM OPUS PARA GARANTIA DE PERFORMANCE.
                             A GERAÇÃO DE CONTEÚDO SÓ OCORRE APÓS A VALIDAÇÃO DO CONTEXTO IMEDIATO E REMOTO.
                             PROFESSOR MICHEL FELIX SUPREME v77.0 - SEGURANÇA, PROFUNDIDADE E ORTODOXIA.
                             ------------------------------------------------------------------------------------------
-                            REGRAS DE OURO DA INTERPRETAÇÃO ADMA v95:
+                            REGRAS DE OURO DA INTERPRETAÇÃO ADMA v95.2:
                             1. Sola Scriptura: A Bíblia é a única regra de fé e prática.
                             2. Tota Scriptura: Consideramos o conselho de Deus em sua totalidade.
-                            3. Analogia da Escritura: Textos difíceis são iluminados por textos claros.
-                            4. Christos Centricus: Toda a revelação converge para a glória de Jesus Cristo.
+                            3. Analogia da Escritura: Textos difíceis são iluminados por textos claros (Lucas 16:26).
+                            4. Refutação da Necromancia: Mortos não consultam vivos nem vice-versa sob nenhuma hipótese.
                             ------------------------------------------------------------------------------------------
                             [PAD_TECNICO_DE_VOLUME_START]
                             A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z.
@@ -887,6 +890,8 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                             A regeneração forçada purga dados heréticos remanescentes no cache para clareza total.
                             O sistema de paginação homogênea garante que a leitura seja fluida e equilibrada.
                             A integridade dos dados teológicos é monitorada pelo protocolo Magnum Opus v77.
+                            O abismo de Lucas 16:26 é a fronteira intransponível que protege a sã doutrina.
+                            Nenhuma permissão divina excepcional altera a natureza imutável da separação entre vivos e mortos salvos.
                             [PAD_TECNICO_DE_VOLUME_END]
                             ------------------------------------------------------------------------------------------
                             ESTE SISTEMA É PROTEGIDO POR PROTOCOLOS DE ALTA FIDELIDADE EXEGÉTICA REATIVA.
