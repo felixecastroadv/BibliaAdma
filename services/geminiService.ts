@@ -14,7 +14,7 @@ export const generateContent = async (
 ) => {
     try {
         // Envia a requisição para o endpoint local da Vercel
-        // Isso evita o erro de "API Key must be set in browser" e protege as chaves
+        // Isso evita o erro de "API Key must be set in browser" e protege as chaves no servidor.
         const response = await fetch('/api/gemini', {
             method: 'POST',
             headers: {
@@ -40,7 +40,7 @@ export const generateContent = async (
         // Se houver um schema, tentamos o parse final (embora o endpoint já deva garantir)
         if (jsonSchema) {
             try {
-                // Remove blocos de código se a IA os incluiu por engano
+                // Remove blocos de código se a IA os incluiu por engano na resposta JSON
                 const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
                 return JSON.parse(cleanJson);
             } catch (e) {
@@ -57,7 +57,7 @@ export const generateContent = async (
     }
 };
 
-// Helpers de compatibilidade mantidos
+// Helpers de compatibilidade mantidos para não quebrar referências no app
 export const getStoredApiKey = (): string | null => "internal_proxy";
 export const setStoredApiKey = (key: string) => {}; 
 export const clearStoredApiKey = () => {};

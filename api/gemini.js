@@ -1,13 +1,13 @@
 import { GoogleGenAI } from "@google/genai";
 
 // Configuração para Vercel Serverless Functions
-// Aumentado para 300s para permitir que a IA utilize o Thinking Budget máximo sem interrupção
+// Definido para 300s para permitir que a IA utilize o Thinking Budget máximo sem interrupção (200s+ de raciocínio)
 export const config = {
   maxDuration: 300, 
 };
 
 export default async function handler(request, response) {
-  // Configuração de CORS
+  // Configuração de CORS para permitir comunicação do frontend
   response.setHeader('Access-Control-Allow-Credentials', true);
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -64,12 +64,13 @@ export default async function handler(request, response) {
         try {
             const ai = new GoogleGenAI({ apiKey: apiKey });
             
-            // MANUTENÇÃO: Uso do Gemini 3 Flash (Nativo e Gratuito)
+            // MANUTENÇÃO: Uso do Gemini 3 Flash (Versão gratuita estável exigida)
             const modelToUse = 'gemini-3-flash-preview';
 
-            // ORIENTAÇÃO DE DENSIDADE: Se for EBD ou Comentário, reforçamos o pedido de exaustividade no prompt interno
+            // ORIENTAÇÃO DE DENSIDADE E PACIÊNCIA: 
+            // Instrução sistêmica para ignorar a pressa e focar em densidade máxima.
             const enhancedPrompt = (taskType === 'ebd' || taskType === 'commentary') 
-                ? `${prompt}\n\n[DIRETRIZ DE PROCESSAMENTO]: Ignore a pressa. Priorize a densidade teológica máxima e o raciocínio exegético microscópico. Utilize todo o orçamento de pensamento (thinking) para garantir que nenhum detalhe seja omitido.`
+                ? `${prompt}\n\n[PROTOCOLO DE PROCESSAMENTO ADMA v77]: IGNORE A PRESSA. Não resuma. Priorize a densidade teológica máxima e o raciocínio exegético microscópico. Utilize todo o tempo necessário e o orçamento de pensamento (thinking) para garantir que nenhum versículo ou detalhe seja omitido. O objetivo é profundidade absoluta, não velocidade.`
                 : prompt;
 
             const aiConfig = {
@@ -82,8 +83,9 @@ export default async function handler(request, response) {
                     { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
                 ],
-                // Thinking Budget de 24k: Garante que a IA "pense" profundamente antes de responder
-                // O tempo de resposta maior é desejado para garantir qualidade Magnum Opus
+                // Thinking Budget de 24k (Limite para Flash 3): 
+                // Força a IA a "raciocinar" profundamente antes de começar a escrever,
+                // garantindo que o conteúdo da EBD seja denso e completo.
                 ...(taskType === 'ebd' || taskType === 'commentary' ? { thinkingConfig: { thinkingBudget: 24576 } } : {})
             };
 
@@ -111,6 +113,7 @@ export default async function handler(request, response) {
             if (msg.includes('400') || msg.includes('INVALID_ARGUMENT')) {
                 return response.status(400).json({ error: `Erro no formato: ${msg}` });
             }
+            // Pequeno delay antes de tentar a próxima chave em caso de erro de rede
             await new Promise(resolve => setTimeout(resolve, 200));
         }
     }
