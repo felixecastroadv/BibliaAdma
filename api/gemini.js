@@ -65,7 +65,7 @@ export default async function handler(request, response) {
             const ai = new GoogleGenAI({ apiKey: apiKey });
             const modelToUse = 'gemini-3-flash-preview';
 
-            // --- LÓGICA DE ESPECIALIZAÇÃO DO MOTOR IA v79.0 ---
+            // --- LÓGICA DE ESPECIALIZAÇÃO DO MOTOR IA v81.0 ---
             let enhancedPrompt = prompt;
             let systemInstruction = "Você é o Professor Michel Felix, teólogo Pentecostal Clássico e Erudito.";
 
@@ -79,17 +79,29 @@ export default async function handler(request, response) {
                    O conteúdo deve ser longo e denso o suficiente para preencher 8 páginas de estudo acadêmico.\n\n${prompt}`;
             } 
             else if (taskType === 'commentary') {
-                // PROTOCOLO COMENTÁRIO: PROFUNDIDADE CIRÚRGICA (Para VersePanel)
-                systemInstruction = "Você é o Professor Michel Felix. TAREFA: Exegese de versículo único. Estilo denso e acadêmico. Meta: Exatamente 3 parágrafos profundos.";
-                enhancedPrompt = `[PROTOCOLO EXEGESE DE VERSÍCULO - QUALIDADE SOBRE QUANTIDADE]: 
+                // PROTOCOLO COMENTÁRIO: PROFUNDIDADE CIRÚRGICA COM CLAREZA PEDAGÓGICA (v81.0)
+                // Objetivo: Descomplicação total para o aluno (Efeito "Ah! Entendi!")
+                systemInstruction = `Você é o Professor Michel Felix. TAREFA: Exegese de versículo único.
+                
+                --- REGRAS DE OURO PARA CLAREZA PEDAGÓGICA (PROTOCOLO IMPLICITAMENTE) ---
+                1. PROIBIÇÃO DE ARCAÍSMOS: É terminantemente proibido o uso de palavras arcaicas, termos pouco usuais ou "teologês" rebuscado que dificulte a compreensão imediata.
+                2. OBJETIVO SUPREMO: Causar o efeito "Ah! Entendi!" no aluno. O texto deve ser tão cristalino que desperte o entendimento imediato mesmo em pessoas de escolaridade básica.
+                3. SIMPLIFICAÇÃO: Descomplique o difícil. Use palavras diretas do cotidiano, mantendo a profundidade do conteúdo mas simplificando a forma da entrega.
+                4. TERMOS TÉCNICOS: Caso precise usar um termo indispensável (ex: Soteriologia, Exegese, Teofania), você deve OBRIGATORIAMENTE colocar o significado simples entre parênteses logo em seguida.
+                5. ESTILO: Magistral, denso em conteúdo, mas leve e inspirador na linguagem.
+                6. ESTRUTURA: Exatamente 3 parágrafos profundos.`;
+
+                enhancedPrompt = `[PROTOCOLO CLAREZA CRISTALINA v81.0]: 
                    Foque exclusivamente na análise microscópica do versículo atual. 
                    NÃO confunda esta tarefa com a geração de apostila EBD. 
                    Gere EXATAMENTE 3 parágrafos profundos (Cerca de 300 palavras no total). 
-                   Use o tempo de raciocínio para garantir que cada frase seja teologicamente valiosa e original.\n\n${prompt}`;
+                   Use o tempo de raciocínio para garantir que cada frase seja teologicamente valiosa e ORIGINAL.
+                   ELIMINE qualquer palavra difícil, pomposa ou arcaica que possa travar o entendimento do aluno.
+                   O foco é o despertar do entendimento espiritual através da simplicidade exegética.\n\n${prompt}`;
             }
 
             const aiConfig = {
-                temperature: 0.4, // Reduzido levemente para maior precisão teológica
+                temperature: 0.4, // Estabilidade teórica
                 topP: 0.95,
                 topK: 40,
                 safetySettings: [
