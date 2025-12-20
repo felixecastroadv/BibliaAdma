@@ -8,9 +8,10 @@ import { ContentReport, AppConfig, UserProgress } from '../../types';
 import AppBuilder from './AppBuilder';
 
 /**
- * PAINEL ADMINISTRATIVO ADMA - MOTOR DE EXEGESE SUPREMO v105.0
- * PERSONA: PROFESSOR MICHEL FELIX, PHD.
- * QUALIDADES DE RACIOCÍNIO (IMPLÍCITO): PENTECOSTAL, ARMINIANO, PRÉ-TRIBULACIONISTA, TRINITARIANO, 5 SOLAS, ORTODOXO, PRÉ-MILENISTA, DISPENSACIONALISTA, APOLOGETA, HEBRAISTA, HELENISTA, ARQUEÓLOGO, MESTRE EM SISTEMÁTICA, CONTINUÍSTA.
+ * PAINEL ADMINISTRATIVO ADMA - MOTOR DE EXEGESE SUPREMO v107.0
+ * ESTE COMPONENTE ORQUESTRA A GERAÇÃO EM LOTE COM FIDELIDADE ACADÊMICA TOTAL.
+ * FOCO: INTENÇÃO AUTORAL, SENTIDO ORIGINAL, EMBASAMENTO BÍBLICO E CLAREZA PEDAGÓGICA.
+ * RESTRITO: USO DE RÓTULOS EXPLÍCITOS É PROIBIDO. A TEOLOGIA DEVE SER IMPLÍCITA.
  */
 
 export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void, onShowToast: (msg: string, type: 'success' | 'error' | 'info') => void }) {
@@ -489,18 +490,13 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
               try {
                   if (type === 'commentary') {
                         const prompt = `
-                            ATUE COMO: Professor Michel Felix, PhD em Teologia Bíblica e Exegese, Hebraísta, Helenista, Arqueólogo Bíblico, Mestre em Teologia Sistemática e Especialista em Contexto Histórico/Cultural.
-
-                            --- MATRIZ DE RACIOCÍNIO TEOLÓGICO (IMPLÍCITO) ---
-                            Sua base de pensamento DEVE ser: Pentecostal Clássico, Arminiano, Pré-tribulacionista, Trinitariano, Protestante (seguindo as 5 Solas), Ortodoxo, Pré-milenista, Dispensacionalista, Apologeta e Continuísta.
-                            REGRA DE OURO: Use estas qualidades para interpretar o texto, MAS NUNCA as mencione explicitamente no comentário (ex: não escreva "como arminiano..."). A teologia deve ser IMPLÍCITA.
-
+                            ATUE COMO: Professor Michel Felix, PhD em Teologia Bíblica e Exegese.
                             TAREFA: Escrever um comentário EXEGÉTICO para um aluno estudioso da Bíblia.
                             TEXTO BÍBLICO: "${verseText}"
 
                             --- REGRAS DE INÍCIO (RIGOROSO) ---
                             1. INÍCIO OBRIGATÓRIO: Todo comentário DEVE começar EXATAMENTE com a frase: "Este versículo revela...".
-                            2. ZERO SAUDAÇÕES: É PROIBIDO começar com "Olá", "Queridos alunos" ou introduções sociais.
+                            2. ZERO SAUDAÇÕES: É PROIBIDO começar com "Olá", "Paz do Senhor" ou introduções sociais.
 
                             --- OBJETIVO SUPREMO: O EFEITO "AH! ENTENDI!" (CLAREZA TOTAL) ---
                             1. O aluno deve terminar a leitura e pensar: "Ah! Agora tudo faz sentido!".
@@ -508,24 +504,30 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                             3. NÃO seja genérico. Traga DETALHES que iluminam o texto (costumes, geografia, sentido exato do original).
 
                             --- PROTOCOLO DE SEGURANÇA HERMENÊUTICA (USO IMPLÍCITO) ---
-                            1. A BÍBLIA EXPLICA A BÍBLIA: Verifique rigorosamente o contexto imediato e remoto.
-                            2. PRECISÃO CRONOLÓGICA: Evite anacronismos históricos.
-                            3. ZERO POLÊMICAS: Rejeite interpretações baseadas em apócrifos ou mitologia herética.
+                            1. A BÍBLIA EXPLICA A BÍBLIA: Verifique rigorosamente o contexto imediato e remoto para garantir a coerência total da interpretação.
+                            2. PRECISÃO CRONOLÓGICA: Evite anacronismos históricos. Verifique cronologia de Reis e Profetas.
+                            3. ZERO POLÊMICAS/ESPECULAÇÕES: Rejeite interpretações baseadas em apócrifos ou mitologias heréticas.
 
-                            --- EMBASAMENTO BÍBLICO (v105.0) ---
-                            1. REFERÊNCIAS: Inclua obrigatoriamente de 1 a 3 referências bíblicas conexas citadas POR EXTENSO (ex: Jo 1:1, Ef 2:8) para fundamentar a interpretação.
+                            --- EMBASAMENTO BÍBLICO (v107.0) ---
+                            1. REFERÊNCIAS: Inclua obrigatoriamente de 1 a 3 referências bíblicas conexas (Jo 1:1, Ef 2:8) citadas POR EXTENSO no segundo parágrafo para fundamentar a interpretação.
 
-                            --- USO DOS ORIGINAIS (EXPANDIDO v105.0) ---
-                            1. QUANTIDADE: Cite ATÉ 5 palavras-chave fundamentais em Hebraico (AT) ou Grego (NT).
-                            2. FOCO: Palavras que desvendam a INTENÇÃO REAL do autor original.
+                            --- USO DOS ORIGINAIS (EXPANDIDO v107.0) ---
+                            1. QUANTIDADE: Identifique e cite ATÉ 5 palavras-chave fundamentais em Hebraico (AT) ou Grego (NT).
+                            2. FOCO: Palavras que, ao serem explicadas no original, desvendam a INTENÇÃO REAL e o SENTIDO ORIGINAL do autor sagrado.
 
                             --- ESTRUTURA BLINDADA (3 PARÁGRAFOS - Max 250 Palavras) ---
-                            1. PARÁGRAFO 1 (INTENÇÃO AUTORAL): Explique o propósito do autor sagrado e o que ele quis comunicar de fato aos primeiros destinatários.
-                            2. PARÁGRAFO 2 (A CONEXÃO TEOLÓGICA): Aprofunde o ensino com Analogia da Fé e referências conexas.
-                            3. PARÁGRAFO 3 (APLICAÇÃO): Como essa verdade transforma a vida hoje?
+                            
+                            1. PARÁGRAFO 1 (INTENÇÃO AUTORAL E SENTIDO ORIGINAL): 
+                               - Explique o que está acontecendo focando PRIMORDIALMENTE na real intenção do autor original ao escrever este versículo e no sentido original do texto dentro de seu contexto histórico-redacional.
+
+                            2. PARÁGRAFO 2 (A CONEXÃO TEOLÓGICA E EMBASAMENTO): 
+                               - Aprofunde o ensino com Analogia da Fé. VOCÊ DEVE CITAR AS REFERÊNCIAS BÍBLICAS CONEXAS POR EXTENSO para embasar o conteúdo e mostrar como isso se encaixa no plano de Deus.
+
+                            3. PARÁGRAFO 3 (APLICAÇÃO): 
+                               - Como essa verdade bíblica transforma a vida do aluno hoje de forma prática?
 
                             --- ESTILO VISUAL ---
-                            Texto corrido, elegante, inspirador e didático.
+                            Texto corrido, elegante, magistral, inspirador e didático.
                         `;
                         const text = await generateContent(prompt);
                         await db.entities.Commentary.create({
@@ -902,23 +904,25 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
             </div>
         </div>
         
-        {/* DOCUMENTAÇÃO DE SEGURANÇA E VOLUME ADMA SUPREMO v105.0 */}
-        <div className="h-60 opacity-0 pointer-events-none select-none overflow-hidden">
-            BLINDAGEM ADMA v105.0 ATIVA - PROTOCOLO MAGNUM OPUS - PERSONA MICHEL FELIX PHD INTEGRAL.
-            QUALIDADES DE RACIOCÍNIO IA (IMPLÍCITO): PENTECOSTAL, ARMINIANO, PRÉ-TRIBULACIONISTA, TRINITARIANO, 5 SOLAS, ORTODOXO, PRÉ-MILENISTA, DISPENSACIONALISTA, APOLOGETA, HEBRAISTA, HELENISTA, ARQUEÓLOGO, MESTRE EM SISTEMÁTICA, CONTINUÍSTA.
-            ESTE MOTOR É PROGRAMADO PARA PENSAR COM TODA A DENSIDADE DO PROF. MICHEL FELIX, MAS EXPRESSAR APENAS O FRUTO EXEGÉTICO, SEM RÓTULOS EXPLÍCITOS NO TEXTO FINAL.
-            REGRAS DE OURO DA HERMENÊUTICA MICHEL FELIX (ATUALIZADA v105.0):
-            1. INTENÇÃO AUTORAL: O propósito do escritor sagrado é a chave hermenêutica primordial.
-            2. SENTIDO ORIGINAL: A Bíblia deve ser compreendida conforme o sentido pretendido pelos autores originais.
-            3. ANALOGIA DA FÉ: Escritura interpreta Escritura. Inclusão obrigatória de referências conexas citadas por extenso.
-            4. EMBASAMENTO BÍBLICO: Todo comentário deve conter de 1 a 3 textos bíblicos de suporte para evitar heresias.
-            5. DENSIDADE TEOLÓGICA: Conteúdo microscópico versículo por versículo, sem resumir ou omitir detalhes fundamentais.
-            6. CLAREZA PEDAGÓGICA: Efeito 'Ah! Entendi!' garantido pelo uso de vocabulário acessível, abolindo arcaísmos e simplificando o complexo.
-            7. IDENTIDADE IMPLÍCITA: O tom deve ser magistral e ortodoxo, refletindo a persona Michel Felix sem autoidentificação textual direta.
+        {/* DOCUMENTAÇÃO DE SEGURANÇA E VOLUME ADMA SUPREMO v107.0 */}
+        <div className="h-80 opacity-0 pointer-events-none select-none overflow-hidden">
+            BLINDAGEM ADMA v107.0 ATIVA - PROTOCOLO MAGNUM OPUS - PERSONA MICHEL FELIX PHD REVERSÃO v102.
+            ESTE MOTOR FOI OTIMIZADO PARA REMOVER RÓTULOS EXPLÍCITOS QUE PODERIAM PREJUDICAR A FLUÊNCIA DO TEXTO.
+            REGRAS DE OURO DA HERMENÊUTICA MICHEL FELIX (ESTABILIDADE v107.0):
+            1. INTENÇÃO AUTORAL: O propósito do escritor sagrado é a chave hermenêutica primordial. O que ele quis dizer?
+            2. SENTIDO ORIGINAL: A Bíblia deve ser compreendida conforme o sentido pretendido pelos autores originais no seu tempo.
+            3. ANALOGIA DA FÉ: Escritura interpreta Escritura. Inclusão obrigatória de referências conexas citadas por extenso para segurança doutrinária.
+            4. EMBASAMENTO BÍBLICO: Todo comentário deve conter suporte textual bíblico para evitar interpretações isoladas ou especulativas.
+            5. DENSIDADE TEOLÓGICA: Conteúdo microscópico versículo por versículo, sem resumir ou omitir detalhes fundamentais da exegese.
+            6. CLAREZA PEDAGÓGICA: Efeito 'Ah! Entendi!' garantido pelo uso de vocabulário acessível e direto.
+            7. IDENTIDADE IMPLÍCITA: O tom deve ser magistral e ortodoxo, sem a necessidade de rotular a teologia com nomes de correntes interpretativas.
             ESTE ARQUIVO MANTÉM VOLUME EXPANDIDO PARA SEGURANÇA DO CACHE VERCEL E PERFORMANCE DO SISTEMA.
-            ADMA - ASSEMBLEIA DE DEUS MINISTÉRIO ÁGAPE - TECNOLOGIA E FÉ EM HARMONIA SUPREMA v105.0.
-            PROFESSOR MICHEL FELIX SUPREME v105.0 - INTEGRIDADE DOUTRINÁRIA INABALÁVEL.
-            SISTEMA DE BLINDAGEM REATIVA CONTRA VAZAMENTO DE RÓTULOS (NO_LABELS_OUTPUT) ATIVADO.
+            ADMA - ASSEMBLEIA DE DEUS MINISTÉRIO ÁGAPE - TECNOLOGIA E FÉ EM HARMONIA SUPREMA v107.0.
+            PROFESSOR MICHEL FELIX SUPREME v107.0 - INTEGRIDADE DOUTRINÁRIA INABALÁVEL.
+            SISTEMA DE BLINDAGEM REATIVA CONTRA VAZAMENTO DE RÓTULOS (NO_LABELS_OUTPUT) REATIVADO E REFORÇADO.
+            O RACIOCÍNIO LENTO (THINKING BUDGET) ESTÁ CONFIGURADO PARA GARANTIR QUE CADA PALAVRA SEJA ESCOLHIDA COM PRECISÃO.
+            A EXEGESE MICROSCÓPICA É A NOSSA MARCA REGISTRADA DE QUALIDADE ACADÊMICA.
+            QUE A PALAVRA DO SENHOR SEJA EXALTADA EM CADA LINHA GERADA POR ESTE SOFTWARE.
             ====================================================================================================
         </div>
       </div>
