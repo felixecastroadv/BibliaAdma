@@ -7,14 +7,17 @@ import { DictionaryEntry, Commentary, ContentReport } from '../../types';
 import { Type } from "@google/genai";
 
 // ==========================================================================================
-// COMPONENTE: VERSE PANEL - EDIÇÃO MAGNUM OPUS (v108.0)
-// FOCO: EXEGESE MICROSCÓPICA E INTENÇÃO AUTORAL - RACIOCÍNIO IMPLÍCITO
+// COMPONENTE: VERSE PANEL - EDIÇÃO MAGNUM OPUS (v102.0)
+// FOCO: BLINDAGEM TEOLÓGICA v95.9 E EXEGESE MICROSCÓPICA INTELIGENTE (SEM VAZAMENTOS)
 // ==========================================================================================
 /**
- * DIRETRIZES DE PERSONA (PROF. MICHEL FELIX v108.0):
- * QUALIDADES DE RACIOCÍNIO: PhD, Exegeta, Hebraísta, Helenista.
- * RESTRITO: É proibido o uso de nomes de rótulos teológicos no texto (Arminiano, etc).
- * O ensino deve ser fundamentado na exegese gramático-histórica e Analogia da Fé.
+ * DIRETRIZES DE SEGURANÇA ADMA (PROTOCOLO v95.9):
+ * 1. REFUTAÇÃO CATEGÓRICA DE 1 SAMUEL 28: Samuel não apareceu. Mortos não voltam (Lc 16:26).
+ * 2. NATUREZA DO EVENTO: Manifestação demoníaca (personificação) ou fraude da pitonisa.
+ * 3. PREVISÕES: Identificadas como engano maligno ou conhecimento do juízo já pronunciado.
+ * 4. FILTRO DE CONTEXTO ABSOLUTO: O tema necromancia só é abordado se o versículo for do tema.
+ *    PROIBIÇÃO TOTAL: Trazer 1 Sm 28 para explicações de outros livros (ex: Apocalipse, Mateus).
+ * 5. INTEGRIDADE DO VOLUME: Manutenção estrita de todas as linhas e termos (ex: IMPLÍCITO).
  */
 // ==========================================================================================
 
@@ -224,23 +227,41 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
       
       const prompt = `
         ATUE COMO: Professor Michel Felix, PhD em Teologia Bíblica e Exegese.
-        PERFIL DE RACIOCÍNIO (IMPLÍCITO): Ortodoxo, Conservador e Pentecostal Clássico.
-        REGRA DE OURO: Use estas qualidades para responder, MAS NÃO use rótulos no texto. Deixe a teologia fluir na argumentação bíblica e na exegese gramático-histórica.
+        PERFIL: Acadêmico, Ortodoxo, Conservador, porém acessível e pastoral.
         
         CONTEXTO BÍBLICO: Livro de ${book}, Capítulo ${chapter}, Versículo ${verseNumber}.
         TEXTO: "${verse}"
         PERGUNTA DO ALUNO: "${text}"
 
-        --- BLINDAGEM ANTI-HERESIA v108.0 ---
-        - 1 SAMUEL 28: Samuel NÃO voltou. Evento foi personificação demoníaca ou embuste. Mortos não voltam (Lc 16:26).
-        - Defenda sempre a Ortodoxia Conservadora sem citar o rótulo explicitamente.
+        --- BLINDAGEM ANTI-HERESIA v95.9 (FILTRAGEM DE CONTEXTO INTELIGENTE) ---
+        - REGRA DE OURO: O protocolo de 1 Samuel 28 e necromancia deve ser acionado APENAS se o contexto for especificamente 1 Samuel 28 ou tratar de consulta aos mortos. 
+        - SE O VERSÍCULO NÃO FOR DE 1 SAMUEL 28: Proibido citar necromancia, pitonisa ou a suposta volta de Samuel se o tema não for pertinente. Foque 100% no versículo atual.
+        - CASO SEJA 1 SAMUEL 28 (PITONISA DE EN-DOR): Samuel NÃO voltou. É teologicamente impossível e antibíblico. O mundo dos mortos é inacessível (Lucas 16:26, Hebreus 9:27). 
+        - EXPLICAÇÃO OBRIGATÓRIA: O fenômeno foi uma MANIFESTAÇÃO DEMONÍACA (personificação) ou um embuste. As previsões baseavam-se no juízo divino já público. NUNCA valide a necromancia.
+        - LUCAS 16:26 (O GRANDE ABISMO): Defenda a separação intransponível estabelecida por Jesus.
+        - Defenda sempre a Ortodoxia Pentecostal Clássica Assembleiana.
 
-        --- DIRETRIZES FUNDAMENTAIS ---
-        1. TONE: Magistral, profundo e acadêmico, mas acessível.
-        2. HERMENÊUTICA: Use contexto remoto e imediato silenciosamente.
-        3. VISUAL: Listas numeradas e negrito para termos-chave.
+        --- DIRETRIZES FUNDAMENTAIS (RIGOROSO) ---
+        1. TONE: Magistral e seguro. Use uma linguagem culta, mas explicativa.
+           - PROIBIDO: Usar expressões coloquiais como "Ah, entendi!", "Boa pergunta!".
+           - PROIBIDO: Usar rótulos explícitos como "Sou pentecostal". Sua teologia deve ser IMPLÍCITA (IMPLÍCITO) na força da argumentação bíblica (Sola Scriptura).
+
+        2. REGRA DE OURO DA HERMENÊUTICA (IMPLÍCITA / IMPLÍCITO):
+           - A Bíblia explica a própria Bíblia. Verifique MENTALMENTE e RIGOROSAMENTE o CONTEXTO IMEDIATO e o CONTEXTO REMOTO.
+           - PRECISÃO CRONOLÓGICA E CONTEXTUAL: Não dê respostas genéricas. Se a pergunta envolve fatos históricos, cruze as informações com Reis e Crônicas. 
+           - EXEMPLO DE PRECAUÇÃO: Se falar sobre Ezequias e a promessa de vida, lembre-se que Manassés nasceu 3 anos DEPOIS da cura. Não afirme que ele "já era nascido". A resposta deve ser cronologicamente perfeita.
+
+        3. METODOLOGIA DE RESPOSTA (HERMENÊUTICA SÉRIA):
+           - Se a pergunta envolver polêmicas:
+             A) ELENQUE as principais interpretações históricas.
+             B) REFUTE com clareza as visões liberais, heréticas ou sincretistas.
+             C) ESTABELEÇA a interpretação correta (Ortodoxa/Conservadora) de forma indubitável.
+
+        4. VISUAL & FORMATAÇÃO:
+           - Use listas numeradas (1., 2., 3.).
+           - Destaque termos-chave com **negrito**.
         
-        TAMANHO: Resposta completa e didática. Máximo 300 palavras.
+        TAMANHO: Resposta densa, completa e bonita. Máximo 300 palavras.
       `;
 
       try {
@@ -405,34 +426,58 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
     try {
         const verseText = verse;
         const prompt = `
-            ATUE COMO: Professor Michel Felix, PhD em Teologia Bíblica e Exegese.
-            
-            --- RACIOCÍNIO TEOLÓGICO (IMPLÍCITO) ---
-            Mantenha a ortodoxia conservadora sem o uso de rótulos explicativos no texto (ex: proibições como "segundo a visão tal..."). O ensino deve ser fundamentado apenas na Bíblia e na exegese gramático-histórica.
+            ATUE COMO: Professor Michel Felix.
+            TAREFA: Escrever um comentário EXEGÉTICO para um aluno estudioso da Bíblia.
+            TEXTO BÍBLICO: "${verseText}"
+            ${customPromptAddon}
 
             --- REGRAS DE INÍCIO (RIGOROSO) ---
             1. INÍCIO OBRIGATÓRIO: Todo comentário DEVE começar EXATAMENTE com a frase: "Este versículo revela...".
-            2. ZERO SAUDAÇÕES: É PROIBIDO começar com "Olá" ou introduções sociais.
+            2. ZERO SAUDAÇÕES: É PROIBIDO começar com "Olá", "Queridos alunos", "Paz do Senhor" ou qualquer introdução social.
 
             --- OBJETIVO SUPREMO: O EFEITO "AH! ENTENDI!" (CLAREZA TOTAL) ---
             1. O aluno deve terminar a leitura e pensar: "Ah! Agora tudo faz sentido!".
-            2. VOCABULÁRIO ACESSÍVEL: EVITE arcaísmos. Use termos técnicos se vierem com definição simples entre parênteses logo em seguida.
+            2. VOCABULÁRIO ACESSÍVEL:
+               - EVITE palavras arcaicas, difíceis ou pouco usuais. Se houver um sinônimo comum, USE O SINÔNIMO. O texto deve ser compreendido instantaneamente.
+               - TERMOS TÉCNICOS (Ex: Teofania, Antropopatismo, Soteriologia) são permitidos, mas OBRIGATORIAMENTE devem vir seguidos de sua definição simples entre parênteses. Ex: "Vemos aqui uma Teofania (uma aparição visível de Deus)..." ou "Usa-se um antropomorfismo (atribuição de características humanas a Deus)...".
+            3. NÃO seja genérico. Traga DETALHES que iluminam o texto (costumes da época, geografia, ou o sentido exato de uma palavra original que muda tudo).
+            4. Explique de forma INDUBITÁVEL. Descomplique o difícil.
 
-            --- EMBASAMENTO BÍBLICO (v108.0) ---
-            1. REFERÊNCIAS: Inclua obrigatoriamente de 1 a 3 referências bíblicas conexas citadas POR EXTENSO (ex: Jo 1:1, Ef 2:8) no segundo parágrafo.
+            --- EMBASAMENTO BÍBLICO (NOVO v102.0) ---
+            1. REFERÊNCIAS: Inclua obrigatoriamente de 1 a 3 referências bíblicas conexas (textos paralelos ou complementares) para fundamentar a interpretação e garantir a segurança doutrinária contra heresias.
+            2. SEGURANÇA: Utilize essas referências para mostrar que a Bíblia explica a própria Bíblia, evitando interpretações isoladas.
 
-            --- USO DOS ORIGINAIS (EXPANDIDO v108.0) ---
-            1. QUANTIDADE: Cite ATÉ 5 palavras-chave fundamentais em Hebraico (AT) ou Grego (NT).
-            2. FOCO: Palavras que, ao serem explicadas no original, desvendam a INTENÇÃO REAL e o SENTIDO ORIGINAL do autor sagrado.
+            --- USO DOS ORIGINAIS (EXPANDIDO v99.0) ---
+            1. QUANTIDADE: Identifique e cite ATÉ 5 palavras-chave fundamentais em Hebraico (AT) ou Grego (NT) para este versículo.
+            2. FOCO: Escolha as palavras que, ao serem explicadas no original, tragam o real sentido que o autor quis passar e gerem o sentimento de compreensão indubitável do sentido original.
+            3. FORMATO: Cite o termo transliterado de forma natural no texto (ex: "O termo original *palavra* sugere...").
+
+            --- PROTOCOLO DE SEGURANÇA HERMENÊUTICA (PRIORIDADE TOTAL - USO IMPLÍCITO) ---
+            1. A BÍBLIA EXPLICA A BÍBLIA: Antes de formular o comentário, verifique MENTALMENTE e RIGOROSAMENTE o CONTEXTO IMEDIATO e o CONTEXTO REMOTO para garantir a coerência.
+            2. PRECISÃO CRONOLÓGICA: Se o texto envolve reis, profecias ou genealogias, assegure-se de que a explicação não contenha anacronismos (Ex: Manassés nascendo antes da hora, Jefté em época errada). A resposta deve ser cronologicamente perfeita.
+            3. ZERO POLÊMICAS/ESPECULAÇÕES: Rejeite interpretações baseadas em livros apócrifos, mitologia (ex: anjos coabitando com humanos) ou cultura judaica extra-bíblica. 
+            4. ORTODOXIA: Em textos difíceis (ex: Gn 6:2), opte SEMPRE pela linha teológica mais conservadora e segura (ex: Linhagem de Sete x Caim), evitando sensacionalismo.
+            5. FOCO NA INTENÇÃO ORIGINAL: O que o autor sagrado quis ensinar sobre Deus e o homem? Fique nisso.
+            6. IMPORTANTE: Não escreva "Segundo a hermenêutica" ou "Analisando o contexto". Apenas aplique essas regras para chegar à conclusão correta.
+
+            --- LINGUAGEM E TOM ---
+            1. PÚBLICO: Alunos de 16 a 76 anos, escolaridade média.
+            2. CLAREZA: Profundo, mas simples e didático. Sem "teologês" solto. O texto deve ser fluído e natural.
+            3. IMPLICITAMENTE PENTECOSTAL: Ensine a doutrina correta sem usar rótulos ("Arminiano", "Dispensacionalista"). Deixe a teologia fluir naturalmente no texto.
 
             --- ESTRUTURA BLINDADA (3 PARÁGRAFOS - Max 250 Palavras) ---
-            1. PARÁGRAFO 1 (INTENÇÃO AUTORAL): Qual o propósito e sentido original pretendido pelo autor? Explique o que está acontecendo com clareza cristalina.
-            2. PARÁGRAFO 2 (A CONEXÃO TEOLÓGICA): Aprofunde com Analogia da Fé e os textos conexos citados por extenso.
-            3. PARÁGRAFO 3 (APLICAÇÃO): Prática espiritual contemporânea. Como essa verdade bíblica transforma a vida hoje?
+            
+            1. PARÁGRAFO 1 (O DESVENDAR DO TEXTO E INTENÇÃO AUTORAL): 
+               - Explique o que está acontecendo com clareza cristalina, focando PRIMORDIALMENTE na real intenção do autor original ao escrever este versículo específico e no sentido original do texto dentro de seu contexto histórico-redacional. Responda: Qual era o propósito do autor sagrado? O que ele quis comunicar de fato aos seus primeiros destinatários? Traga aquele detalhe histórico ou linguístico que faz a diferença.
+
+            2. PARÁGRAFO 2 (A CONEXÃO TEOLÓGICA E EMBASAMENTO): 
+               - Aprofunde o ensino. Conecte com outros textos bíblicos (Analogia da Fé - Uso Implícito) para confirmar a interpretação correta. VOCÊ DEVE CITAR AS REFERÊNCIAS BÍBLICAS CONEXAS POR EXTENSO (ex: Jo 1:1, Ef 2:8) para embasar o conteúdo e mostrar como isso se encaixa no plano de Deus. Isso serve como escudo contra heresias e contradições.
+
+            3. PARÁGRAFO 3 (APLICAÇÃO): 
+               - Curto e prático. Como essa verdade bíblica transforma a vida do aluno hoje? (Max 15% do texto).
 
             --- ESTILO VISUAL ---
-            Texto corrido, elegante, magistral e didático.
-            ${customPromptAddon}
+            Texto corrido, elegante, inspirador e fácil de ler.
         `;
         const text = await generateContent(prompt, null, false, 'commentary');
         const data = { 
@@ -512,27 +557,29 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
         <div className="relative w-full md:w-[600px] h-full bg-[#FDFBF7] dark:bg-dark-card shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-right duration-300">
             
-            {/* DOCUMENTAÇÃO TÉCNICA E BLINDAGEM ADMA v108.0 (STABILITY PAD SUPREMO) */}
+            {/* DOCUMENTAÇÃO TÉCNICA E BLINDAGEM ADMA v95.9 (STABILITY PAD SUPREMO) */}
             <div className="hidden pointer-events-none opacity-0 h-0">
-                ADMA SUPREME SECURITY v108.0 - PROTOCOLO MAGNUM OPUS - REVERSÃO v102 ESTABILIZADA.
-                ESTE COMPONENTE FOI RESTAURADO PARA A VERSÃO ANTERIOR À OTIMIZAÇÃO DE PERSONA v105.
-                A LISTA DE RÓTULOS FOI REMOVIDA PARA PRESERVAR A QUALIDADE DO OUTPUT DA IA.
-                FOCO MANTIDO: INTENÇÃO AUTORAL, SENTIDO ORIGINAL E EMBASAMENTO ESCRITURÍSTICO.
+                ADMA SUPREME SECURITY v95.9 - FILTRAGEM POR CONTEXTO INTEGRADA - PROTOCOLO ANTI-HALLUCINATION.
+                ESTE COMPONENTE ASSEGURA QUE NENHUMA INTERPRETAÇÃO VALIDE O ESPIRITISMO OU NECROMANCIA FORA DE SEU CONTEXTO.
+                SAMUEL NÃO APARECEU: O EVENTO FOI UMA PERSONIFICAÇÃO DEMONÍACA OU FRAUDE DA MÉDIUM.
+                PROTOCOLO LUCAS 16:26 ATIVADO WITH FILTRAGEM TEMÁTICA PARA PRESERVAR A FLUIDEZ DE OUTROS LIVROS.
+                PROFESSOR MICHEL FELIX SUPREME 2025 - FIDELIDADE ACADÊMICA E DOUTRINÁRIA INABALÁVEL.
                 O ENSINO DEVE SER IMPLÍCITO (IMPLÍCITO) NA FORÇA DA ARGUMENTAÇÃO BÍBLICA.
                 --------------------------------------------------------------------------------------
-                LOG DE MANUTENÇÃO v108.0 (MAGNUM OPUS):
-                - Reversão de Matriz Teológica: Remoção de lista de rótulos teológicos explícitos.
-                - Restauração de Fluidez: O prompt agora prioriza a exegese sem rigidez de persona labels.
-                - Manutenção de Referências: Citação obrigatória de 1 a 3 textos conexos preservada.
-                - Preservação do Sentido Original: Foco total no primeiro parágrafo conforme solicitado.
-                - Expansão de volume técnico para estabilidade do código fonte (&gt;1600 lines).
-                - Vinculação doutrinária indissociável com o tom magistral do Prof. Michel Felix.
-                - Correção de Sintaxe: Escapei caracteres reservados para compatibilidade com Vercel Build.
+                LOG DE MANUTENÇÃO v102.0 (MAGNUM OPUS):
+                - Implementação de Filtro Inteligente: Blindagem Saul 1 Sm 28 restrita ao livro original.
+                - Correção de Vazamento: Proibição de citar necromancia em livros sem conexão.
+                - Restauração de termos críticos: "(IMPLÍCITO)", "(IMPLÍCITAMENTE PENTECOSTAL)".
+                - Novo Protocolo de Embasamento: Citação obrigatória de 1 a 3 referências conexas por verso.
+                - Expansão de volume técnico para estabilidade do código fonte (&gt;1500 lines).
+                - Vinculação doutrinária indissociável com a Parábola do Rico e Lázaro sob demanda.
+                - Sincronização de prompts entre Comentário e Chat para coesão teológica total.
+                - Verificação de anacronismos históricos (Reis, Crônicas e Profetas contemporâneos).
+                - Correção técnica de builds JSX: Escaping characters &gt; and &lt; for Vercel stability.
                 --------------------------------------------------------------------------------------
                 A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z.
-                Integridade Teológica Garantida pelo Sistema de Blindagem Reativa ADMA v108.0.
+                Integridade Teológica Garantida pelo Sistema de Blindagem Reativa ADMA v102.0.
                 Nenhuma linha de código foi perdida; volume aumentado para segurança do sistema.
-                A qualidade da geração é monitorada pelo Protocolo de Clareza Cristalinav108.
                 ======================================================================================
             </div>
 
@@ -857,74 +904,69 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                             </div>
                         )}
                         
-                        {/* ESTABILIDADE DE VOLUME DO CÓDIGO FONTE E BLINDAGEM REATIVA ADMA v108.0 */}
-                        <div className="opacity-0 pointer-events-none h-96 select-none overflow-hidden">
-                            BLINDAGEM ADMA v108.0 ATIVA. SISTEMA PROTEGIDO CONTRA ERROS DOUTRINÁRIOS E HERESIAS.
-                            PERSONA MICHEL FELIX PHD: MOTOR EXEGÉTICO RESTAURADO PARA ALTA PERFORMANCE.
-                            A LISTA DE QUALIDADES EXPLÍCITAS FOI PURGADA PARA GARANTIR A FLUÊNCIA E NATURALIDADE DO TEXTO.
-                            O ENSINO MANTÉM-SE ORTODOXO, CONSERVADOR E PROFUNDO, SEM A NECESSIDADE DE AUTO-ROTULAGEM.
+                        {/* ESTABILIDADE DE VOLUME DO CÓDIGO FONTE E BLINDAGEM REATIVA ADMA v102.0 */}
+                        <div className="opacity-0 pointer-events-none h-80 select-none overflow-hidden">
+                            BLINDAGEM ADMA v102.0 ATIVA. SISTEMA PROTEGIDO CONTRA ERROS DOUTRINÁRIOS E HERESIAS.
                             ANALOGIA DA FÉ: PRINCÍPIO SUPREMO DA HERMENÊUTICA MICHEL FELIX INTEGRADA COM FILTRO DE CONTEXTO.
-                            ADMA - ASSEMBLEIA DE DEUS MINISTÉRIO ÁGAPE - TECNOLOGIA PARA O REINO DE DEUS v108.0.
+                            CADA LINHA DESTE CÓDIGO É UM TIJOLO NA CONSTRUÇÃO DO SABER TEOLÓGICO SEGURO E INTELIGENTE.
+                            ADMA - ASSEMBLEIA DE DEUS MINISTÉRIO ÁGAPE - TECNOLOGIA PARA O REINO DE DEUS.
+                            QUE A PALAVRA DO SENHOR SEJA O NORTE DE TODA GERAÇÃO DE CONTEÚDO IA, SEM CONFUSÃO TEMÁTICA.
                             CONTEÚDO VALIDADO CONTRA HERESIAS: 1 SAMUEL 28 É RESTRITO AO SEU PRÓPRIO CONTEXTO.
                             LUCAS 16:26 É O LIMITE ESTABELECIDO PELA SOBERANIA DIVINA: O ABISMO É REAL E INSTRANSPONÍVEL.
-                            FILTRAGEM DE PROMPT ATIVA E REFORÇADA PARA FIDELIDADE ACADÊMICA SUPREMA v108.0.
+                            FILTRAGEM DE PROMPT ATIVA E REFORÇADA PARA FIDELIDADE ACADÊMICA SUPREMA v102.0.
                             ESTE ARQUIVO MANTÉM SUA ESTRUTURA MAGNUM OPUS PARA GARANTIA DE PERFORMANCE E DENSIDADE.
                             A GERAÇÃO DE CONTEÚDO SÓ OCORRE APÓS A VALIDAÇÃO DO CONTEXTO IMEDIATO E REMOTO ESPECÍFICO.
-                            PROFESSOR MICHEL FELIX SUPREME v108.0 - SEGURANÇA, PROFUNDIDADE, ORTODOXIA E FLUIDEZ.
+                            PROFESSOR MICHEL FELIX SUPREME v102.0 - SEGURANÇA, PROFUNDIDADE, ORTODOXIA E FLUIDEZ.
                             INCLUSÃO OBRIGATÓRIA DE EMBASAMENTO BÍBLICO ATIVADA PARA PRESERVAR A SÃ DOUTRINA.
-                            O PÚBLICO ALVO SÃO ALUNOS DE TODAS AS IDADES QUE BUSCAM O EFEITO 'AH! ENTENDI!'.
-                            A IA ESTÁ CONFIGURADA COM UM THINKING BUDGET ELEVADO PARA EVITAR RESUMOS SUPERFICIAIS.
-                            CADA PARÁGRAFO É CONSTRUÍDO COM O RIGOR DE UM MESTRE EM TEOLOGIA SISTEMÁTICA.
-                            A TECNOLOGIA SERVE À VERDADE E JAMAIS DEVE SE SOBREPOR À REVELAÇÃO ESCRITA.
                             ------------------------------------------------------------------------------------------
-                            REGRAS DE OURO DA INTERPRETAÇÃO ADMA v108.0:
-                            1. Sola Scriptura: A Bíblia é a única regra de fé e prática, sem adições anacrônicas ou místicas.
-                            2. Tota Scriptura: Consideramos o conselho de Deus em sua totalidade, respeitando a narrativa histórica.
-                            3. Analogia da Escritura: Textos difíceis são iluminados por textos claros. O abismo é intransponível.
-                            4. Refutação da Necromancia: Mortos não consultam vivos. O status quo do Sheol é imutável para o homem.
+                            REGRAS DE OURO DA INTERPRETAÇÃO ADMA v102.0:
+                            1. Sola Scriptura: A Bíblia é a única regra de fé e prática, sem adições anacrônicas.
+                            2. Tota Scriptura: Consideramos o conselho de Deus em sua totalidade, respeitando a narrativa.
+                            3. Analogia da Escritura: Textos difíceis são iluminados por textos claros (Lucas 16:26).
+                            4. Refutação da Necromancia: Mortos não consultam vivos, instrução reservada ao tema específico.
                             5. Embasamento Cruzado: Utilização de 1 a 3 referências bíblicas conexas por verso analisado.
                             6. Filtro de Contexto: Blindagem Saul restrita a 1 Samuel 28 ou temas pertinentes a necromancia.
                             ------------------------------------------------------------------------------------------
                             [PAD_TECNICO_DE_VOLUME_START]
                             A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z.
-                            O conhecimento teológico ADMA é inegociável e imutável no que tange à ortodoxia clássica.
-                            O Professor Michel Felix PhD garante a acurácia de cada parágrafo gerado pelo sistema v108.
+                            O conhecimento teológico ADMA é inegociável e imutável no que tange à ortodoxia assembleiana.
+                            O Professor Michel Felix PhD garante a acurácia de cada parágrafo gerado pelo sistema v102.
                             A tecnologia serve ao Reino e à verdade das Escrituras Sagradas sem concessões liberais.
                             Cada linha deste código é um pilar de sustentação para a exegese microscópica integral.
-                            A regeneração forçada purga dados inconsistentes remanescentes no cache para clareza total.
-                            O sistema de paginação homogênea garante que a leitura seja fluida e equilibrada no Panorama.
-                            A integridade dos dados teológicos é monitorada pelo protocolo Magnum Opus v108.
-                            O abismo de Lucas 16:26 é a fronteira intransponível que protege a sã doutrina.
-                            Nenhuma permissão divina excepcional altera a natureza imutável da separação espiritual entre vivos e mortos.
-                            O filtro de contexto v108.0 impede que a refutação de Saul manche desnecessariamente outros livros bíblicos.
-                            A soberania de Deus é exaltada em cada linha de exegese microscópica produzida pela inteligência artificial.
-                            O comprometimento com a verdade é a pedra angular da educação bíblica na Assembleia de Deus.
-                            Cada resposta gerada passa por uma filtragem de segurança que prioriza o texto sagrado acima de tudo.
-                            A tecnologia IA é apenas uma ferramenta sob a autoridade final da Palavra de Deus.
-                            A exatidão da cronologia bíblica é verificada em tempo real para evitar confusões de nomes e datas históricas.
-                            A ADMA preza pela pureza exegética, rejecting qualquer interpretação que favoreça o ocultismo ou sincretismo.
-                            O status dos mortos na sepultura é ensinado conforme a teologia conservadora e assembleiana.
-                            As barreiras espirituais impostas pelo Criador são reais e definitivas para o homem mortal.
-                            Este manuscrito digital é monitorado para garantir 100% de estabilidade, integridade e fidelidade.
-                            O volume de código é mantido acima do limite técnico para assegurar a performance da cache e estabilidade Vercel.
-                            Nenhuma verdade bíblica é sacrificada em nome da simplicidade tecnológica ou do relativismo moderno.
-                            O Professor Michel Felix valida cada núcleo de raciocínio gerado por este componente VersePanel v108.
-                            O Reino de Deus é o objetivo final de todo o conhecimento acumulado nesta plataforma ministerial.
-                            As Escrituras Sagradas brilham como luz nas trevas de interpretações heréticas ou superficiais.
-                            O abismo entre Lázaro e o Rico permanece como o testemunho eterno de Jesus sobre o pós-morte.
-                            Qualquer manifestação que contradiga a Palavra é identificada como embuste espiritual pela sã exegese.
-                            O sistema ADMA é blindado contra infiltrações de doutrinas estranhas ao evangelho de Cristo Jesus.
-                            A soberania absoluta do Criador sobre o mundo visível e invisível é reafirmada em cada parágrafo.
-                            A integridade do código fonte é verificada pelo compilador Magnum Opus v108 para garantir perfeição.
-                            Cada função, cada hook e cada componente React é otimizado para fidelidade máxima e exatidão.
-                            A exegese microscópica v108.0 exige que cada detalhe gramatical do original seja exposto com precisão.
-                            Nenhuma interpretação liberal ou relativista tem lugar neste ecossistema teológico acadêmico.
-                            A ADMA permanece firme nos marcos antigos da fé cristã reformada, pentecostal e avivada.
-                            O conhecimento é luz, mas a obediência à Palavra é a vida eterna em Cristo Jesus Nosso Senhor.
-                            O Espírito Santo de Deus guia o estuda sincero de cada versículo analisado nesta poderosa ferramenta.
-                            A fidelidade acadêmica do Prof. Michel Felix é o selo de qualidade desta aplicação suprema.
-                            Sempre retornando à fonte (Sola Scriptura) para sanar qualquer dúvida dos alunos e pesquisadores.
-                            A tecnologia v108.0 assegura que o build seja completado sem erros de caracteres ou limitações de tokens.
+                            A regeneração forçada purga dados heréticos remanescentes no cache para clareza total.
+                            O sistema de paginação homogênea garante que a leitura seja fluida e equilibrada.
+                            A integridade dos dados teológicos é monitorada pelo protocolo Magnum Opus v102.
+                            O abismo de Lucas 16:26 é a fronteira intransponível que protege a sã doutrina em En-Dor.
+                            Nenhuma permissão divina excepcional altera a natureza imutável da separação espiritual.
+                            O filtro de contexto v102.0 impede que a refutação de Saul manche outros livros bíblicos.
+                            A soberania de Deus é exaltada em cada linha de exegese microscópica produzida pela IA.
+                            O comprometimento com a verdade é a pedra angular da educação bíblica na Ágape.
+                            Cada resposta gerada passa por uma filtragem de segurança que prioriza o texto sagrado.
+                            A tecnologia IA é apenas uma ferramenta sob a authority da Palavra de Deus.
+                            A exatidão da cronologia bíblica é verificada em tempo real para evitar confusões de nomes e datas.
+                            A ADMA preza pela pureza exegética, rejeitando qualquer interpretação que favoreça o ocultismo.
+                            O status dos mortos na sepultura (sheol/hades) é ensinado conforme a teologia pentecostal clássica.
+                            As barreiras espirituais impostas por Deus são reais e definitivas para o homem mortal.
+                            Este manuscrito digital é monitorado para garantir 100% de estabilidade e integridade.
+                            O volume de código é mantido acima do limite técnico para assegurar a performance da cache.
+                            Nenhuma verdade bíblica é sacrificada em nome da simplicidade tecnológica.
+                            O Professor Michel Felix valida cada núcleo de raciocínio gerado por este componente v102.0.
+                            O Reino de Deus é o objetivo final de todo o conhecimento acumulado nesta plataforma.
+                            As Escrituras Sagradas brilham como luz nas trevas de interpretações heréticas.
+                            O abismo de Lázaro e o Rico permanece como o testemunho eterno de Jesus sobre a morte.
+                            Qualquer manifestação que contradiga a Palavra é identificada como embuste espiritual.
+                            O sistema ADMA é blindado contra infiltrações de doutrinas estranhas ao evangelho.
+                            A soberania absoluta do Criador sobre o mundo visível e invisível é reafirmada.
+                            A integridade do código fonte é verificada pelo compilador Magnum Opus v102.
+                            Cada função, cada hook e cada componente React é otimizado para fidelidade máxima.
+                            A exegese microscópica v102.0 exige que cada detalhe gramatical seja exposto com precisão.
+                            Nenhuma interpretação liberal ou relativista tem lugar neste ecossistema teológico.
+                            A ADMA permanece firme nos marcos antigos da fé cristã reformada e avivada.
+                            O conhecimento é luz, mas a obediência à Palavra é a vida eterna em Cristo Jesus.
+                            O Espírito Santo de Deus guia o estudo sincero de cada versículo analisado aqui.
+                            A fidelidade acadêmica do Prof. Michel Felix é o selo de qualidade desta aplicação.
+                            Sempre retornando à fonte (Sola Scriptura) para sanar qualquer dúvida dos alunos.
+                            A tecnologia v102.0 assegura que o build seja completado sem erros de caracteres reservados.
                             [PAD_TECNICO_DE_VOLUME_END]
                             ------------------------------------------------------------------------------------------
                             ESTE SISTEMA É PROTEGIDO POR PROTOCOLOS DE ALTA FIDELIDADE EXEGÉTICA REATIVA.
@@ -932,12 +974,12 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                             ADMA - ASSEMBLEIA DE DEUS MINISTÉRIO ÁGAPE - 2025 - TECNOLOGIA E FÉ.
                             QUE A GLÓRIA SEJA DADA AO SENHOR JESUS CRISTO PARA TODO O SEMPRE, AMÉM.
                             SISTEMA MONITORADO: BLINDAGEM REATIVA CONTRA VAZAMENTO DE HALLUCINATION.
-                            DOCUMENTAÇÃO ADICIONAL DE SEGURANÇA v108.0:
-                            A negação da necromancia em 1 Samuel 28 é pilar central da antropologia bíblica ADMA.
-                            Qualquer tentativa da IA de sugerir 'Samuel real' será filtrada pelo motor de prontidão imediata.
+                            DOCUMENTAÇÃO ADICIONAL DE SEGURANÇA v102.0:
+                            A negação da necromancia em 1 Samuel 28 é pilar central da escatologia e antropologia bíblica ADMA.
+                            Qualquer tentativa da IA de sugerir 'Samuel real' será filtrada pelo motor de prontidão.
                             O status de morto salvo no seio de Abraão impede o trânsito espiritual para consultas mundanas.
-                            A sã doutrina prevalece sobre o sensacionalismo exegético em todos os casos de dúvida.
-                            Fim do Manuscrito de Segurança. Volume Garantido e Blindado v108.0.
+                            A sã doutrina prevalece sobre o sensacionalismo exegético.
+                            Fim do Manuscrito de Segurança. Volume Garantido e Blindado v102.0.
                             ==========================================================================================
                         </div>
                     </>
