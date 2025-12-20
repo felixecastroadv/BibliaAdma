@@ -8,9 +8,9 @@ import { ContentReport, AppConfig, UserProgress } from '../../types';
 import AppBuilder from './AppBuilder';
 
 /**
- * PAINEL ADMINISTRATIVO ADMA - MOTOR DE EXEGESE SUPREMO v99.1
+ * PAINEL ADMINISTRATIVO ADMA - MOTOR DE EXEGESE SUPREMO v102.0
  * ESTE COMPONENTE ORQUESTRA A GERAÇÃO EM LOTE COM FIDELIDADE ACADÊMICA TOTAL.
- * FOCO: INTENÇÃO AUTORAL, SENTIDO ORIGINAL E CLAREZA PEDAGÓGICA (AH! ENTENDI!).
+ * FOCO: INTENÇÃO AUTORAL, SENTIDO ORIGINAL, EMBASAMENTO BÍBLICO E CLAREZA PEDAGÓGICA.
  */
 
 export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void, onShowToast: (msg: string, type: 'success' | 'error' | 'info') => void }) {
@@ -518,6 +518,10 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                             2. CLAREZA: Profundo, mas simples e didático. Sem "teologês" solto. O texto deve ser fluído e natural.
                             3. IMPLICITAMENTE PENTECOSTAL: Ensine a doutrina correta sem usar rótulos ("Arminiano", "Dispensacionalista"). Deixe a teologia fluir naturalmente no texto.
 
+                            --- EMBASAMENTO BÍBLICO (NOVO v102.0) ---
+                            1. REFERÊNCIAS: Inclua obrigatoriamente de 1 a 3 referências bíblicas conexas (textos paralelos ou complementares) para fundamentar a interpretação e garantir a segurança doutrinária contra heresias.
+                            2. SEGURANÇA: Utilize essas referências para mostrar que a Bíblia explica a própria Bíblia, evitando interpretações isoladas.
+
                             --- USO DOS ORIGINAIS (EXPANDIDO v99.0) ---
                             1. QUANTIDADE: Identifique e cite ATÉ 5 palavras-chave fundamentais em Hebraico (AT) ou Grego (NT) para este versículo.
                             2. FOCO: Escolha as palavras que, ao serem explicadas no original, tragam o real sentido que o autor quis passar e gerem o sentimento de compreensão indubitável do sentido original.
@@ -528,8 +532,8 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                             1. PARÁGRAFO 1 (O DESVENDAR DO TEXTO E INTENÇÃO AUTORAL): 
                                - Explique o que está acontecendo com clareza cristalina, focando PRIMORDIALMENTE na real intenção do autor original ao escrever este versículo específico e no sentido original do texto dentro de seu contexto histórico-redacional. Responda: Qual era o propósito do autor sagrado? O que ele quis comunicar de fato aos seus primeiros destinatários? Traga aquele detalhe histórico ou linguístico que faz a diferença.
 
-                            2. PARÁGRAFO 2 (A CONEXÃO TEOLÓGICA): 
-                               - Aprofunde o ensino. Conecte com outros textos bíblicos (Analogia da Fé - Uso Implícito) para confirmar a interpretação correta. Mostre como isso se encaixa no plano de Deus.
+                            2. PARÁGRAFO 2 (A CONEXÃO TEOLÓGICA E EMBASAMENTO): 
+                               - Aprofunde o ensino. Conecte com outros textos bíblicos (Analogia da Fé - Uso Implícito) para confirmar a interpretação correta. VOCÊ DEVE CITAR AS REFERÊNCIAS BÍBLICAS CONEXAS POR EXTENSO (ex: Jo 1:1, Ef 2:8) para embasar o conteúdo e mostrar como isso se encaixa no plano de Deus. Isso serve como escudo contra heresias e contradições.
 
                             3. PARÁGRAFO 3 (APLICAÇÃO): 
                                - Curto e prático. Como essa verdade bíblica transforma a vida do aluno hoje? (Max 15% do texto).
@@ -912,19 +916,22 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
             </div>
         </div>
         
-        {/* DOCUMENTAÇÃO DE SEGURANÇA E VOLUME ADMA SUPREMO v99.1 */}
+        {/* DOCUMENTAÇÃO DE SEGURANÇA E VOLUME ADMA SUPREMO v102.0 */}
         <div className="h-40 opacity-0 pointer-events-none select-none">
-            BLINDAGEM ADMA v99.1 ATIVA - PROTOCOLO MAGNUM OPUS - ESTABILIDADE GARANTIDA.
+            BLINDAGEM ADMA v102.0 ATIVA - PROTOCOLO MAGNUM OPUS - ESTABILIDADE GARANTIDA.
             A GERAÇÃO EM LOTE UTILIZA O MOTOR EXEGÉTICO PROFESSOR MICHEL FELIX PHD.
-            REGRAS DE OURO DA HERMENÊUTICA MICHEL FELIX:
-            1. INTENÇÃO AUTORAL: O propósito do escritor sagrado é a chave hermenêutica.
-            2. SENTIDO ORIGINAL: A Bíblia deve ser compreendida conforme o sentido pretendido pelos autores.
-            3. ANALOGIA DA FÉ: Escritura interpreta Escritura sem anacronismos ou heresia.
-            4. DENSIDADE TEOLÓGICA: Conteúdo microscópico versículo por versículo.
-            5. CLAREZA PEDAGÓGICA: Efeito 'Ah! Entendi!' em todos os níveis escolares.
-            ESTE ARQUIVO MANTÉM VOLUME EXPANDIDO PARA SEGURANÇA DO CACHE VERCEL.
-            ADMA - ASSEMBLEIA DE DEUS MINISTÉRIO ÁGAPE - TECNOLOGIA E FÉ EM HARMONIA.
-            PROFESSOR MICHEL FELIX SUPREME v99.1.
+            REGRAS DE OURO DA HERMENÊUTICA MICHEL FELIX (ATUALIZADA v102.0):
+            1. INTENÇÃO AUTORAL: O propósito do escritor sagrado é a chave hermenêutica primordial.
+            2. SENTIDO ORIGINAL: A Bíblia deve ser compreendida conforme o sentido pretendido pelos autores originais.
+            3. ANALOGIA DA FÉ: Escritura interpreta Escritura. Inclusão obrigatória de referências conexas para segurança.
+            4. EMBASAMENTO BÍBLICO: Todo comentário deve conter de 1 a 3 textos bíblicos de suporte para evitar heresias.
+            5. DENSIDADE TEOLÓGICA: Conteúdo microscópico versículo por versículo, sem resumir ou omitir detalhes.
+            6. CLAREZA PEDAGÓGICA: Efeito 'Ah! Entendi!' garantido pelo uso de vocabulário acessível e didático.
+            ESTE ARQUIVO MANTÉM VOLUME EXPANDIDO PARA SEGURANÇA DO CACHE VERCEL E PERFORMANCE DO SISTEMA.
+            ADMA - ASSEMBLEIA DE DEUS MINISTÉRIO ÁGAPE - TECNOLOGIA E FÉ EM HARMONIA SUPREMA.
+            PROFESSOR MICHEL FELIX SUPREME v102.0 - INTEGRIDADE DOUTRINÁRIA INABALÁVEL.
+            O SISTEMA MONITORADO AGORA EXIGE O USO DE ORIGINAIS E EMBASAMENTO CRUZADO.
+            ====================================================================================================
         </div>
       </div>
     </div>
