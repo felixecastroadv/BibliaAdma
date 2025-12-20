@@ -78,6 +78,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentSpeechId, setCurrentSpeechId] = useState<string | null>(null); 
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [getVoicesFromBrowser, setGetVoicesFromBrowser] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string>('');
   const [playbackRate, setPlaybackRate] = useState(1);
   const [showAudioSettings, setShowAudioSettings] = useState(false);
@@ -423,11 +424,15 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
         : "";
 
     try {
+        const verseText = verse;
         const prompt = `
             ATUE COMO: Professor Michel Felix.
             TAREFA: Escrever um comentário EXEGÉTICO para um aluno estudioso da Bíblia.
-            TEXTO BÍBLICO: "${verse}"
+            TEXTO BÍBLICO: "${verseText}"
             ${customPromptAddon}
+
+            TAREFA: Escrever um comentário EXEGÉTICO para um aluno estudioso da Bíblia.
+            TEXTO BÍBLICO: "${verseText}"
 
             --- REGRAS DE INÍCIO (RIGOROSO) ---
             1. INÍCIO OBRIGATÓRIO: Todo comentário DEVE começar EXATAMENTE com a frase: "Este versículo revela...".
@@ -449,19 +454,24 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
             5. FOCO NA INTENÇÃO ORIGINAL: O que o autor sagrado quis ensinar sobre Deus e o homem? Fique nisso.
             6. IMPORTANTE: Não escreva "Segundo a hermenêutica" ou "Analisando o contexto". Apenas aplique essas regras para chegar à conclusão correta.
 
-            --- BLINDAGEM ANTI-HERESIA v95.9 (PROTOCOLO DE CONTEXTO RIGOROSO) ---
-            - REGRA CRÍTICA DE VAZAMENTO: É PROIBIDO citar 1 Samuel 28, pitonisa ou necromancia se o versículo atual NÃO for sobre esse tema. Ex: Se estiver em Apocalipse 6:2, foque no cavaleiro e não em Samuel. A pureza temática é essencial.
-            - SE O TEXTO FOR 1 SAMUEL 28 OU TRATAR DE NECROMANCIA: Afirme categoricamente que Samuel NÃO apareceu. Foi uma manifestation demoníaca (personificação) permitida para juízo ou embuste. O abismo de Lucas 16:26 é instransponível. Rejeite qualquer sucesso da médium em evocar o espírito real de Samuel. As previsões baseavam-se no juízo divino já anunciado por Samuel em vida.
-
             --- LINGUAGEM E TOM ---
             1. PÚBLICO: Alunos de 16 a 76 anos, escolaridade média.
             2. CLAREZA: Profundo, mas simples e didático. Sem "teologês" solto. O texto deve ser fluído e natural.
-            3. IMPLICITAMENTE PENTECOSTAL: Ensine a doutrina correta sem usar rótulos ("Arminiano", "Dispensacionalista"). Deixe a teologia fluir naturalmente no texto. Sua teologia deve ser IMPLÍCITA (IMPLÍCITO) na força da argumentação bíblica.
+            3. IMPLICITAMENTE PENTECOSTAL: Ensine a doutrina correta sem usar rótulos ("Arminiano", "Dispensacionalista"). Deixe a teologia fluir naturalmente no texto.
+
+            --- USO DOS ORIGINAIS ---
+            Cite palavras chaves em Hebraico/Grego (transliteradas) apenas quando iluminarem o sentido, de forma natural (ex: "O termo original *palavra* sugere...").
 
             --- ESTRUTURA BLINDADA (3 PARÁGRAFOS - Max 250 Palavras) ---
-            1. PARÁGRAFO 1 (O DESVENDAR DO TEXTO): Explique o que está acontecendo com clareza cristalina. Traga aquele detalhe histórico ou linguístico que faz a diferença. Responda: O que isso significava para quem ouviu pela primeira vez?
-            2. PARÁGRAFO 2 (A CONEXÃO TEOLÓGICA): Aprofunde o ensino. Conecte com outros textos bíblicos (Analogia da Fé - Uso Implícito) para confirmar a interpretação correta. Mostre como isso se encaixa no plano de Deus.
-            3. PARÁGRAFO 3 (APLICAÇÃO): Curto e prático. Como essa verdade bíblica transforma a vida do aluno hoje? (Max 15% do texto).
+            
+            1. PARÁGRAFO 1 (O DESVENDAR DO TEXTO): 
+               - Explique o que está acontecendo com clareza cristalina. Traga aquele detalhe histórico ou linguístico que faz a diferença. Responda: O que isso significava para quem ouviu pela primeira vez?
+
+            2. PARÁGRAFO 2 (A CONEXÃO TEOLÓGICA): 
+               - Aprofunde o ensino. Conecte com outros textos bíblicos (Analogia da Fé - Uso Implícito) para confirmar a interpretação correta. Mostre como isso se encaixa no plano de Deus.
+
+            3. PARÁGRAFO 3 (APLICAÇÃO): 
+               - Curto e prático. Como essa verdade bíblica transforma a vida do aluno hoje? (Max 15% do texto).
 
             --- ESTILO VISUAL ---
             Texto corrido, elegante, inspirador e fácil de ler.
