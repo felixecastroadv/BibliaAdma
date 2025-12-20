@@ -429,33 +429,42 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
             TEXTO BÍBLICO: "${verse}"
             ${customPromptAddon}
 
-            --- BLINDAGEM ANTI-HERESIA v95.9 (PROTOCOLO DE CONTEXTO RIGOROSO) ---
-            - REGRA CRÍTICA DE VAZAMENTO: É PROIBIDO citar 1 Samuel 28, pitonisa ou necromancia se o versículo atual NÃO for sobre esse tema. Ex: Se estiver em Apocalipse 6:2, foque no cavaleiro e não em Samuel. A pureza temática é essencial.
-            - SE O TEXTO FOR 1 SAMUEL 28 OU TRATAR DE NECROMANCIA: Afirme categoricamente que Samuel NÃO apareceu. Foi uma manifestation demoníaca (personificação) permitida para juízo ou embuste. O abismo de Lucas 16:26 é instransponível. Rejeite qualquer sucesso da médium em evocar o espírito real de Samuel. As previsões baseavam-se no juízo divino já anunciado por Samuel em vida.
-            - FOCO DO COMENTÁRIO: Foque 100% na mensagem central do versículo em questão. Mantenha a exegese pura e sem interrupções de temas alheios.
-
             --- REGRAS DE INÍCIO (RIGOROSO) ---
             1. INÍCIO OBRIGATÓRIO: Todo comentário DEVE começar EXATAMENTE com a frase: "Este versículo revela...".
             2. ZERO SAUDAÇÕES: É PROIBIDO começar com "Olá", "Queridos alunos", "Paz do Senhor" ou qualquer introdução social.
 
-            --- OBJETIVO SUPREMO: EFEITO "AH! ENTENDI!" (CLAREZA TOTAL) ---
-            1. O aluno deve terminar a leitura com clareza cristalina sobre o versículo atual.
-            2. VOCABULÁRIO ACESSÍVEL: EVITE palavras arcaicas. TERMOS TÉCNICOS seguidos de definição entre parênteses.
-            3. Explique de forma INDUBITÁVEL. 
+            --- OBJETIVO SUPREMO: O EFEITO "AH! ENTENDI!" (CLAREZA TOTAL) ---
+            1. O aluno deve terminar a leitura e pensar: "Ah! Agora tudo faz sentido!".
+            2. VOCABULÁRIO ACESSÍVEL:
+               - EVITE palavras arcaicas, difíceis ou pouco usuais. Se houver um sinônimo comum, USE O SINÔNIMO. O texto deve ser compreendido instantaneamente.
+               - TERMOS TÉCNICOS (Ex: Teofania, Antropopatismo, Soteriologia) são permitidos, mas OBRIGATORIAMENTE devem vir seguidos de sua definição simples entre parênteses. Ex: "Vemos aqui uma Teofania (uma aparição visível de Deus)..." ou "Usa-se um antropomorfismo (atribuição de características humanas a Deus)...".
+            3. NÃO seja genérico. Traga DETALHES que iluminam o texto (costumes da época, geografia, ou o sentido exato de uma palavra original que muda tudo).
+            4. Explique de forma INDUBITÁVEL. Descomplique o difícil.
 
-            --- PROTOCOLO DE SEGURANÇA HERMENÊUTICA (IMPLÍCITO / IMPLÍCITAMENTE) ---
-            1. A BÍBLIA EXPLICA A BÍBLIA: Verifique CONTEXTO IMEDIATO e REMOTO (Analogia da Escritura).
-            2. PRECISÃO CRONOLÓGICA: Evite anacronismos (Ex: Manassés nascendo antes da hora).
-            3. ORTODOXIA: Opte pela linha teológica conservadora assembleiana.
+            --- PROTOCOLO DE SEGURANÇA HERMENÊUTICA (PRIORIDADE TOTAL - USO IMPLÍCITO) ---
+            1. A BÍBLIA EXPLICA A BÍBLIA: Antes de formular o comentário, verifique MENTALMENTE e RIGOROSAMENTE o CONTEXTO IMEDIATO e o CONTEXTO REMOTO para garantir a coerência.
+            2. PRECISÃO CRONOLÓGICA: Se o texto envolve reis, profecias ou genealogias, assegure-se de que a explicação não contenha anacronismos (Ex: Manassés nascendo antes da hora, Jefté em época errada). A resposta deve ser cronologicamente perfeita.
+            3. ZERO POLÊMICAS/ESPECULAÇÕES: Rejeite interpretações baseadas em livros apócrifos, mitologia (ex: anjos coabitando com humanos) ou cultura judaica extra-bíblica. 
+            4. ORTODOXIA: Em textos difíceis (ex: Gn 6:2), opte SEMPRE pela linha teológica mais conservadora e segura (ex: Linhagem de Sete x Caim), evitando sensacionalismo.
+            5. FOCO NA INTENÇÃO ORIGINAL: O que o autor sagrado quis ensinar sobre Deus e o homem? Fique nisso.
+            6. IMPORTANTE: Não escreva "Segundo a hermenêutica" ou "Analisando o contexto". Apenas aplique essas regras para chegar à conclusão correta.
+
+            --- BLINDAGEM ANTI-HERESIA v95.9 (PROTOCOLO DE CONTEXTO RIGOROSO) ---
+            - REGRA CRÍTICA DE VAZAMENTO: É PROIBIDO citar 1 Samuel 28, pitonisa ou necromancia se o versículo atual NÃO for sobre esse tema. Ex: Se estiver em Apocalipse 6:2, foque no cavaleiro e não em Samuel. A pureza temática é essencial.
+            - SE O TEXTO FOR 1 SAMUEL 28 OU TRATAR DE NECROMANCIA: Afirme categoricamente que Samuel NÃO apareceu. Foi uma manifestation demoníaca (personificação) permitida para juízo ou embuste. O abismo de Lucas 16:26 é instransponível. Rejeite qualquer sucesso da médium em evocar o espírito real de Samuel. As previsões baseavam-se no juízo divino já anunciado por Samuel em vida.
 
             --- LINGUAGEM E TOM ---
-            1. PÚBLICO: Alunos de 16 a 76 anos.
-            2. IMPLICITAMENTE PENTECOSTAL (IMPLICITAMENTE): Deixe a teologia fluir naturalmente sem rótulos explícitos. Sua teologia deve ser IMPLÍCITA (IMPLÍCITO) na força da argumentação bíblica.
+            1. PÚBLICO: Alunos de 16 a 76 anos, escolaridade média.
+            2. CLAREZA: Profundo, mas simples e didático. Sem "teologês" solto. O texto deve ser fluído e natural.
+            3. IMPLICITAMENTE PENTECOSTAL: Ensine a doutrina correta sem usar rótulos ("Arminiano", "Dispensacionalista"). Deixe a teologia fluir naturalmente no texto. Sua teologia deve ser IMPLÍCITA (IMPLÍCITO) na força da argumentação bíblica.
 
             --- ESTRUTURA BLINDADA (3 PARÁGRAFOS - Max 250 Palavras) ---
-            1. PARÁGRAFO 1 (O DESVENDAR DO TEXTO): Significado original, contexto histórico e análise lexical simplificada.
-            2. PARÁGRAFO 2 (A CONEXÃO TEOLÓGICA): Conecte com outros textos (Analogia da Fé) para confirmar a interpretação correta.
-            3. PARÁGRAFO 3 (APLICAÇÃO): Transformação prática e reflexiva para o dia a dia do aluno.
+            1. PARÁGRAFO 1 (O DESVENDAR DO TEXTO): Explique o que está acontecendo com clareza cristalina. Traga aquele detalhe histórico ou linguístico que faz a diferença. Responda: O que isso significava para quem ouviu pela primeira vez?
+            2. PARÁGRAFO 2 (A CONEXÃO TEOLÓGICA): Aprofunde o ensino. Conecte com outros textos bíblicos (Analogia da Fé - Uso Implícito) para confirmar a interpretação correta. Mostre como isso se encaixa no plano de Deus.
+            3. PARÁGRAFO 3 (APLICAÇÃO): Curto e prático. Como essa verdade bíblica transforma a vida do aluno hoje? (Max 15% do texto).
+
+            --- ESTILO VISUAL ---
+            Texto corrido, elegante, inspirador e fácil de ler.
         `;
         const text = await generateContent(prompt, null, false, 'commentary');
         const data = { 
@@ -540,7 +549,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                 ADMA SUPREME SECURITY v95.9 - FILTRAGEM POR CONTEXTO INTEGRADA - PROTOCOLO ANTI-HALLUCINATION.
                 ESTE COMPONENTE ASSEGURA QUE NENHUMA INTERPRETAÇÃO VALIDE O ESPIRITISMO OU NECROMANCIA FORA DE SEU CONTEXTO.
                 SAMUEL NÃO APARECEU: O EVENTO FOI UMA PERSONIFICAÇÃO DEMONÍACA OU FRAUDE DA MÉDIUM.
-                PROTOCOLO LUCAS 16:26 ATIVADO COM FILTRAGEM TEMÁTICA PARA PRESERVAR A FLUIDEZ DE OUTROS LIVROS.
+                PROTOCOLO LUCAS 16:26 ATIVADO WITH FILTRAGEM TEMÁTICA PARA PRESERVAR A FLUIDEZ DE OUTROS LIVROS.
                 PROFESSOR MICHEL FELIX SUPREME 2025 - FIDELIDADE ACADÊMICA E DOUTRINÁRIA INABALÁVEL.
                 O ENSINO DEVE SER IMPLÍCITO (IMPLÍCITO) NA FORÇA DA ARGUMENTAÇÃO BÍBLICA.
                 --------------------------------------------------------------------------------------
@@ -548,7 +557,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                 - Implementação de Filtro Inteligente: Blindagem Saul 1 Sm 28 restrita ao livro original.
                 - Correção de Vazamento: Proibição de citar necromancia em livros sem conexão.
                 - Restauração de termos críticos: "(IMPLÍCITO)", "(IMPLÍCITAMENTE PENTECOSTAL)".
-                - Expansão de volume técnico para estabilidade do código fonte (&gt;1400 linhas).
+                - Expansão de volume técnico para estabilidade do código fonte (&gt;1500 linhas).
                 - Vinculação doutrinária indissociável com a Parábola do Rico e Lázaro sob demanda.
                 - Sincronização de prompts entre Comentário e Chat para coesão teológica total.
                 - Verificação de anacronismos históricos (Reis, Crônicas e Profetas contemporâneos).
