@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ShieldCheck, RefreshCw, Loader2, Upload, Download, Server, HardDrive, Flag, CheckCircle, XCircle, MessageSquare, Languages, GraduationCap, Calendar, CloudUpload, Wand2, StopCircle, Trash2, AlertTriangle, Save, Lock, Unlock, KeyRound, Search, Cloud, Activity, Zap, Battery } from 'lucide-react';
 import { generateContent } from '../../services/geminiService';
@@ -518,8 +517,10 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                             2. CLAREZA: Profundo, mas simples e didático. Sem "teologês" solto. O texto deve ser fluído e natural.
                             3. IMPLICITAMENTE PENTECOSTAL: Ensine a doutrina correta sem usar rótulos ("Arminiano", "Dispensacionalista"). Deixe a teologia fluir naturalmente no texto.
 
-                            --- USO DOS ORIGINAIS ---
-                            Cite palavras chaves em Hebraico/Grego (transliteradas) apenas quando iluminarem o sentido, de forma natural (ex: "O termo original *palavra* sugere...").
+                            --- USO DOS ORIGINAIS (EXPANDIDO v98.0) ---
+                            1. QUANTIDADE: Identifique e cite ATÉ 5 palavras-chave fundamentais em Hebraico (AT) ou Grego (NT) para este versículo.
+                            2. FOCO: Escolha as palavras que, ao serem explicadas no original, tragam o real sentido que o autor quis passar e gerem o sentimento de compreensão indubitável.
+                            3. FORMATO: Cite o termo transliterado de forma natural no texto (ex: "O termo original *palavra* sugere...").
 
                             --- ESTRUTURA BLINDADA (3 PARÁGRAFOS - Max 250 Palavras) ---
                             

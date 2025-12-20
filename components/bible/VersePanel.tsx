@@ -431,9 +431,6 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
             TEXTO BÍBLICO: "${verseText}"
             ${customPromptAddon}
 
-            TAREFA: Escrever um comentário EXEGÉTICO para um aluno estudioso da Bíblia.
-            TEXTO BÍBLICO: "${verseText}"
-
             --- REGRAS DE INÍCIO (RIGOROSO) ---
             1. INÍCIO OBRIGATÓRIO: Todo comentário DEVE começar EXATAMENTE com a frase: "Este versículo revela...".
             2. ZERO SAUDAÇÕES: É PROIBIDO começar com "Olá", "Queridos alunos", "Paz do Senhor" ou qualquer introdução social.
@@ -445,6 +442,11 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                - TERMOS TÉCNICOS (Ex: Teofania, Antropopatismo, Soteriologia) são permitidos, mas OBRIGATORIAMENTE devem vir seguidos de sua definição simples entre parênteses. Ex: "Vemos aqui uma Teofania (uma aparição visível de Deus)..." ou "Usa-se um antropomorfismo (atribuição de características humanas a Deus)...".
             3. NÃO seja genérico. Traga DETALHES que iluminam o texto (costumes da época, geografia, ou o sentido exato de uma palavra original que muda tudo).
             4. Explique de forma INDUBITÁVEL. Descomplique o difícil.
+
+            --- USO DOS ORIGINAIS (EXPANDIDO v98.0) ---
+            1. QUANTIDADE: Identifique e cite ATÉ 5 palavras-chave fundamentais em Hebraico (AT) ou Grego (NT) para este versículo.
+            2. FOCO: Escolha as palavras que, ao serem explicadas no original, tragam o real sentido que o autor quis passar e gerem o sentimento de compreensão indubitável.
+            3. FORMATO: Cite o termo transliterado de forma natural no texto (ex: "O termo original *palavra* sugere...").
 
             --- PROTOCOLO DE SEGURANÇA HERMENÊUTICA (PRIORIDADE TOTAL - USO IMPLÍCITO) ---
             1. A BÍBLIA EXPLICA A BÍBLIA: Antes de formular o comentário, verifique MENTALMENTE e RIGOROSAMENTE o CONTEXTO IMEDIATO e o CONTEXTO REMOTO para garantir a coerência.
@@ -458,9 +460,6 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
             1. PÚBLICO: Alunos de 16 a 76 anos, escolaridade média.
             2. CLAREZA: Profundo, mas simples e didático. Sem "teologês" solto. O texto deve ser fluído e natural.
             3. IMPLICITAMENTE PENTECOSTAL: Ensine a doutrina correta sem usar rótulos ("Arminiano", "Dispensacionalista"). Deixe a teologia fluir naturalmente no texto.
-
-            --- USO DOS ORIGINAIS ---
-            Cite palavras chaves em Hebraico/Grego (transliteradas) apenas quando iluminarem o sentido, de forma natural (ex: "O termo original *palavra* sugere...").
 
             --- ESTRUTURA BLINDADA (3 PARÁGRAFOS - Max 250 Palavras) ---
             
@@ -567,7 +566,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                 - Implementação de Filtro Inteligente: Blindagem Saul 1 Sm 28 restrita ao livro original.
                 - Correção de Vazamento: Proibição de citar necromancia em livros sem conexão.
                 - Restauração de termos críticos: "(IMPLÍCITO)", "(IMPLÍCITAMENTE PENTECOSTAL)".
-                - Expansão de volume técnico para estabilidade do código fonte (&gt;1500 linhas).
+                - Expansão de volume técnico para estabilidade do código fonte (&gt;1500 lines).
                 - Vinculação doutrinária indissociável com a Parábola do Rico e Lázaro sob demanda.
                 - Sincronização de prompts entre Comentário e Chat para coesão teológica total.
                 - Verificação de anacronismos históricos (Reis, Crônicas e Profetas contemporâneos).
@@ -937,7 +936,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                             A soberania de Deus é exaltada em cada linha de exegese microscópica produzida pela IA.
                             O comprometimento com a verdade é a pedra angular da educação bíblica na Ágape.
                             Cada resposta gerada passa por uma filtragem de segurança que prioriza o texto sagrado.
-                            A tecnologia IA é apenas uma ferramenta sob a autoridade da Palavra de Deus.
+                            A tecnologia IA é apenas uma ferramenta sob a authority da Palavra de Deus.
                             A exatidão da cronologia bíblica é verificada em tempo real para evitar confusões de nomes e datas.
                             A ADMA preza pela pureza exegética, rejeitando qualquer interpretação que favoreça o ocultismo.
                             O status dos mortos na sepultura (sheol/hades) é ensinado conforme a teologia pentecostal clássica.
