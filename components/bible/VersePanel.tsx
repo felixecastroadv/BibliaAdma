@@ -443,9 +443,9 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
             3. NÃO seja genérico. Traga DETALHES que iluminam o texto (costumes da época, geografia, ou o sentido exato de uma palavra original que muda tudo).
             4. Explique de forma INDUBITÁVEL. Descomplique o difícil.
 
-            --- USO DOS ORIGINAIS (EXPANDIDO v98.0) ---
+            --- USO DOS ORIGINAIS (EXPANDIDO v99.0) ---
             1. QUANTIDADE: Identifique e cite ATÉ 5 palavras-chave fundamentais em Hebraico (AT) ou Grego (NT) para este versículo.
-            2. FOCO: Escolha as palavras que, ao serem explicadas no original, tragam o real sentido que o autor quis passar e gerem o sentimento de compreensão indubitável.
+            2. FOCO: Escolha as palavras que, ao serem explicadas no original, tragam o real sentido que o autor quis passar e gerem o sentimento de compreensão indubitável do sentido original.
             3. FORMATO: Cite o termo transliterado de forma natural no texto (ex: "O termo original *palavra* sugere...").
 
             --- PROTOCOLO DE SEGURANÇA HERMENÊUTICA (PRIORIDADE TOTAL - USO IMPLÍCITO) ---
@@ -463,8 +463,8 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
 
             --- ESTRUTURA BLINDADA (3 PARÁGRAFOS - Max 250 Palavras) ---
             
-            1. PARÁGRAFO 1 (O DESVENDAR DO TEXTO): 
-               - Explique o que está acontecendo com clareza cristalina. Traga aquele detalhe histórico ou linguístico que faz a diferença. Responda: O que isso significava para quem ouviu pela primeira vez?
+            1. PARÁGRAFO 1 (O DESVENDAR DO TEXTO E INTENÇÃO AUTORAL): 
+               - Explique o que está acontecendo com clareza cristalina, focando PRIMORDIALMENTE na real intenção do autor original ao escrever este versículo específico e no sentido original do texto dentro de seu contexto histórico-redacional. Responda: Qual era o propósito do autor sagrado? O que ele quis comunicar de fato aos seus primeiros destinatários? Traga aquele detalhe histórico ou linguístico que faz a diferença.
 
             2. PARÁGRAFO 2 (A CONEXÃO TEOLÓGICA): 
                - Aprofunde o ensino. Conecte com outros textos bíblicos (Analogia da Fé - Uso Implícito) para confirmar a interpretação correta. Mostre como isso se encaixa no plano de Deus.
