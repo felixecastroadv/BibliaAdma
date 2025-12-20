@@ -7,7 +7,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
+  // Use path.resolve() which returns the current working directory and avoids TypeScript errors on process.cwd()
+  const env = loadEnv(mode, path.resolve(), '');
   return {
     plugins: [react()],
     resolve: {

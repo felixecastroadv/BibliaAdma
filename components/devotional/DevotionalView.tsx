@@ -19,6 +19,9 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
   const [playbackRate, setPlaybackRate] = useState(1);
   const speechRef = useRef<any>(null); // Referência para controlar o loop de áudio
   
+  // NOVA LINHA: Referência para o Fundo Musical Gospel Instrumental (Piano Suave)
+  const bgMusicRef = useRef<HTMLAudioElement | null>(null);
+
   // Settings State
   const [showSettings, setShowSettings] = useState(false);
   const [fontSize, setFontSize] = useState(18);
@@ -37,9 +40,28 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
   const isFuture = daysDiff > 0;
   const isExpired = daysDiff < -365; // Mais antigo que 1 ano
 
+  // NOVA LINHA: Sincronização do Fundo Musical com a Narração
+  useEffect(() => {
+    if (bgMusicRef.current) {
+        if (isPlaying) {
+            bgMusicRef.current.play().catch(e => console.log("Fundo musical aguardando interação:", e));
+        } else {
+            bgMusicRef.current.pause();
+            bgMusicRef.current.currentTime = 0; // Reinicia para manter a coesão com o início da narração
+        }
+    }
+  }, [isPlaying]);
+
   useEffect(() => {
     loadDevotional();
     
+    // NOVA LINHA: Inicialização do player de fundo musical (Instrumental Suave)
+    if (!bgMusicRef.current) {
+        bgMusicRef.current = new Audio('https://cdn.pixabay.com/audio/2022/01/18/audio_d0c6ff1bab.mp3'); // Piano suave meditativo
+        bgMusicRef.current.loop = true;
+        bgMusicRef.current.volume = 0.1; // Volume em 10% conforme solicitado
+    }
+
     // Carregar vozes com prioridade para Humanizadas
     const loadVoices = () => {
         let available = window.speechSynthesis.getVoices().filter(v => v.lang.includes('pt'));
@@ -66,6 +88,11 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
     return () => {
         window.speechSynthesis.cancel();
         setIsPlaying(false);
+        // NOVA LINHA: Limpeza do fundo musical ao desmontar
+        if (bgMusicRef.current) {
+            bgMusicRef.current.pause();
+            bgMusicRef.current = null;
+        }
     };
   }, [displayDateStr]);
 

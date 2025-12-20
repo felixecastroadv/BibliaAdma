@@ -62,8 +62,10 @@ export default async function handler(request, response) {
 
     for (const apiKey of keysToTry) {
         try {
+            // Correct initialization as per @google/genai guidelines
             const ai = new GoogleGenAI({ apiKey: apiKey });
-            const modelToUse = 'gemini-3-flash-preview';
+            // Select model based on task complexity: gemini-3-pro-preview for advanced reasoning
+            const modelToUse = (taskType === 'ebd' || taskType === 'commentary') ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
 
             // --- LÓGICA DE ESPECIALIZAÇÃO DO MOTOR IA v81.0 ---
             let enhancedPrompt = prompt;
@@ -110,9 +112,9 @@ export default async function handler(request, response) {
                     { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
                 ],
-                // Thinking Budget de 24k (Máximo): Força a IA a "mastigar" o conteúdo antes de responder
+                // Set appropriate thinking budget based on model selection
                 ...(taskType === 'ebd' || taskType === 'commentary' ? { 
-                    thinkingConfig: { thinkingBudget: 24576 },
+                    thinkingConfig: { thinkingBudget: modelToUse === 'gemini-3-pro-preview' ? 32768 : 24576 },
                     systemInstruction: systemInstruction
                 } : {})
             };
@@ -122,12 +124,14 @@ export default async function handler(request, response) {
                 aiConfig.responseSchema = schema;
             }
 
+            // Correct generateContent call as per SDK guidelines
             const aiResponse = await ai.models.generateContent({
                 model: modelToUse,
                 contents: [{ parts: [{ text: enhancedPrompt }] }],
                 config: aiConfig
             });
 
+            // Extract text using the .text property (not a method)
             if (!aiResponse.text) {
                 throw new Error("Resposta vazia da IA");
             }
