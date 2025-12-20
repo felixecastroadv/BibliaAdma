@@ -8,7 +8,7 @@ import { ContentReport, AppConfig, UserProgress } from '../../types';
 import AppBuilder from './AppBuilder';
 
 /**
- * PAINEL ADMINISTRATIVO ADMA - MOTOR DE EXEGESE SUPREMO v107.0
+ * PAINEL ADMINISTRATIVO ADMA - MOTOR DE EXEGESE SUPREMO v108.0
  * ESTE COMPONENTE ORQUESTRA A GERAÇÃO EM LOTE COM FIDELIDADE ACADÊMICA TOTAL.
  * FOCO: INTENÇÃO AUTORAL, SENTIDO ORIGINAL, EMBASAMENTO BÍBLICO E CLAREZA PEDAGÓGICA.
  * RESTRITO: USO DE RÓTULOS EXPLÍCITOS É PROIBIDO. A TEOLOGIA DEVE SER IMPLÍCITA.
@@ -37,7 +37,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
   const [batchType, setBatchType] = useState<'commentary' | 'dictionary' | null>(null);
   const [batchLogs, setBatchLogs] = useState<string[]>([]);
   
-  // Ref para controle imediato de parada
+  // Ref para controle imedias de parada
   const stopBatchRef = useRef(false);
 
   // --- STATE DE DEVOCIONAL ---
@@ -508,10 +508,10 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                             2. PRECISÃO CRONOLÓGICA: Evite anacronismos históricos. Verifique cronologia de Reis e Profetas.
                             3. ZERO POLÊMICAS/ESPECULAÇÕES: Rejeite interpretações baseadas em apócrifos ou mitologias heréticas.
 
-                            --- EMBASAMENTO BÍBLICO (v107.0) ---
+                            --- EMBASAMENTO BÍBLICO (v108.0) ---
                             1. REFERÊNCIAS: Inclua obrigatoriamente de 1 a 3 referências bíblicas conexas (Jo 1:1, Ef 2:8) citadas POR EXTENSO no segundo parágrafo para fundamentar a interpretação.
 
-                            --- USO DOS ORIGINAIS (EXPANDIDO v107.0) ---
+                            --- USO DOS ORIGINAIS (EXPANDIDO v108.0) ---
                             1. QUANTIDADE: Identifique e cite ATÉ 5 palavras-chave fundamentais em Hebraico (AT) ou Grego (NT).
                             2. FOCO: Palavras que, ao serem explicadas no original, desvendam a INTENÇÃO REAL e o SENTIDO ORIGINAL do autor sagrado.
 
@@ -904,11 +904,11 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
             </div>
         </div>
         
-        {/* DOCUMENTAÇÃO DE SEGURANÇA E VOLUME ADMA SUPREMO v107.0 */}
+        {/* DOCUMENTAÇÃO DE SEGURANÇA E VOLUME ADMA SUPREMO v108.0 */}
         <div className="h-80 opacity-0 pointer-events-none select-none overflow-hidden">
-            BLINDAGEM ADMA v107.0 ATIVA - PROTOCOLO MAGNUM OPUS - PERSONA MICHEL FELIX PHD REVERSÃO v102.
+            BLINDAGEM ADMA v108.0 ATIVA - PROTOCOLO MAGNUM OPUS - PERSONA MICHEL FELIX PHD REVERSÃO v102.
             ESTE MOTOR FOI OTIMIZADO PARA REMOVER RÓTULOS EXPLÍCITOS QUE PODERIAM PREJUDICAR A FLUÊNCIA DO TEXTO.
-            REGRAS DE OURO DA HERMENÊUTICA MICHEL FELIX (ESTABILIDADE v107.0):
+            REGRAS DE OURO DA HERMENÊUTICA MICHEL FELIX (ESTABILIDADE v108.0):
             1. INTENÇÃO AUTORAL: O propósito do escritor sagrado é a chave hermenêutica primordial. O que ele quis dizer?
             2. SENTIDO ORIGINAL: A Bíblia deve ser compreendida conforme o sentido pretendido pelos autores originais no seu tempo.
             3. ANALOGIA DA FÉ: Escritura interpreta Escritura. Inclusão obrigatória de referências conexas citadas por extenso para segurança doutrinária.
@@ -917,8 +917,8 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
             6. CLAREZA PEDAGÓGICA: Efeito 'Ah! Entendi!' garantido pelo uso de vocabulário acessível e direto.
             7. IDENTIDADE IMPLÍCITA: O tom deve ser magistral e ortodoxo, sem a necessidade de rotular a teologia com nomes de correntes interpretativas.
             ESTE ARQUIVO MANTÉM VOLUME EXPANDIDO PARA SEGURANÇA DO CACHE VERCEL E PERFORMANCE DO SISTEMA.
-            ADMA - ASSEMBLEIA DE DEUS MINISTÉRIO ÁGAPE - TECNOLOGIA E FÉ EM HARMONIA SUPREMA v107.0.
-            PROFESSOR MICHEL FELIX SUPREME v107.0 - INTEGRIDADE DOUTRINÁRIA INABALÁVEL.
+            ADMA - ASSEMBLEIA DE DEUS MINISTÉRIO ÁGAPE - TECNOLOGIA E FÉ EM HARMONIA SUPREMA v108.0.
+            PROFESSOR MICHEL FELIX SUPREME v108.0 - INTEGRIDADE DOUTRINÁRIA INABALÁVEL.
             SISTEMA DE BLINDAGEM REATIVA CONTRA VAZAMENTO DE RÓTULOS (NO_LABELS_OUTPUT) REATIVADO E REFORÇADO.
             O RACIOCÍNIO LENTO (THINKING BUDGET) ESTÁ CONFIGURADO PARA GARANTIR QUE CADA PALAVRA SEJA ESCOLHIDA COM PRECISÃO.
             A EXEGESE MICROSCÓPICA É A NOSSA MARCA REGISTRADA DE QUALIDADE ACADÊMICA.

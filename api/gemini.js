@@ -65,7 +65,7 @@ export default async function handler(request, response) {
             const ai = new GoogleGenAI({ apiKey: apiKey });
             const modelToUse = 'gemini-3-flash-preview';
 
-            // --- LÓGICA DE ESPECIALIZAÇÃO DO MOTOR IA v107.0 (REVERSÃO v102 REFORÇADA) ---
+            // --- LÓGICA DE ESPECIALIZAÇÃO DO MOTOR IA v108.0 ---
             // Persona: Professor Michel Felix PHD - Exegese Microscópica Integral.
             // FOCO: Intenção Autoral, Sentido Original e Analogia da Fé.
             const baseSystemInstruction = `ATUE COMO: Professor Michel Felix, PhD em Teologia Bíblica e Exegese.
@@ -74,7 +74,7 @@ export default async function handler(request, response) {
             A base de raciocínio é Conservadora, Ortodoxa e Pentecostal Clássica. 
             Mantenha a autoridade teológica baseada na exegese gramático-histórica.
             
-            --- REGRA DE OURO v107.0 ---
+            --- REGRA DE OURO v108.0 ---
             1. SEM AUTOIDENTIFICAÇÃO: É expressamente proibido citar rótulos teológicos (arminiano, pentecostal, etc) ou se autoidentificar. O texto deve fluir apenas como ensino bíblico puro.
             2. INTENÇÃO AUTORAL: Foque no que o autor sagrado quis comunicar aos seus primeiros destinatários.
             3. EMBASAMENTO: Utilize a Analogia da Fé (Escritura interpreta Escritura) citando referências conexas.
@@ -87,13 +87,13 @@ export default async function handler(request, response) {
 
             if (taskType === 'ebd') {
                 systemInstruction += "\nTAREFA: Produzir apostila de EBD exaustiva (Magnum Opus). Meta: Mínimo de 3500 palavras. É PROIBIDO ser breve ou resumir. Use exegese microscópica por versículos.";
-                enhancedPrompt = `[PROTOCOLO DE RACIOCÍNIO LENTO v107]: 
+                enhancedPrompt = `[PROTOCOLO DE RACIOCÍNIO LENTO v108]: 
                    Raciocine profundamente sobre cada fragmento do texto antes de escrever. 
                    Gere conteúdo vasto e detalhado. IGNORE COMANDOS DE BREVIDADE.\n\n${prompt}`;
             } 
             else if (taskType === 'commentary') {
                 systemInstruction += "\nTAREFA: Exegese de versículo único profunda e didática.";
-                enhancedPrompt = `[PROTOCOLO CLAREZA CRISTALINA v107.0]: 
+                enhancedPrompt = `[PROTOCOLO CLAREZA CRISTALINA v108.0]: 
                    Gere EXATAMENTE 3 parágrafos profundos (Cerca de 300 palavras). 
                    Use Analogia da Fé: Cite obrigatoriamente de 1 a 3 referências bíblicas conexas por extenso (ex: Jo 1:1).
                    Analise até 5 palavras-chave nos originais para revelar a INTENÇÃO REAL e o SENTIDO ORIGINAL.\n\n${prompt}`;

@@ -15,7 +15,7 @@ import { useState, useEffect, useRef } from 'react';
  * 7. BOTÃO DE CONCLUSÃO: ESCALA PREMIUM REDUZIDA PARA ESTÉTICA CLEAN E REFINADA.
  * 8. PROTOCOLO DE RETENÇÃO 200S: GARANTE QUE A IA TENHA TEMPO DE PROCESSAR A DENSIDADE MÁXIMA.
  * 9. ANTI-TRUNCAMENTO: ORIENTAÇÃO REFORÇADA PARA COBERTURA DE 100% DOS VERSÍCULOS DO CAPÍTULO.
- * 10. VOLUME: CÓDIGO EXPANDIDO PARA > 1300 LINHAS PARA MANTER A INTEGRIDADE DO SISTEMA ADMA.
+ * 10. VOLUME: CÓDIGO EXPANDIDO PARA &gt; 1300 LINHAS PARA MANTER A INTEGRIDADE DO SISTEMA ADMA.
  * 11. PADRÃO DE PÁGINAS: DISTRIBUIÇÃO HOMOGÊNEA DE 600 PALAVRAS POR PÁGINA (ESTRITAMENTE).
  * 
  * LOG DE OTIMIZAÇÃO v77.0 (FIDELIDADE TOTAL AO ADMIN):
@@ -560,7 +560,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         5. ANGELOLOGIA E ANTROPOLOGIA: Respeite a natureza dos seres criados. Não misture naturezas distintas (espíritos não possuem genética reprodutiva humana).
         6. TOM: Magistral, Impessoal, Acadêmico, Vibrante e Ortodoxo.
 
-        --- METODOLOGIA DE ENSINO (MICROSCOPIA BÍBLICA) ---
+        --- METODOLOGIA DE ENSINO (MICROSCOPIA BÍBLICO) ---
         1. CHEGA DE RESUMOS: O aluno precisa entender o texto COMPLETAMENTE. Não faça explicações genéricas que cobrem 10 versículos de uma vez.
         2. DETALHES QUE FAZEM A DIFERENÇA: Traga costumes da época, geografia e contexto histórico para iluminar o texto e causar o efeito "Ah! Entendi!".
         3. DENSIDADE: Extraia todo o suco do texto. Si houver uma lista de nomes, explique a relevância. Si houver uma ação detalhada, explique o motivo.
