@@ -199,9 +199,12 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
 
         const data: Devotional = { ...res, date: displayDateStr, is_published: true };
         
-        if (customInstruction) {
-             const existing = await db.entities.Devotional.filter({ date: displayDateStr });
-             if(existing.length > 0) await db.entities.Devotional.delete(existing[0].id!);
+        // NOVA LÓGICA DE PERSISTÊNCIA: Limpeza profunda antes de salvar novo devocional
+        const existingItems = await db.entities.Devotional.filter({ date: displayDateStr });
+        if (existingItems.length > 0) {
+            for (const item of existingItems) {
+                if (item.id) await db.entities.Devotional.delete(item.id);
+            }
         }
 
         await db.entities.Devotional.create(data);
@@ -210,6 +213,7 @@ export default function DevotionalView({ onBack, onShowToast, isAdmin }: any) {
         if (customInstruction) {
             onShowToast('Devocional regenerado com nova formatação!', 'success');
             setShowAdminControls(false);
+            setCustomCommand('');
         }
     } catch (e) {
         console.error(e);
