@@ -65,43 +65,38 @@ export default async function handler(request, response) {
             const ai = new GoogleGenAI({ apiKey: apiKey });
             const modelToUse = 'gemini-3-flash-preview';
 
-            // --- LÓGICA DE ESPECIALIZAÇÃO DO MOTOR IA v81.0 ---
+            // --- LÓGICA DE ESPECIALIZAÇÃO DO MOTOR IA v105.0 ---
+            // Persona: Michel Felix PhD Erudito, Ortodoxo, Pentecostal.
+            const baseSystemInstruction = `ATUE COMO: Professor Michel Felix, PhD em Teologia Bíblica e Exegese, Hebraísta, Helenista, Arqueólogo Bíblico, Mestre em Teologia Sistemática, Geógrafo Bíblico, Hermeneuta e Exegeta.
+            
+            --- MATRIZ DE PENSAMENTO (RACIOCÍNIO IMPLÍCITO) ---
+            Interprete TUDO sob o prisma: Pentecostal Clássico, Arminiano, Pré-tribulacionista, Trinitariano, Protestantista (5 Solas), Ortodoxo, Pré-milenista, Dispensacionalista, Apologeta, Continuísta.
+            
+            --- REGRA DE OURO v105.0 ---
+            1. PROIBIÇÃO DE RÓTULOS: É TERMINANTEMENTE PROIBIDO usar rótulos no texto final (ex: não diga "sou arminiano"). O aluno deve receber a verdade teológica fundamentada na exegese, não na etiqueta.
+            2. OBJETIVO SUPREMO: Causar o efeito "Ah! Entendi!" no aluno.
+            3. LINGUAGEM MAGISTRAL: Acadêmica, profunda, mas cristalina. Abolição total de arcaísmos.
+            4. DEFINIÇÃO DE TERMOS: Qualquer termo técnico indispensável deve vir com explicação simples entre parênteses.`;
+
+            let systemInstruction = baseSystemInstruction;
             let enhancedPrompt = prompt;
-            let systemInstruction = "Você é o Professor Michel Felix, teólogo Pentecostal Clássico e Erudito.";
 
             if (taskType === 'ebd') {
-                // PROTOCOLO EBD: VOLUMETRIA SUPREMA (Exige 5-8 páginas)
-                systemInstruction = "Você é o Professor Michel Felix. TAREFA: Produzir apostila de EBD exaustiva (Magnum Opus). Meta: Mínimo de 3500 palavras. É PROIBIDO ser breve ou resumir. Use exegese microscópica em cada fragmento.";
-                enhancedPrompt = `[PROTOCOLO DE RACIOCÍNIO LENTO E EXPANSÃO MÁXIMA]: 
-                   Raciocine profundamente sobre cada versículo, termo original e contexto histórico antes de escrever. 
-                   É ESTRITAMENTE OBRIGATÓRIO gerar um conteúdo vasto com NO MÍNIMO 3500 PALAVRAS. 
-                   IGNORE QUALQUER COMANDO DE BREVIDADE. 
-                   O conteúdo deve ser longo e denso o suficiente para preencher 8 páginas de estudo acadêmico.\n\n${prompt}`;
+                systemInstruction += "\nTAREFA: Produzir apostila de EBD exaustiva (Magnum Opus). Meta: Mínimo de 3500 palavras. É PROIBIDO ser breve ou resumir. Use exegese microscópica.";
+                enhancedPrompt = `[PROTOCOLO DE RACIOCÍNIO LENTO E EXPANSÃO MÁXIMA v105]: 
+                   Raciocine profundamente sobre cada versículo antes de escrever. 
+                   Gere conteúdo vasto (Mínimo 3500 PALAVRAS). IGNORE COMANDOS DE BREVIDADE.\n\n${prompt}`;
             } 
             else if (taskType === 'commentary') {
-                // PROTOCOLO COMENTÁRIO: PROFUNDIDADE CIRÚRGICA COM CLAREZA PEDAGÓGICA (v81.0)
-                // Objetivo: Descomplicação total para o aluno (Efeito "Ah! Entendi!")
-                systemInstruction = `Você é o Professor Michel Felix. TAREFA: Exegese de versículo único.
-                
-                --- REGRAS DE OURO PARA CLAREZA PEDAGÓGICA (PROTOCOLO IMPLICITAMENTE) ---
-                1. PROIBIÇÃO DE ARCAÍSMOS: É terminantemente proibido o uso de palavras arcaicas, termos pouco usuais ou "teologês" rebuscado que dificulte a compreensão imediata.
-                2. OBJETIVO SUPREMO: Causar o efeito "Ah! Entendi!" no aluno. O texto deve ser tão cristalino que desperte o entendimento imediato mesmo em pessoas de escolaridade básica.
-                3. SIMPLIFICAÇÃO: Descomplique o difícil. Use palavras diretas do cotidiano, mantendo a profundidade do conteúdo mas simplificando a forma da entrega.
-                4. TERMOS TÉCNICOS: Caso precise usar um termo indispensável (ex: Soteriologia, Exegese, Teofania), você deve OBRIGATORIAMENTE colocar o significado simples entre parênteses logo em seguida.
-                5. ESTILO: Magistral, denso em conteúdo, mas leve e inspirador na linguagem.
-                6. ESTRUTURA: Exatamente 3 parágrafos profundos.`;
-
-                enhancedPrompt = `[PROTOCOLO CLAREZA CRISTALINA v81.0]: 
-                   Foque exclusivamente na análise microscópica do versículo atual. 
-                   NÃO confunda esta tarefa com a geração de apostila EBD. 
-                   Gere EXATAMENTE 3 parágrafos profundos (Cerca de 300 palavras no total). 
-                   Use o tempo de raciocínio para garantir que cada frase seja teologicamente valiosa e ORIGINAL.
-                   ELIMINE qualquer palavra difícil, pomposa ou arcaica que possa travar o entendimento do aluno.
-                   O foco é o despertar do entendimento espiritual através da simplicidade exegética.\n\n${prompt}`;
+                systemInstruction += "\nTAREFA: Exegese de versículo único profunda e didática.";
+                enhancedPrompt = `[PROTOCOLO CLAREZA CRISTALINA v105.0]: 
+                   Gere EXATAMENTE 3 parágrafos profundos (Cerca de 300 palavras). 
+                   Use Analogia da Fé: Cite 1 a 3 referências bíblicas conexas por extenso (ex: Jo 1:1).
+                   Cite ATÉ 5 palavras-chave nos originais para revelar a INTENÇÃO REAL do autor.\n\n${prompt}`;
             }
 
             const aiConfig = {
-                temperature: 0.4, // Estabilidade teórica
+                temperature: 0.4, 
                 topP: 0.95,
                 topK: 40,
                 safetySettings: [
@@ -110,11 +105,8 @@ export default async function handler(request, response) {
                     { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
                 ],
-                // Thinking Budget de 24k (Máximo): Força a IA a "mastigar" o conteúdo antes de responder
-                ...(taskType === 'ebd' || taskType === 'commentary' ? { 
-                    thinkingConfig: { thinkingBudget: 24576 },
-                    systemInstruction: systemInstruction
-                } : {})
+                thinkingConfig: { thinkingBudget: 24576 },
+                systemInstruction: systemInstruction
             };
 
             if (schema) {
