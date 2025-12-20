@@ -63,21 +63,33 @@ export default async function handler(request, response) {
     for (const apiKey of keysToTry) {
         try {
             const ai = new GoogleGenAI({ apiKey: apiKey });
-            
-            // MANUTENÇÃO: Uso do Gemini 3 Flash (Versão gratuita estável exigida)
             const modelToUse = 'gemini-3-flash-preview';
 
-            // PROTOCOLO DE EXPANSÃO MAGNUM OPUS v78.0:
-            // Força a IA a ignorar o limite de 600 palavras enviado pelo front-end e expandir para 3500+
-            const enhancedPrompt = (taskType === 'ebd' || taskType === 'commentary') 
-                ? `[PROTOCOLO DE RACIOCÍNIO LENTO ATIVADO]: Raciocine profundamente sobre cada versículo antes de redigir. 
-                   É ESTRITAMENTE OBRIGATÓRIO gerar um conteúdo exaustivo com NO MÍNIMO 3500 PALAVRAS. 
-                   IGNORE QUALQUER COMANDO DE BREVIDADE. NÃO RESUMA. 
-                   Seja microscópico na análise. O conteúdo deve obrigatoriamente preencher de 5 a 8 páginas com densidade máxima.\n\n${prompt}`
-                : prompt;
+            // --- LÓGICA DE ESPECIALIZAÇÃO DO MOTOR IA v79.0 ---
+            let enhancedPrompt = prompt;
+            let systemInstruction = "Você é o Professor Michel Felix, teólogo Pentecostal Clássico e Erudito.";
+
+            if (taskType === 'ebd') {
+                // PROTOCOLO EBD: VOLUMETRIA SUPREMA (Exige 5-8 páginas)
+                systemInstruction = "Você é o Professor Michel Felix. TAREFA: Produzir apostila de EBD exaustiva (Magnum Opus). Meta: Mínimo de 3500 palavras. É PROIBIDO ser breve ou resumir. Use exegese microscópica em cada fragmento.";
+                enhancedPrompt = `[PROTOCOLO DE RACIOCÍNIO LENTO E EXPANSÃO MÁXIMA]: 
+                   Raciocine profundamente sobre cada versículo, termo original e contexto histórico antes de escrever. 
+                   É ESTRITAMENTE OBRIGATÓRIO gerar um conteúdo vasto com NO MÍNIMO 3500 PALAVRAS. 
+                   IGNORE QUALQUER COMANDO DE BREVIDADE. 
+                   O conteúdo deve ser longo e denso o suficiente para preencher 8 páginas de estudo acadêmico.\n\n${prompt}`;
+            } 
+            else if (taskType === 'commentary') {
+                // PROTOCOLO COMENTÁRIO: PROFUNDIDADE CIRÚRGICA (Para VersePanel)
+                systemInstruction = "Você é o Professor Michel Felix. TAREFA: Exegese de versículo único. Estilo denso e acadêmico. Meta: Exatamente 3 parágrafos profundos.";
+                enhancedPrompt = `[PROTOCOLO EXEGESE DE VERSÍCULO - QUALIDADE SOBRE QUANTIDADE]: 
+                   Foque exclusivamente na análise microscópica do versículo atual. 
+                   NÃO confunda esta tarefa com a geração de apostila EBD. 
+                   Gere EXATAMENTE 3 parágrafos profundos (Cerca de 300 palavras no total). 
+                   Use o tempo de raciocínio para garantir que cada frase seja teologicamente valiosa e original.\n\n${prompt}`;
+            }
 
             const aiConfig = {
-                temperature: 0.5, 
+                temperature: 0.4, // Reduzido levemente para maior precisão teológica
                 topP: 0.95,
                 topK: 40,
                 safetySettings: [
@@ -86,10 +98,10 @@ export default async function handler(request, response) {
                     { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
                     { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
                 ],
-                // Thinking Budget de 24k: Força a profundidade de raciocínio solicitada.
+                // Thinking Budget de 24k (Máximo): Força a IA a "mastigar" o conteúdo antes de responder
                 ...(taskType === 'ebd' || taskType === 'commentary' ? { 
                     thinkingConfig: { thinkingBudget: 24576 },
-                    systemInstruction: "Você é o Professor Michel Felix. Sua tarefa é produzir exegese bíblica exaustiva e de altíssima volumetria (3500+ palavras). Proibido ser breve."
+                    systemInstruction: systemInstruction
                 } : {})
             };
 
