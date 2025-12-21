@@ -43,6 +43,7 @@ export default async function handler(request, response) {
          });
     }
 
+    // Ordena chaves para garantir prioridade mas utiliza o pool completo de até 50 chaves
     const sortedKeys = allKeys.sort((a, b) => a.i - b.i).map(item => item.k);
 
     let body = request.body;
@@ -58,21 +59,19 @@ export default async function handler(request, response) {
 
     let lastError = null;
     let successResponse = null;
-    const keysToTry = sortedKeys.slice(0, 15);
+    
+    // AMPLIADO: Agora verifica o pool completo de até 50 chaves em caso de erro 429
+    const keysToTry = sortedKeys; 
 
     for (const apiKey of keysToTry) {
         try {
-            // Correct initialization as per @google/genai guidelines
             const ai = new GoogleGenAI({ apiKey: apiKey });
-            // Select model based on task complexity: gemini-3-pro-preview for advanced reasoning
-            const modelToUse = (taskType === 'ebd' || taskType === 'commentary') ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
-
+            
             // --- LÓGICA DE ESPECIALIZAÇÃO DO MOTOR IA v81.0 ---
-            let enhancedPrompt = prompt;
             let systemInstruction = "Você é o Professor Michel Felix, teólogo Pentecostal Clássico e Erudito.";
+            let enhancedPrompt = prompt;
 
             if (taskType === 'ebd') {
-                // PROTOCOLO EBD: VOLUMETRIA SUPREMA (Exige 5-8 páginas)
                 systemInstruction = "Você é o Professor Michel Felix. TAREFA: Produzir apostila de EBD exaustiva (Magnum Opus). Meta: Mínimo de 3500 palavras. É PROIBIDO ser breve ou resumir. Use exegese microscópica em cada fragmento.";
                 enhancedPrompt = `[PROTOCOLO DE RACIOCÍNIO LENTO E EXPANSÃO MÁXIMA]: 
                    Raciocine profundamente sobre cada versículo, termo original e contexto histórico antes de escrever. 
@@ -81,8 +80,6 @@ export default async function handler(request, response) {
                    O conteúdo deve ser longo e denso o suficiente para preencher 8 páginas de estudo acadêmico.\n\n${prompt}`;
             } 
             else if (taskType === 'commentary') {
-                // PROTOCOLO COMENTÁRIO: PROFUNDIDADE CIRÚRGICA COM CLAREZA PEDAGÓGICA (v81.0)
-                // Objetivo: Descomplicação total para o aluno (Efeito "Ah! Entendi!")
                 systemInstruction = `Você é o Professor Michel Felix. TAREFA: Exegese de versículo único.
                 
                 --- REGRAS DE OURO PARA CLAREZA PEDAGÓGICA (PROTOCOLO IMPLICITAMENTE) ---
@@ -102,36 +99,54 @@ export default async function handler(request, response) {
                    O foco é o despertar do entendimento espiritual através da simplicidade exegética.\n\n${prompt}`;
             }
 
-            const aiConfig = {
-                temperature: 0.4, // Estabilidade teórica
-                topP: 0.95,
-                topK: 40,
-                safetySettings: [
-                    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-                    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-                    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-                    { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-                ],
-                // Set appropriate thinking budget based on model selection
-                ...(taskType === 'ebd' || taskType === 'commentary' ? { 
-                    thinkingConfig: { thinkingBudget: modelToUse === 'gemini-3-pro-preview' ? 32768 : 24576 },
-                    systemInstruction: systemInstruction
-                } : {})
+            const getGenerationConfig = (modelName) => {
+                const config = {
+                    temperature: 0.4,
+                    topP: 0.95,
+                    topK: 40,
+                    safetySettings: [
+                        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+                        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+                        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+                        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+                    ],
+                    ...(taskType === 'ebd' || taskType === 'commentary' ? { 
+                        thinkingConfig: { thinkingBudget: modelName === 'gemini-3-pro-preview' ? 32768 : 24576 },
+                        systemInstruction: systemInstruction
+                    } : {})
+                };
+                if (schema) {
+                    config.responseMimeType = "application/json";
+                    config.responseSchema = schema;
+                }
+                return config;
             };
 
-            if (schema) {
-                aiConfig.responseMimeType = "application/json";
-                aiConfig.responseSchema = schema;
+            // Tenta primeiro o modelo PRO para máxima qualidade (EBD/Comentário)
+            let modelToUse = (taskType === 'ebd' || taskType === 'commentary') ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
+            let aiResponse;
+
+            try {
+                aiResponse = await ai.models.generateContent({
+                    model: modelToUse,
+                    contents: [{ parts: [{ text: enhancedPrompt }] }],
+                    config: getGenerationConfig(modelToUse)
+                });
+            } catch (innerError) {
+                // FALLBACK DE REDUNDÂNCIA: Se o Pro falhar por cota (429) ou indisponibilidade (404), tenta o Flash na mesma chave
+                const errorText = innerError.message || '';
+                if (modelToUse === 'gemini-3-pro-preview' && (errorText.includes('429') || errorText.includes('Quota') || errorText.includes('404'))) {
+                    modelToUse = 'gemini-3-flash-preview';
+                    aiResponse = await ai.models.generateContent({
+                        model: modelToUse,
+                        contents: [{ parts: [{ text: enhancedPrompt }] }],
+                        config: getGenerationConfig(modelToUse)
+                    });
+                } else {
+                    throw innerError;
+                }
             }
 
-            // Correct generateContent call as per SDK guidelines
-            const aiResponse = await ai.models.generateContent({
-                model: modelToUse,
-                contents: [{ parts: [{ text: enhancedPrompt }] }],
-                config: aiConfig
-            });
-
-            // Extract text using the .text property (not a method)
             if (!aiResponse.text) {
                 throw new Error("Resposta vazia da IA");
             }
@@ -142,10 +157,12 @@ export default async function handler(request, response) {
         } catch (error) {
             lastError = error;
             const msg = error.message || '';
+            // Se for erro de formato (schema inválido), não adianta trocar de chave
             if (msg.includes('400') || msg.includes('INVALID_ARGUMENT')) {
                 return response.status(400).json({ error: `Erro no formato: ${msg}` });
             }
-            await new Promise(resolve => setTimeout(resolve, 200));
+            // Aguarda brevemente antes de tentar a próxima chave do pool
+            await new Promise(resolve => setTimeout(resolve, 150));
         }
     }
 

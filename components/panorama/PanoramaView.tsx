@@ -27,6 +27,8 @@ import { useState, useEffect, useRef } from 'react';
  */
 // ==========================================================================================
 
+// Add React import to fix 'Cannot find namespace React' errors
+import React from 'react';
 import { 
   ChevronLeft, GraduationCap, Lock, BookOpen, ChevronRight, Volume2, 
   Sparkles, Loader2, Book, Trash2, Edit, Save, X, CheckCircle, 
@@ -75,7 +77,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface PanoramaProps {
     isAdmin: boolean;
     onShowToast: (msg: string, type: 'success' | 'error' | 'info') => void;
-    onBack: () => void;
+    onBack: void;
     userProgress: UserProgress | null;
     onProgressUpdate: (updated: UserProgress) => void;
 }
@@ -583,7 +585,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         3. TÓPICOS DO ESTUDO (Use Numeração 1., 2., 3...):
            Exemplo:
            1. TÍTULO DO TÓPICO EM MAIÚSCULO (Referência: Gn X:Y-Z)
-           (Aqui entra a explicação detalhada, versículo por versículo, sem pressa, aplicando a metodologia de microscopia bíblica. NÃO COPIE O TEXTO BÍBLICO, APENAS EXPLIQUE).
+           (Aqui entra a explicação detalhada, versículo por versículo, sem pressa, aplicando a methodology de microscopia bíblica. NÃO COPIE O TEXTO BÍBLICO, APENAS EXPLIQUE).
 
         4. SEÇÕES FINAIS OBRIGATÓRIAS (No final do estudo):
            ### TIPOLOGIA: CONEXÃO COM JESUS CRISTO
