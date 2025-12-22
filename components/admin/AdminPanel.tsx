@@ -533,7 +533,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                             3. ZERO POLÊMICAS/ESPECULAÇÕES: Rejeite interpretações baseadas em livros apócrifos, mitologia (ex: anjos coabitando com humanos) ou cultura judaica extra-bíblica. 
                             4. ORTODOXIA: Em textos difíceis (ex: Gn 6:2), opte SEMPRE pela linha teológica mais conservadora e segura (ex: Linhagem de Sete x Caim), evitando sensacionalismo.
                             5. FOCO NA INTENÇÃO ORIGINAL: O que o autor sagrado quis ensinar sobre Deus e o homem? Fique nisso.
-                            6. IMPORTANTE: No escreva "Segundo a hermenêutica" ou "Analisando o contexto". Apenas aplique essas regras para chegar à conclusão correta.
+                            6. IMPORTANTE: Não escreva "Segundo a hermenêutica" ou "Analisando o contexto". Apenas aplique essas regras para chegar à conclusão correta.
 
                             --- LINGUAGEM E TOM ---
                             1. PÚBLICO: Alunos de 16 a 76 anos, escolaridade média.
