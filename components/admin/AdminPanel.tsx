@@ -271,131 +271,152 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       }
   };
 
+  // --- OTIMIZAÇÃO DE GESTÃO DE BÍBLIA (JSON) ---
+  const normalizeBookName = (name: string) => {
+    if (!name) return "";
+    return name.toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") // Remove acentos
+        .replace(/\s+/g, '') // Remove espaços
+        .replace(/[^\w\d]/g, ''); // Remove caracteres especiais
+  };
+
+  const bookAliases: Record<string, string> = {
+    "acts": "atos", "psalms": "salmos", "job": "jo", "jo": "jo", "genesis": "genesis", "exodus": "exodo",
+    "leviticus": "levitico", "numbers": "numeros", "deuteronomy": "deuteronomio", "joshua": "josue",
+    "judges": "juizes", "ruth": "rute", "samuel": "samuel", "kings": "reis", "chronicles": "cronicas",
+    "ezra": "esdras", "nehemiah": "neemias", "esther": "ester", "proverbs": "proverbios",
+    "ecclesiastes": "eclesiastes", "songs": "cantares", "songofsolomon": "cantares",
+    "isaiah": "isaias", "jeremiah": "jeremias", "lamentations": "lamentacoes", "ezekiel": "ezequiel",
+    "daniel": "daniel", "hosea": "oseias", "joel": "joel", "amos": "amos", "obadiah": "obadias",
+    "jonah": "jonas", "micah": "miqueias", "nahum": "naum", "habakkuk": "habacuque",
+    "zephaniah": "sofonias", "haggai": "ageu", "zechariah": "zacarias", "malachi": "malaquias",
+    "matthew": "mateus", "mark": "marcos", "luke": "lucas", "john": "joao", "romans": "romanos",
+    "corinthians": "corintios", "galatians": "galatas", "ephesians": "efesios", "philippians": "filipenses",
+    "colossians": "colossenses", "thessalonians": "tessalonicenses", "timothy": "timoteo",
+    "titus": "tito", "philemon": "filemom", "hebrews": "hebreus", "james": "tiago", "peter": "pedro",
+    "jude": "judas", "revelation": "apocalipse"
+  };
+
+  const findTargetBook = (rawName: string, rawAbbrev: string) => {
+      const name = normalizeBookName(rawName);
+      const abbrev = normalizeBookName(rawAbbrev);
+      
+      return BIBLE_BOOKS.find(b => {
+          const bNameNorm = normalizeBookName(b.name);
+          const bAbbrevNorm = normalizeBookName(b.abbrev);
+          
+          return bAbbrevNorm === abbrev || 
+                 bNameNorm === name || 
+                 bNameNorm === bookAliases[name] ||
+                 bAbbrevNorm === bookAliases[name] ||
+                 (name === "jo" && b.name === "Jó") || // Caso crítico de Jó
+                 (name === "joao" && b.name === "João");
+      });
+  };
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file) return;
       const reader = new FileReader();
       setIsProcessing(true);
-      setProcessStatus("Lendo arquivo gigante...");
+      setProcessStatus("Lendo arquivo JSON...");
       stopBatchRef.current = false;
       
       reader.onload = async (e) => {
           try {
               const jsonText = e.target?.result as string;
-              const cleanJson = jsonText.replace(/^\uFEFF/, ''); 
+              const cleanJson = jsonText.replace(/^\uFEFF/, '').trim(); 
               let rawData;
               try {
                   rawData = JSON.parse(cleanJson);
               } catch (parseError) {
-                  throw new Error("Arquivo JSON inválido/corrompido.");
+                  throw new Error("Arquivo JSON inválido.");
               }
               
-              setProcessStatus("Analisando estrutura e versões...");
+              setProcessStatus("Detectando estrutura...");
               let count = 0;
+              const chaptersMap: Record<string, string[]> = {};
 
-              const isFlatVerseList = Array.isArray(rawData) && rawData.length > 1000 && (rawData[0].verse || rawData[0].versiculo);
+              // Detecta se é uma lista de versículos ou capítulos
+              const items = Array.isArray(rawData) ? rawData : (rawData.verses || rawData.chapters || Object.values(rawData).find(v => Array.isArray(v)) || []);
               
-              if (isFlatVerseList) {
-                  setProcessStatus("Modo Big Data Detectado. Agrupando e Filtrando...");
-                  const chaptersMap: Record<string, string[]> = {};
-                  const totalItems = rawData.length;
+              if (!Array.isArray(items) || items.length === 0) {
+                  throw new Error("Não foi possível encontrar dados bíblicos no arquivo.");
+              }
 
-                  for (let i = 0; i < totalItems; i++) {
-                      if (stopBatchRef.current) break;
-                      const item = rawData[i];
-                      const version = (item.version || item.versao || "").toLowerCase();
-                      const isTargetVersion = version.includes('acf') || version.includes('almeida') || version.includes('corrigida') || version === ''; 
-                      if (!isTargetVersion) continue; 
+              const totalItems = items.length;
+              setProcessStatus(`Mapeando ${totalItems} registros...`);
 
-                      let bName = (item.book || item.book_name || item.name || "").toLowerCase();
-                      const bAbbrevRaw = (item.abbrev || item.abbreviation || "").toLowerCase();
-                      
-                      const foundBook = BIBLE_BOOKS.find(b => 
-                          b.abbrev === bAbbrevRaw || 
-                          b.name.toLowerCase() === bName || 
-                          b.name.toLowerCase().replace(/ê/g,'e').replace(/á/g,'a') === bName
-                      );
-
-                      if (!foundBook) continue;
-
-                      const cNum = item.chapter || item.capitulo || item.c;
-                      const vNum = item.verse || item.versiculo || item.v;
-                      const text = item.text || item.texto;
-
-                      if (foundBook && cNum && text) {
-                          const key = `bible_acf_${foundBook.abbrev}_${cNum}`;
-                          if (!chaptersMap[key]) chaptersMap[key] = [];
-                          chaptersMap[key][vNum - 1] = text.trim();
-                      }
-
-                      if (i % 10000 === 0) {
-                          setProcessStatus(`Processando linha ${i}/${totalItems}...`);
-                          await new Promise(r => setTimeout(r, 0));
-                      }
-                  }
-
-                  const chapterKeys = Object.keys(chaptersMap);
-                  const totalChapters = chapterKeys.length;
-                  setProcessStatus(`Implantando ${totalChapters} capítulos...`);
-
-                  for (let i = 0; i < totalChapters; i++) {
-                      if (stopBatchRef.current) break;
-                      const key = chapterKeys[i];
-                      const verses = chaptersMap[key].filter(v => v !== undefined && v !== null);
-                      
-                      if (verses.length > 0) {
-                          await db.entities.BibleChapter.saveUniversal(key, verses);
-                          count++;
-                      }
-
-                      if (i % 5 === 0) {
-                          setProgress(Math.round(((i + 1) / totalChapters) * 100));
-                          setProcessStatus(`Salvando na Nuvem: ${i}/${totalChapters}`);
-                          await new Promise(r => setTimeout(r, 0));
-                      }
-                  }
-
-              } else {
-                  const flatList = Array.isArray(rawData) ? rawData : (rawData.verses || rawData.chapters || []);
-                  const total = flatList.length;
+              for (let i = 0; i < totalItems; i++) {
+                  if (stopBatchRef.current) break;
+                  const item = items[i];
                   
-                  for (let i = 0; i < total; i++) {
-                      if (stopBatchRef.current) break;
-                      const item = flatList[i];
-                      let key = item.key; 
-                      let verses = item.verses || item.text;
+                  // Se for versículo individual
+                  if (item.text || item.texto || item.v || item.verse) {
+                      const rawBook = item.book || item.book_name || item.name || "";
+                      const rawAbbrev = item.abbrev || item.abbreviation || "";
+                      const foundBook = findTargetBook(rawBook, rawAbbrev);
 
-                      if (!key) {
-                          let bName = item.book || item.book_name;
-                          const cNum = item.chapter;
-                          const abbrev = item.abbrev;
-                          
-                          if (abbrev && cNum) {
-                              key = `bible_acf_${abbrev.toLowerCase()}_${cNum}`;
-                          } else if (bName && cNum) {
-                              key = generateChapterKey(bName, cNum);
+                      if (foundBook) {
+                          const cNum = item.chapter || item.capitulo || item.c;
+                          const vNum = item.verse || item.versiculo || item.v;
+                          const text = item.text || item.texto;
+
+                          if (cNum && text) {
+                              const key = `bible_acf_${foundBook.abbrev}_${cNum}`;
+                              if (!chaptersMap[key]) chaptersMap[key] = [];
+                              chaptersMap[key][vNum - 1] = text.trim();
                           }
                       }
+                  } 
+                  // Se for capítulo agrupado
+                  else if (item.verses || item.textos) {
+                      const rawBook = item.book || item.book_name || "";
+                      const rawAbbrev = item.abbrev || "";
+                      const foundBook = findTargetBook(rawBook, rawAbbrev);
+                      const cNum = item.chapter || item.capitulo;
 
-                      if (key && verses && Array.isArray(verses)) {
-                          await db.entities.BibleChapter.saveUniversal(key, verses);
-                          count++;
+                      if (foundBook && cNum) {
+                          const key = `bible_acf_${foundBook.abbrev}_${cNum}`;
+                          const versesList = Array.isArray(item.verses) ? item.verses : item.textos;
+                          chaptersMap[key] = versesList.map((v: any) => typeof v === 'string' ? v.trim() : (v.text || v.texto || ""));
                       }
-                      
-                      if (i % 10 === 0) {
-                          setProgress(Math.round((i / total) * 100));
-                          setProcessStatus(`Importando: ${i}/${total}`);
-                          await new Promise(r => setTimeout(r, 0));
-                      }
+                  }
+
+                  if (i % 5000 === 0) {
+                      setProcessStatus(`Indexando: ${Math.round((i/totalItems)*100)}%`);
+                      await new Promise(r => setTimeout(r, 0));
+                  }
+              }
+
+              const chapterKeys = Object.keys(chaptersMap);
+              const totalChapters = chapterKeys.length;
+              setProcessStatus(`Salvando ${totalChapters} capítulos na Nuvem...`);
+
+              for (let i = 0; i < totalChapters; i++) {
+                  if (stopBatchRef.current) break;
+                  const key = chapterKeys[i];
+                  const verses = chaptersMap[key].filter(v => v && v.length > 0);
+                  
+                  if (verses.length > 0) {
+                      await db.entities.BibleChapter.saveUniversal(key, verses);
+                      count++;
+                  }
+
+                  if (i % 5 === 0) {
+                      setProgress(Math.round(((i + 1) / totalChapters) * 100));
+                      setProcessStatus(`Salvando: ${i}/${totalChapters}`);
+                      await new Promise(r => setTimeout(r, 0));
                   }
               }
               
               setOfflineCount(await bibleStorage.count());
-              onShowToast(`Sucesso! ${count} capítulos salvos.`, "success");
+              onShowToast(`Sucesso! ${count} capítulos processados e sincronizados.`, "success");
 
           } catch (error: any) {
               console.error(error);
-              onShowToast(`Erro crítico: ${error.message}`, "error");
+              onShowToast(`Erro: ${error.message}`, "error");
           } finally {
               setIsProcessing(false);
               setProgress(0);
@@ -511,7 +532,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                             3. ZERO POLÊMICAS/ESPECULAÇÕES: Rejeite interpretações baseadas em livros apócrifos, mitologia (ex: anjos coabitando com humanos) ou cultura judaica extra-bíblica. 
                             4. ORTODOXIA: Em textos difíceis (ex: Gn 6:2), opte SEMPRE pela linha teológica mais conservadora e segura (ex: Linhagem de Sete x Caim), evitando sensacionalismo.
                             5. FOCO NA INTENÇÃO ORIGINAL: O que o autor sagrado quis ensinar sobre Deus e o homem? Fique nisso.
-                            6. IMPORTANTE: Não escreva "Segundo a hermenêutica" ou "Analisando o contexto". Apenas aplique essas regras para chegar à conclusão correta.
+                            6. IMPORTANTE: No escreva "Segundo a hermenêutica" ou "Analisando o contexto". Apenas aplique essas regras para chegar à conclusão correta.
 
                             --- LINGUAGEM E TOM ---
                             1. PÚBLICO: Alunos de 16 a 76 anos, escolaridade média.

@@ -77,7 +77,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface PanoramaProps {
     isAdmin: boolean;
     onShowToast: (msg: string, type: 'success' | 'error' | 'info') => void;
-    onBack: void;
+    // Fix: onBack should be a function, not void
+    onBack: () => void;
     userProgress: UserProgress | null;
     onProgressUpdate: (updated: UserProgress) => void;
 }
@@ -540,7 +541,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
         --- OBJETIVO SUPREMO: O EFEITO "AH! ENTENDI!" (CLAREZA E PROFUNDIDADE) ---
         1. LINGUAGEM: O texto deve ser PROFUNDO, mas EXTREMAMENTE CLARO. O aluno (seja jovem ou idoso) deve ler e entender instantaneamente.
-        2. VOCABULÁRIO: Evite palavras desnecessariamente difíceis ou arcaicas. Si houver um sinônimo simples, USE-O.
+        2. VOCABULÁRIO: Evite palavras desnecessariamente difíceis or arcaicas. Si houver um sinônimo simples, USE-O.
         3. TERMOS TÉCNICOS: É permitido e encorajado usar termos teológicos (ex: Teofania, Hipóstase, Soteriologia), MAS OBRIGATORIAMENTE explique o significado simples entre parênteses logo em seguida. Ex: "Vemos aqui uma Teofania (uma aparição visível de Deus)..." ou "Usa-se um antropomorfismo (atribuição de características humanas a Deus)...".
         4. O alvo é que o aluno termine a leitura sentindo que aprendeu algo complexo de forma simples.
 
