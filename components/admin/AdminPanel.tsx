@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ShieldCheck, RefreshCw, Loader2, Upload, Download, Server, HardDrive, Flag, CheckCircle, XCircle, MessageSquare, Languages, GraduationCap, Calendar, CloudUpload, Wand2, StopCircle, Trash2, AlertTriangle, Save, Lock, Unlock, KeyRound, Search, Cloud, Activity, Zap, Battery } from 'lucide-react';
 import { generateContent } from '../../services/geminiService';
@@ -271,48 +272,68 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       }
   };
 
-  // --- OTIMIZAÇÃO DE GESTÃO DE BÍBLIA (JSON) - MOTOR SUPREMO v104 ---
+  // --- MOTOR DE EXTRAÇÃO UNIVERSAL v106 - ADMA SUPREMO ---
   const normalizeBookName = (name: string) => {
     if (!name || typeof name !== 'string') return "";
     return name.toLowerCase()
         .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "") // Remove acentos
-        .replace(/\s+/g, '') // Remove espaços
-        .replace(/[^\w\d]/g, ''); // Remove caracteres especiais
+        .replace(/[\u0300-\u036f]/g, "") 
+        .replace(/\s+/g, '') 
+        .replace(/[^\w\d]/g, ''); 
   };
 
+  // Mapeamento por ID (Muitos JSONs usam Gn=1, Ex=2...)
+  const bookIdMap: Record<string, string> = {
+    "1": "gn", "2": "ex", "3": "lv", "4": "nm", "5": "dt", "6": "js", "7": "jz", "8": "rt", "9": "1sm", "10": "2sm",
+    "11": "1rs", "12": "2rs", "13": "1cr", "14": "2cr", "15": "ed", "16": "ne", "17": "et", "18": "job", "19": "sl", "20": "pv",
+    "21": "ec", "22": "ct", "23": "is", "24": "jr", "25": "lm", "26": "ez", "27": "dn", "28": "os", "29": "jl", "30": "am",
+    "31": "ob", "32": "jn", "33": "mq", "34": "na", "35": "hc", "36": "sf", "37": "ag", "38": "zc", "39": "ml", "40": "mt",
+    "41": "mc", "42": "lc", "43": "jo", "44": "at", "45": "rm", "46": "1co", "47": "2co", "48": "gl", "49": "ef", "50": "fp",
+    "51": "cl", "52": "1ts", "53": "2ts", "54": "1tm", "55": "2tm", "56": "tt", "57": "fm", "58": "hb", "59": "tg", "60": "1pe",
+    "61": "2pe", "62": "1jo", "63": "2jo", "64": "3jo", "65": "jd", "66": "ap"
+  };
+
+  /* Fix: Removed duplicate "jo" key from bookAliases */
   const bookAliases: Record<string, string> = {
-    "acts": "at", "atos": "at", "at": "at", "act": "at",
-    "job": "job", "jo": "jo", "joao": "jo", "john": "jo",
-    "psalms": "sl", "salmos": "sl", "ps": "sl", "sl": "sl",
-    "rev": "ap", "revelation": "ap", "apocalipse": "ap", "apoc": "ap",
-    "genesis": "gn", "exodus": "ex", "leviticus": "lv", "numbers": "nm", "deuteronomy": "dt"
+    "acts": "at", "atos": "at", "at": "at", "act": "at", "hechos": "at", "job": "job", "jo": "jo", "joao": "jo", "john": "jo", "juan": "jo",
+    "psalms": "sl", "salmos": "sl", "ps": "sl", "sl": "sl", "sal": "sl", "rev": "ap", "revelation": "ap", "apocalipse": "ap", "apoc": "ap",
+    "genesis": "gn", "gen": "gn", "exodus": "ex", "exodo": "ex", "leviticus": "lv", "levitico": "lv", "numbers": "nm", "numeros": "nm",
+    "deuteronomy": "dt", "deuteronomio": "dt", "matthew": "mt", "mateus": "mt", "mark": "mc", "marcos": "mc", "luke": "lc", "lucas": "lc",
+    "romans": "rm", "romanos": "rm", "corinthians": "1co", "corintios": "1co", "hebrews": "hb", "hebeus": "hb", "jo.": "jo"
   };
 
   const findTargetBook = (rawName: string, rawAbbrev: string) => {
-      const name = normalizeBookName(rawName);
-      const abbrev = normalizeBookName(rawAbbrev);
+      const name = normalizeBookName(String(rawName));
+      const abbrev = normalizeBookName(String(rawAbbrev));
       
-      // 1. Tenta correspondência direta de abreviação
-      let found = BIBLE_BOOKS.find(b => b.abbrev === abbrev || b.abbrev === name);
-      if (found) return found;
-
-      // 2. Tenta via Aliases traduzidos
-      const aliasKey = bookAliases[name] || bookAliases[abbrev];
-      if (aliasKey) {
-          // Lógica de Prioridade: Se for "jo", padrão é João. Se for "job" ou o nome original contiver "Jó", é Jó.
-          if (aliasKey === "jo") {
-              const rawLower = rawName.toLowerCase();
-              if (rawLower.includes("job") || rawLower === "jo" || rawLower === "jó") {
-                  return BIBLE_BOOKS.find(b => b.abbrev === "job");
-              }
-          }
-          found = BIBLE_BOOKS.find(b => b.abbrev === aliasKey);
-          if (found) return found;
+      // 1. Tenta por ID numérico (Canônico 1-66)
+      if (bookIdMap[name] || bookIdMap[abbrev]) {
+          const idAbbrev = bookIdMap[name] || bookIdMap[abbrev];
+          return BIBLE_BOOKS.find(b => b.abbrev === idAbbrev);
       }
 
-      // 3. Tenta pelo nome normalizado
-      return BIBLE_BOOKS.find(b => normalizeBookName(b.name) === name);
+      // 2. Heurística Poliglota v106
+      const aliasKey = bookAliases[name] || bookAliases[abbrev] || name;
+
+      return BIBLE_BOOKS.find(b => {
+          const bNameNorm = normalizeBookName(b.name);
+          const bAbbrevNorm = b.abbrev;
+          
+          const isMatch = bAbbrevNorm === abbrev || bAbbrevNorm === name || bNameNorm === name || bAbbrevNorm === aliasKey;
+
+          if (isMatch) {
+              // RESOLUÇÃO DE COLISÃO JÓ/JOÃO (v106)
+              if (aliasKey === "jo" || name === "jo" || name === "job") {
+                  const rawLower = String(rawName).toLowerCase();
+                  // Se contiver 'ó', 'ob' ou for do AT (id 18), é Jó.
+                  if (rawLower.includes("jó") || rawLower.includes("job") || rawName === "18") return b.abbrev === "job";
+                  // João é o padrão para o NT
+                  return b.abbrev === "jo";
+              }
+              return true;
+          }
+          return false;
+      });
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -320,34 +341,33 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       if (!file) return;
       const reader = new FileReader();
       setIsProcessing(true);
-      setProcessStatus("Lendo arquivo...");
+      setProcessStatus("Iniciando Motor v106...");
       stopBatchRef.current = false;
       
       reader.onload = async (e) => {
           try {
               const jsonText = e.target?.result as string;
-              // Remove UTF-8 BOM e espaços
               const cleanJson = jsonText.replace(/^\uFEFF/, '').trim(); 
               let rawData;
               try {
                   rawData = JSON.parse(cleanJson);
               } catch (parseError) {
-                  throw new Error("Arquivo JSON corrompido ou inválido.");
+                  throw new Error("O arquivo não é um JSON válido. Verifique se ele não está corrompido.");
               }
               
-              setProcessStatus("Iniciando Varredura Deep-Scan v104...");
+              setProcessStatus("Executando Varredura Bruta...");
               const chaptersMap: Record<string, string[]> = {};
               let verseCountTotal = 0;
 
-              // MOTOR DE VARREDURA RECURSIVA v104 (Deep-Scan)
-              // Captura dados em qualquer profundidade ou formato (Array de Objetos, Objetos aninhados ou Matrizes)
+              // MOTOR DE EXTRAÇÃO UNIVERSAL v106 (Deep-Scan)
+              // Captura dados em qualquer profundidade ou formato
               const scan = (obj: any, parentBook?: any, parentChapter?: number) => {
                   if (stopBatchRef.current || !obj || typeof obj !== 'object') return;
 
-                  // Tenta extrair o texto do versículo
-                  const text = obj.text || obj.texto || obj.v_text || (typeof obj.v === 'string' ? obj.v : null);
+                  // 1. Heurística de Campos de Texto (v, t, text, texto, content)
+                  const text = obj.text || obj.texto || obj.v_text || obj.content || obj.t || obj.v || (typeof obj === 'string' ? obj : null);
                   
-                  if (text && typeof text === 'string' && text.length > 1) {
+                  if (text && typeof text === 'string' && text.length > 2) {
                       const bName = obj.book || obj.book_name || obj.name || obj.b || parentBook?.name;
                       const bAbbrev = obj.abbrev || obj.abbreviation || parentBook?.abbrev;
                       const cNum = obj.chapter || obj.capitulo || obj.c || parentChapter;
@@ -357,7 +377,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                       if (foundBook && cNum) {
                           const key = `bible_acf_${foundBook.abbrev}_${cNum}`;
                           if (!chaptersMap[key]) chaptersMap[key] = [];
-                          // Se vNum existir, usa o índice correto, senão anexa
                           const idx = (vNum && vNum > 0) ? vNum - 1 : chaptersMap[key].length;
                           chaptersMap[key][idx] = text.trim();
                           verseCountTotal++;
@@ -365,28 +384,34 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                       }
                   }
 
-                  // Navegação Recursiva Inteligente
+                  // 2. Detecção de Matrizes de Texto (Bíblia Livre / ACF Estilo Matriz)
                   if (Array.isArray(obj)) {
-                      // Se for um array de strings puro e tivermos contexto de livro/capítulo, é uma matriz de versos
+                      // Se for um array de strings e tivermos livro/capítulo pai, é um capítulo direto
                       if (typeof obj[0] === 'string' && parentBook && parentChapter) {
                           const key = `bible_acf_${parentBook.abbrev}_${parentChapter}`;
-                          chaptersMap[key] = obj.map(v => v.trim());
+                          chaptersMap[key] = obj.map(v => String(v).trim());
                           verseCountTotal += obj.length;
                           return;
                       }
-                      obj.forEach(item => scan(item, parentBook, parentChapter));
+                      obj.forEach((item, index) => {
+                          // Se estivermos dentro de um livro, o índice do array pode ser o capítulo
+                          let nextChap = parentChapter;
+                          if (parentBook && !parentChapter && Array.isArray(obj)) nextChap = index + 1;
+                          scan(item, parentBook, nextChap);
+                      });
                   } 
                   else {
                       Object.entries(obj).forEach(([key, val]) => {
                           let nextBook = parentBook;
                           let nextChapter = parentChapter;
                           
-                          // Tenta identificar se a chave é um livro ou capítulo
+                          // Tenta extrair contexto da CHAVE do objeto (Comum em JSONs de dicionário)
                           const maybeBook = findTargetBook(key, "");
                           if (maybeBook) {
                               nextBook = maybeBook;
                           } else if (!isNaN(Number(key)) && Number(key) > 0 && Number(key) < 160) {
-                              nextChapter = Number(key);
+                              // Se a chave for número, pode ser capítulo ou verso dependendo da profundidade
+                              if (parentBook && !parentChapter) nextChapter = Number(key);
                           }
                           
                           scan(val, nextBook, nextChapter);
@@ -396,36 +421,52 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
 
               scan(rawData);
 
-              const chapterKeys = Object.keys(chaptersMap);
-              const totalChaptersFound = chapterKeys.length;
-              
-              if (totalChaptersFound === 0) {
-                  throw new Error("Nenhum dado bíblico reconhecido. O JSON deve conter campos como 'text' e identificadores de livro/capítulo.");
+              // SEGUNDA CHANCE: Se falhou a varredura profunda, tenta detectar arrays planos de livros
+              if (Object.keys(chaptersMap).length === 0 && rawData.books && Array.isArray(rawData.books)) {
+                  setProcessStatus("Tentando mapeamento de matriz plana...");
+                  rawData.books.forEach((bObj: any) => {
+                      const bMeta = findTargetBook(bObj.name || bObj.abbrev || bObj.id, "");
+                      if (bMeta && bObj.chapters && Array.isArray(bObj.chapters)) {
+                          bObj.chapters.forEach((cArr: any, cIdx: number) => {
+                              if (Array.isArray(cArr)) {
+                                  const key = `bible_acf_${bMeta.abbrev}_${cIdx + 1}`;
+                                  chaptersMap[key] = cArr.map(v => typeof v === 'string' ? v : (v.text || v.v || ""));
+                                  verseCountTotal += chaptersMap[key].length;
+                              }
+                          });
+                      }
+                  });
               }
 
-              setProcessStatus(`Sincronizando ${totalChaptersFound} capítulos...`);
+              const chapterKeys = Object.keys(chaptersMap);
+              const totalFound = chapterKeys.length;
+              
+              if (totalFound === 0) {
+                  throw new Error("Nenhum dado bíblico reconhecido. O JSON deve conter textos e identificadores de livro/capítulo.");
+              }
+
+              setProcessStatus(`Sincronizando ${totalFound} capítulos...`);
               let savedCount = 0;
 
-              for (let i = 0; i < totalChaptersFound; i++) {
+              for (let i = 0; i < totalFound; i++) {
                   if (stopBatchRef.current) break;
                   const key = chapterKeys[i];
-                  // Limpeza e ordenação de versículos nulos
-                  const verses = (chaptersMap[key] || []).filter(v => v && v.length > 0);
+                  const verses = (chaptersMap[key] || []).filter(v => v && v.length > 2);
                   
                   if (verses.length > 0) {
                       await db.entities.BibleChapter.saveUniversal(key, verses);
                       savedCount++;
                   }
 
-                  if (i % 10 === 0) {
-                      setProgress(Math.round(((i + 1) / totalChaptersFound) * 100));
-                      setProcessStatus(`Processando: ${i + 1}/${totalChaptersFound}`);
+                  if (i % 20 === 0) {
+                      setProgress(Math.round(((i + 1) / totalFound) * 100));
+                      setProcessStatus(`Salvando Nuvem: ${i + 1}/${totalFound}`);
                       await new Promise(r => setTimeout(r, 0));
                   }
               }
               
               setOfflineCount(await bibleStorage.count());
-              onShowToast(`Sucesso! ${savedCount} capítulos (${verseCountTotal} versículos) sincronizados com a Nuvem.`, "success");
+              onShowToast(`Sucesso v106! ${savedCount} capítulos (${verseCountTotal} versículos) integrados.`, "success");
 
           } catch (error: any) {
               console.error(error);
@@ -545,7 +586,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                             3. ZERO POLÊMICAS/ESPECULAÇÕES: Rejeite interpretações baseadas em livros apócrifos, mitologia (ex: anjos coabitando com humanos) ou cultura judaica extra-bíblica. 
                             4. ORTODOXIA: Em textos difíceis (ex: Gn 6:2), opte SEMPRE pela linha teológica mais conservadora e segura (ex: Linhagem de Sete x Caim), evitando sensacionalismo.
                             5. FOCO NA INTENÇÃO ORIGINAL: O que o autor sagrado quis ensinar sobre Deus e o homem? Fique nisso.
-                            6. IMPORTANTE: Não escreva "Segundo a hermenêutica" ou "Analisando o contexto". Apenas aplique essas regras para chegar à conclusão correta.
+                            6. IMPORTANTE: Não escreva "Segundo a hermenêutica" or "Analisando o contexto". Apenas aplique essas regras para chegar à conclusão correta.
 
                             --- LINGUAGEM E TOM ---
                             1. PÚBLICO: Alunos de 16 a 76 anos, escolaridade média.
