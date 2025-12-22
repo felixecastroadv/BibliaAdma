@@ -283,7 +283,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
 
   const bookAliases: Record<string, string> = {
     "acts": "at", "atos": "at", "at": "at", "act": "at",
-    "job": "job", "jo": "job", "joao": "jo", "john": "jo",
+    "job": "job", "jo": "jo", "joao": "jo", "john": "jo",
     "psalms": "sl", "salmos": "sl", "ps": "sl", "sl": "sl",
     "rev": "ap", "revelation": "ap", "apocalipse": "ap", "apoc": "ap",
     "genesis": "gn", "exodus": "ex", "leviticus": "lv", "numbers": "nm", "deuteronomy": "dt"
@@ -293,21 +293,26 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       const name = normalizeBookName(rawName);
       const abbrev = normalizeBookName(rawAbbrev);
       
-      // 1. Tenta por abreviação exata ou traduzida
+      // 1. Tenta correspondência direta de abreviação
+      let found = BIBLE_BOOKS.find(b => b.abbrev === abbrev || b.abbrev === name);
+      if (found) return found;
+
+      // 2. Tenta via Aliases traduzidos
       const aliasKey = bookAliases[name] || bookAliases[abbrev];
-      
-      return BIBLE_BOOKS.find(b => {
-          const bNameNorm = normalizeBookName(b.name);
-          const bAbbrevNorm = normalizeBookName(b.abbrev);
-          
-          return bAbbrevNorm === abbrev || 
-                 bAbbrevNorm === name || 
-                 bNameNorm === name ||
-                 bAbbrevNorm === aliasKey ||
-                 // Regra Crítica: Se o nome for "Jo" e o original era Job ou contém Jó, vai para Job
-                 (name === "jo" && b.abbrev === "job" && (rawName.toLowerCase().includes('j') && rawName.toLowerCase().includes('o'))) ||
-                 (aliasKey === "job" && b.abbrev === "job")
-      });
+      if (aliasKey) {
+          // Lógica de Prioridade: Se for "jo", padrão é João. Se for "job" ou o nome original contiver "Jó", é Jó.
+          if (aliasKey === "jo") {
+              const rawLower = rawName.toLowerCase();
+              if (rawLower.includes("job") || rawLower === "jo" || rawLower === "jó") {
+                  return BIBLE_BOOKS.find(b => b.abbrev === "job");
+              }
+          }
+          found = BIBLE_BOOKS.find(b => b.abbrev === aliasKey);
+          if (found) return found;
+      }
+
+      // 3. Tenta pelo nome normalizado
+      return BIBLE_BOOKS.find(b => normalizeBookName(b.name) === name);
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -321,6 +326,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       reader.onload = async (e) => {
           try {
               const jsonText = e.target?.result as string;
+              // Remove UTF-8 BOM e espaços
               const cleanJson = jsonText.replace(/^\uFEFF/, '').trim(); 
               let rawData;
               try {
@@ -334,12 +340,14 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
               let verseCountTotal = 0;
 
               // MOTOR DE VARREDURA RECURSIVA v104 (Deep-Scan)
+              // Captura dados em qualquer profundidade ou formato (Array de Objetos, Objetos aninhados ou Matrizes)
               const scan = (obj: any, parentBook?: any, parentChapter?: number) => {
                   if (stopBatchRef.current || !obj || typeof obj !== 'object') return;
 
-                  // Se for um versículo (tem texto literal)
-                  const text = obj.text || obj.texto || obj.v_text || obj.v;
-                  if (text && typeof text === 'string') {
+                  // Tenta extrair o texto do versículo
+                  const text = obj.text || obj.texto || obj.v_text || (typeof obj.v === 'string' ? obj.v : null);
+                  
+                  if (text && typeof text === 'string' && text.length > 1) {
                       const bName = obj.book || obj.book_name || obj.name || obj.b || parentBook?.name;
                       const bAbbrev = obj.abbrev || obj.abbreviation || parentBook?.abbrev;
                       const cNum = obj.chapter || obj.capitulo || obj.c || parentChapter;
@@ -349,16 +357,17 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                       if (foundBook && cNum) {
                           const key = `bible_acf_${foundBook.abbrev}_${cNum}`;
                           if (!chaptersMap[key]) chaptersMap[key] = [];
+                          // Se vNum existir, usa o índice correto, senão anexa
                           const idx = (vNum && vNum > 0) ? vNum - 1 : chaptersMap[key].length;
                           chaptersMap[key][idx] = text.trim();
                           verseCountTotal++;
-                          return;
+                          return; 
                       }
                   }
 
-                  // Se for um Array (Bíblia plana ou lista de capítulos/versos)
+                  // Navegação Recursiva Inteligente
                   if (Array.isArray(obj)) {
-                      // Se for um array de strings e tivermos livro/capítulo pai, é um capítulo direto
+                      // Se for um array de strings puro e tivermos contexto de livro/capítulo, é uma matriz de versos
                       if (typeof obj[0] === 'string' && parentBook && parentChapter) {
                           const key = `bible_acf_${parentBook.abbrev}_${parentChapter}`;
                           chaptersMap[key] = obj.map(v => v.trim());
@@ -367,17 +376,19 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                       }
                       obj.forEach(item => scan(item, parentBook, parentChapter));
                   } 
-                  // Objeto complexo: Navegar pelas chaves
                   else {
                       Object.entries(obj).forEach(([key, val]) => {
                           let nextBook = parentBook;
                           let nextChapter = parentChapter;
                           
+                          // Tenta identificar se a chave é um livro ou capítulo
                           const maybeBook = findTargetBook(key, "");
-                          if (maybeBook) nextBook = maybeBook;
-                          else if (!isNaN(Number(key)) && Number(key) > 0 && Number(key) < 160) {
+                          if (maybeBook) {
+                              nextBook = maybeBook;
+                          } else if (!isNaN(Number(key)) && Number(key) > 0 && Number(key) < 160) {
                               nextChapter = Number(key);
                           }
+                          
                           scan(val, nextBook, nextChapter);
                       });
                   }
@@ -386,18 +397,19 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
               scan(rawData);
 
               const chapterKeys = Object.keys(chaptersMap);
-              const totalChapters = chapterKeys.length;
+              const totalChaptersFound = chapterKeys.length;
               
-              if (totalChapters === 0) {
-                  throw new Error("Nenhum dado bíblico reconhecido. O JSON deve conter campos como 'text', 'book' e 'chapter'.");
+              if (totalChaptersFound === 0) {
+                  throw new Error("Nenhum dado bíblico reconhecido. O JSON deve conter campos como 'text' e identificadores de livro/capítulo.");
               }
 
-              setProcessStatus(`Sincronizando ${totalChapters} capítulos...`);
+              setProcessStatus(`Sincronizando ${totalChaptersFound} capítulos...`);
               let savedCount = 0;
 
-              for (let i = 0; i < totalChapters; i++) {
+              for (let i = 0; i < totalChaptersFound; i++) {
                   if (stopBatchRef.current) break;
                   const key = chapterKeys[i];
+                  // Limpeza e ordenação de versículos nulos
                   const verses = (chaptersMap[key] || []).filter(v => v && v.length > 0);
                   
                   if (verses.length > 0) {
@@ -406,8 +418,8 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                   }
 
                   if (i % 10 === 0) {
-                      setProgress(Math.round(((i + 1) / totalChapters) * 100));
-                      setProcessStatus(`Sincronizando: ${i + 1}/${totalChapters}`);
+                      setProgress(Math.round(((i + 1) / totalChaptersFound) * 100));
+                      setProcessStatus(`Processando: ${i + 1}/${totalChaptersFound}`);
                       await new Promise(r => setTimeout(r, 0));
                   }
               }
@@ -833,7 +845,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                     <span className="flex items-center gap-2"><Loader2 className="w-3 h-3 animate-spin"/> {processStatus}</span>
                     <span>{progress}%</span>
                 </div>
-                <div className="w-full bg-gray-300 dark:bg-gray-600 rounded-full h-3 overflow-hidden border border-gray-400 dark:border-gray-500">
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden border border-gray-400 dark:border-gray-500">
                     <div className="bg-gradient-to-r from-[#C5A059] to-[#8B0000] h-3 rounded-full transition-all duration-300 shadow-[0_0_10px_#C5A059]" style={{ width: `${progress}%` }}></div>
                 </div>
             </div>
