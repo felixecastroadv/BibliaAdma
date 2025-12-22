@@ -271,7 +271,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       }
   };
 
-  // --- OTIMIZAÇÃO DE GESTÃO DE BÍBLIA (JSON) - MOTOR SUPREMO v103 ---
+  // --- OTIMIZAÇÃO DE GESTÃO DE BÍBLIA (JSON) - MOTOR SUPREMO v104 ---
   const normalizeBookName = (name: string) => {
     if (!name || typeof name !== 'string') return "";
     return name.toLowerCase()
@@ -281,46 +281,32 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
         .replace(/[^\w\d]/g, ''); // Remove caracteres especiais
   };
 
-  // Fixed duplicate properties 'job' and 'jo' in the object literal below.
   const bookAliases: Record<string, string> = {
-    "acts": "atos", "psalms": "salmos", "job": "jo", "jo": "jo", "genesis": "genesis", "exodus": "exodo",
-    "leviticus": "levitico", "numbers": "numeros", "deuteronomy": "deuteronomio", "joshua": "josue",
-    "judges": "juizes", "ruth": "rute", "samuel": "samuel", "kings": "reis", "chronicles": "cronicas",
-    "ezra": "esdras", "nehemiah": "neemias", "esther": "ester", "proverbs": "proverbios",
-    "ecclesiastes": "eclesiastes", "songs": "cantares", "songofsolomon": "cantares",
-    "isaiah": "isaias", "jeremiah": "jeremias", "lamentations": "lamentacoes", "ezekiel": "ezequiel",
-    "daniel": "daniel", "hosea": "oseias", "joel": "joel", "amos": "amos", "obadiah": "obadias",
-    "jonah": "jonas", "micah": "miqueias", "nahum": "naum", "habakkuk": "habacuque",
-    "zephaniah": "sofonias", "haggai": "ageu", "zechariah": "zacarias", "malachi": "malaquias",
-    "matthew": "mateus", "mark": "marcos", "luke": "lucas", "john": "joao", "romans": "romanos",
-    "corinthians": "corintios", "galatians": "galatas", "ephesians": "efesios", "philippians": "filipenses",
-    "colossians": "colossenses", "thessalonians": "tessalonicenses", "timothy": "timoteo",
-    "titus": "tito", "philemon": "filemom", "hebrews": "hebreus", "james": "tiago", "peter": "pedro",
-    "jude": "judas", "revelation": "apocalipse", "rev": "apocalipse", "ps": "salmos", "sl": "salmos",
-    "atos": "atos", "at": "atos", "act": "atos"
+    "acts": "at", "atos": "at", "at": "at", "act": "at",
+    "job": "job", "jo": "job", "joao": "jo", "john": "jo",
+    "psalms": "sl", "salmos": "sl", "ps": "sl", "sl": "sl",
+    "rev": "ap", "revelation": "ap", "apocalipse": "ap", "apoc": "ap",
+    "genesis": "gn", "exodus": "ex", "leviticus": "lv", "numbers": "nm", "deuteronomy": "dt"
   };
 
   const findTargetBook = (rawName: string, rawAbbrev: string) => {
       const name = normalizeBookName(rawName);
       const abbrev = normalizeBookName(rawAbbrev);
       
-      const aliasedName = bookAliases[name] || bookAliases[abbrev] || name;
-
+      // 1. Tenta por abreviação exata ou traduzida
+      const aliasKey = bookAliases[name] || bookAliases[abbrev];
+      
       return BIBLE_BOOKS.find(b => {
           const bNameNorm = normalizeBookName(b.name);
           const bAbbrevNorm = normalizeBookName(b.abbrev);
           
           return bAbbrevNorm === abbrev || 
-                 bNameNorm === name || 
-                 bAbbrevNorm === name ||
-                 bNameNorm === aliasedName ||
-                 // Casos críticos: Jó e João
-                 (name === "jo" && b.abbrev === "job") ||
-                 (name === "job" && b.abbrev === "job") ||
-                 (name === "joao" && b.abbrev === "jo") ||
-                 // Casos Críticos: Atos
-                 (name === "at" && b.abbrev === "at") ||
-                 (abbrev === "at" && b.abbrev === "at")
+                 bAbbrevNorm === name || 
+                 bNameNorm === name ||
+                 bAbbrevNorm === aliasKey ||
+                 // Regra Crítica: Se o nome for "Jo" e o original era Job ou contém Jó, vai para Job
+                 (name === "jo" && b.abbrev === "job" && (rawName.toLowerCase().includes('j') && rawName.toLowerCase().includes('o'))) ||
+                 (aliasKey === "job" && b.abbrev === "job")
       });
   };
 
@@ -335,7 +321,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
       reader.onload = async (e) => {
           try {
               const jsonText = e.target?.result as string;
-              // Remove UTF-8 BOM e espaços em branco
               const cleanJson = jsonText.replace(/^\uFEFF/, '').trim(); 
               let rawData;
               try {
@@ -344,51 +329,55 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                   throw new Error("Arquivo JSON corrompido ou inválido.");
               }
               
-              setProcessStatus("Iniciando Varredura Deep-Scan...");
+              setProcessStatus("Iniciando Varredura Deep-Scan v104...");
               const chaptersMap: Record<string, string[]> = {};
-              let verseCount = 0;
+              let verseCountTotal = 0;
 
-              // MOTOR DE VARREDURA RECURSIVA v103 (Captura versículos em qualquer profundidade)
+              // MOTOR DE VARREDURA RECURSIVA v104 (Deep-Scan)
               const scan = (obj: any, parentBook?: any, parentChapter?: number) => {
                   if (stopBatchRef.current || !obj || typeof obj !== 'object') return;
 
-                  // Caso 1: O objeto é um versículo (tem o campo 'text' ou 'texto')
-                  const text = obj.text || obj.texto || obj.v_text;
+                  // Se for um versículo (tem texto literal)
+                  const text = obj.text || obj.texto || obj.v_text || obj.v;
                   if (text && typeof text === 'string') {
                       const bName = obj.book || obj.book_name || obj.name || obj.b || parentBook?.name;
                       const bAbbrev = obj.abbrev || obj.abbreviation || parentBook?.abbrev;
                       const cNum = obj.chapter || obj.capitulo || obj.c || parentChapter;
-                      const vNum = obj.verse || obj.versiculo || obj.v;
+                      const vNum = obj.verse || obj.versiculo || (typeof obj.v === 'number' ? obj.v : null);
 
                       const foundBook = findTargetBook(bName || "", bAbbrev || "");
                       if (foundBook && cNum) {
                           const key = `bible_acf_${foundBook.abbrev}_${cNum}`;
                           if (!chaptersMap[key]) chaptersMap[key] = [];
-                          // vNum - 1 garante a ordem, se não houver vNum, anexa ao final
                           const idx = (vNum && vNum > 0) ? vNum - 1 : chaptersMap[key].length;
                           chaptersMap[key][idx] = text.trim();
-                          verseCount++;
-                          return; // Capturado
+                          verseCountTotal++;
+                          return;
                       }
                   }
 
-                  // Caso 2: É um Array (Bíblia como lista plana ou lista de livros)
+                  // Se for um Array (Bíblia plana ou lista de capítulos/versos)
                   if (Array.isArray(obj)) {
+                      // Se for um array de strings e tivermos livro/capítulo pai, é um capítulo direto
+                      if (typeof obj[0] === 'string' && parentBook && parentChapter) {
+                          const key = `bible_acf_${parentBook.abbrev}_${parentChapter}`;
+                          chaptersMap[key] = obj.map(v => v.trim());
+                          verseCountTotal += obj.length;
+                          return;
+                      }
                       obj.forEach(item => scan(item, parentBook, parentChapter));
                   } 
-                  // Caso 3: É um Objeto complexo (Navegar pelas chaves)
+                  // Objeto complexo: Navegar pelas chaves
                   else {
                       Object.entries(obj).forEach(([key, val]) => {
                           let nextBook = parentBook;
                           let nextChapter = parentChapter;
                           
-                          // Tenta identificar se a CHAVE é um nome de livro ou número de capítulo
                           const maybeBook = findTargetBook(key, "");
                           if (maybeBook) nextBook = maybeBook;
                           else if (!isNaN(Number(key)) && Number(key) > 0 && Number(key) < 160) {
                               nextChapter = Number(key);
                           }
-
                           scan(val, nextBook, nextChapter);
                       });
                   }
@@ -400,7 +389,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
               const totalChapters = chapterKeys.length;
               
               if (totalChapters === 0) {
-                  throw new Error("Nenhum dado bíblico reconhecido. Verifique se o formato do JSON contém campos como 'text', 'book' e 'chapter'.");
+                  throw new Error("Nenhum dado bíblico reconhecido. O JSON deve conter campos como 'text', 'book' e 'chapter'.");
               }
 
               setProcessStatus(`Sincronizando ${totalChapters} capítulos...`);
@@ -409,7 +398,6 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
               for (let i = 0; i < totalChapters; i++) {
                   if (stopBatchRef.current) break;
                   const key = chapterKeys[i];
-                  // Limpa versículos vazios ou nulos do array (preserva a integridade)
                   const verses = (chaptersMap[key] || []).filter(v => v && v.length > 0);
                   
                   if (verses.length > 0) {
@@ -417,16 +405,15 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                       savedCount++;
                   }
 
-                  if (i % 5 === 0) {
+                  if (i % 10 === 0) {
                       setProgress(Math.round(((i + 1) / totalChapters) * 100));
                       setProcessStatus(`Sincronizando: ${i + 1}/${totalChapters}`);
-                      // Micro-pausa para não travar a UI em processamentos grandes
                       await new Promise(r => setTimeout(r, 0));
                   }
               }
               
               setOfflineCount(await bibleStorage.count());
-              onShowToast(`Sucesso! ${savedCount} capítulos (${verseCount} versículos) processados e sincronizados com a Nuvem.`, "success");
+              onShowToast(`Sucesso! ${savedCount} capítulos (${verseCountTotal} versículos) sincronizados com a Nuvem.`, "success");
 
           } catch (error: any) {
               console.error(error);
@@ -594,7 +581,7 @@ export default function AdminPanel({ onBack, onShowToast }: { onBack: () => void
                             type: GenType.OBJECT,
                             properties: {
                                 hebrewGreekText: { type: GenType.STRING },
-                                phoneticText: { type: Type.STRING },
+                                phoneticText: { type: GenType.STRING },
                                 words: {
                                     type: GenType.ARRAY,
                                     items: {
