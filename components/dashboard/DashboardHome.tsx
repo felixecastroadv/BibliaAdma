@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { BookOpen, GraduationCap, ShieldCheck, Trophy, Calendar, ListChecks, Mail, CheckCircle2, Moon, Sun, Download, Instagram, X, Share, MoreVertical, Monitor, LogOut, Sparkles, Brain, FileText, Link as LinkIcon, Star, Smartphone, ArrowUpRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { BookOpen, GraduationCap, ShieldCheck, Trophy, Calendar, ListChecks, Mail, CheckCircle2, Moon, Sun, Download, Instagram, X, Share, MoreVertical, Monitor, LogOut, Sparkles, Brain, FileText, Link as LinkIcon, Star, Smartphone, ArrowUpRight, MapPin } from 'lucide-react';
 import { CHURCH_NAME, TOTAL_CHAPTERS, APP_VERSION, PASTOR_PRESIDENT } from '../../constants';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppConfig, DynamicModule } from '../../types';
@@ -263,17 +263,33 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                     </div>
                 </motion.div>
 
-                {/* Instagram Button - Bottom & Elegant */}
-                <motion.a 
-                    href="https://www.instagram.com/adma.vilardosteles/" 
-                    target="_blank"
-                    rel="noopener noreferrer"
+                {/* BUTTONS GROUP: Instagram & Google Maps */}
+                <motion.div 
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-                    className="mt-6 px-6 py-2.5 rounded-full border border-[#C5A059]/50 text-[#C5A059] font-cinzel text-xs font-bold flex items-center gap-2 hover:bg-[#C5A059]/10 hover:border-[#C5A059] hover:shadow-[0_0_20px_rgba(197,160,89,0.4)] transition-all active:scale-95 group"
+                    className="mt-6 flex flex-wrap justify-center gap-3 px-4"
                 >
-                    <Instagram className="w-4 h-4 transition-transform group-hover:scale-110" />
-                    <span className="tracking-wide">Nos siga no Instagram</span>
-                </motion.a>
+                    {/* Instagram Button */}
+                    <a 
+                        href="https://www.instagram.com/adma.vilardosteles/" 
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-6 py-2.5 rounded-full border border-[#C5A059]/50 text-[#C5A059] font-cinzel text-[10px] font-bold flex items-center gap-2 hover:bg-[#C5A059]/10 hover:border-[#C5A059] hover:shadow-[0_0_20px_rgba(197,160,89,0.4)] transition-all active:scale-95 group"
+                    >
+                        <Instagram className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
+                        <span className="tracking-wide">Instagram</span>
+                    </a>
+
+                    {/* Google Maps Button - OTIMIZAÇÃO PEDIDA */}
+                    <a 
+                        href="https://maps.app.goo.gl/cyZBbWNGFaAjEm2aA" 
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-6 py-2.5 rounded-full bg-[#8B0000]/20 border border-[#8B0000]/40 text-white font-cinzel text-[10px] font-bold flex items-center gap-2 hover:bg-[#8B0000]/40 hover:border-[#C5A059] hover:shadow-[0_0_20px_rgba(139,0,0,0.4)] transition-all active:scale-95 group"
+                    >
+                        <MapPin className="w-3.5 h-3.5 text-[#C5A059] transition-transform group-hover:rotate-12" />
+                        <span className="tracking-wide">Localização</span>
+                    </a>
+                </motion.div>
             </div>
         </div>
 

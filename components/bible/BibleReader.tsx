@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, ChevronRight, List, Book, ChevronDown, RefreshCw, WifiOff, Zap, Volume2, X, FastForward, Search, Trash2, Sparkles, Loader2, Clock, Lock, Bookmark } from 'lucide-react';
 import VersePanel from './VersePanel';
 import { db } from '../../services/database';
@@ -498,11 +498,11 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
 
     return (
         <div className="min-h-screen bg-transparent flex flex-col transition-colors duration-300">
-            {/* Header com Ultra Glassmorphism */}
-            <div className="sticky top-0 z-30 bg-[#8B0000]/80 dark:bg-black/60 backdrop-blur-xl text-white p-3 shadow-lg flex justify-between items-center border-b border-white/10 safe-top">
+            {/* Header com Ultra Glassmorphism - OTIMIZADO PARA iOS (pt-12 no mobile) */}
+            <div className="sticky top-0 z-30 bg-[#8B0000]/95 dark:bg-black/80 backdrop-blur-xl text-white pt-12 pb-3 px-3 md:pt-4 md:pb-4 shadow-lg flex justify-between items-center border-b border-white/10">
                 <div className="flex items-center gap-2">
                     <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full transition-all active:scale-90"><ChevronLeft /></button>
-                    <div className="flex flex-col cursor-pointer active:opacity-70 transition-opacity" onClick={() => setShowSelector(true)}>
+                    <div className="flex flex-col cursor-pointer active:opacity-70 transition-opacity p-1 px-2 rounded-lg hover:bg-white/5" onClick={() => setShowSelector(true)}>
                         <h1 className="font-cinzel font-bold text-lg flex items-center gap-2 leading-none drop-shadow-sm tracking-wide">
                             {book} {chapter} <ChevronDown className="w-4 h-4 text-[#C5A059]" />
                         </h1>
