@@ -647,7 +647,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
     try {
         setValidationLog(prev => [...prev, "📡 Enviando requisição para nuvem ADMA...", "🧠 IA raciocinando exegese profunda v78..."]);
-        // Nota: O tempo limite da IA no geminiService é de 300s, o que suporta nosso protocolo de 180s.
+        // O tempo limite do Gemini SDK será respeitado automaticamente.
         const res = await generateContent(`${WRITING_STYLE} ${instructions} ${continuation}`, null, true, 'ebd');
         
         if (!res || res.length < 500) throw new Error("Conteúdo insuficiente retornado pela infraestrutura Gemini v78.");
