@@ -1,13 +1,14 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 // Garantimos que as chaves do Supabase sejam lidas corretamente do ambiente Vercel
 export default async function handler(request, response) {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_ANON_KEY;
+  // Tenta as chaves com e sem prefixo NEXT_PUBLIC conforme o print do usuário
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
-    return response.status(500).json({ error: "Configuração do Supabase ausente na Vercel." });
+    console.error("Supabase Config Missing:", { hasUrl: !!supabaseUrl, hasKey: !!supabaseKey });
+    return response.status(500).json({ error: "Configuração do Supabase ausente na Vercel. Verifique as Variáveis de Ambiente." });
   }
 
   const supabase = createClient(supabaseUrl, supabaseKey);

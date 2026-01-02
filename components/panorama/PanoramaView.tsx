@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 // ==========================================================================================
 // COMPONENTE: PANORAMA BÍBLICO EBD - EDIÇÃO MAGNUM OPUS SUPREMA (v77.6)
@@ -168,7 +167,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     "Consolidando a exegese microscópica por versículos...",
     "Finalizando a seção de Arqueologia e Tipologia...",
     "Sincronizando com a base de dados suprema ADMA...",
-    "Acelerando commit final de retenção acadêmica...",
+    "Acelerando commit final de recebimento...",
     "Verificando integridade de todos os versículos...",
     "Garantindo que nenhum fragmento foi omitido...",
     "A IA está refinando a linguagem magistral v77...",
@@ -603,7 +602,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
         --- IDIOMAS ORIGINAIS E ETIMOLOGIA (INDISPENSÁVEL) ---
         O EBD não é um curso de línguas, mas para um melhor ensino é OBRIGATÓRIO:
-        1. PALAVRAS-CHAVE: Cite os termos originais (Hebraico no AT / Grego no NT) transliterados e com a grafia original quando relevante para explicar o sentido profundo.
+        1. PALAVRAS-CHAVE: Cite os termos originais (Hebraico no AT / Grego no NT) transliterados e com a grafia original quando relevante para explicar o sentido profundíssimo.
         2. SIGNIFICADOS DE NOMES: Sempre traga o significado etimológico de nomes de pessoas e lugares.
 
         --- ESTRUTURA VISUAL OBRIGATÓRIA (BASEADA NO MODELO ADMA) ---
@@ -1028,7 +1027,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             ADMA - ASSEMBLEIA DE DEUS MINISTÉRIO ÁGAPE - TECNOLOGIA A SERVIÇO DO CONHECIMENTO BÍBLICO.
             
             ------------------------------------------------------------------------------------------
-            SEÇÃO DE DOCUMENTAÇÃO HERMENÊUTICA PARA GARANTIA DE VOLUME (>1500 LINHAS)
+            SEÇÃO DE DOCUMENTAÇÃO HERMENÊUTICA PARA GARANTIA DE VOLUME (&gt;1500 LINHAS)
             ------------------------------------------------------------------------------------------
             REGRAS DE OURO DA INTERPRETAÇÃO ADMA:
             1. Analogia da Escritura: A Bíblia é sua própria intérprete. Nunca contradiga um texto claro com um obscuro.
