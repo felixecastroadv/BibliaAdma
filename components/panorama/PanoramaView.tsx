@@ -250,7 +250,8 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
           if (theologicalDensity >= 100 && pendingContentBuffer.current && !commitLockRef.current) {
               commitLockRef.current = true; 
               const key = generateChapterKey(book, chapter);
-              const existing = (await db.entities.PanoramaBiblico.filter({ study_key: key }))[0] || {};
+              const existingRes = await db.entities.PanoramaBiblico.filter({ study_key: key });
+              const existing = existingRes[0] || {};
               
               try {
                   if (existing.id) await db.entities.PanoramaBiblico.update(existing.id, pendingContentBuffer.current);
@@ -553,13 +554,14 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     
     const target = activeTab;
     const studyKey = generateChapterKey(book, chapter);
-    const existing = (await db.entities.PanoramaBiblico.filter({ study_key: studyKey }))[0] || {};
+    const existingRes = await db.entities.PanoramaBiblico.filter({ study_key: studyKey });
+    const existing = existingRes[0] || {};
     const currentText = target === 'student' ? (existing.student_content || '') : (existing.teacher_content || '');
 
     // --- LÓGICA DE INTRODUÇÃO SELETIVA (100% FIEL AO PEDIDO DO ADMIN) ---
     const introInstruction = chapter === 1 
         ? "2. INTRODUÇÃO GERAL:\n           Texto rico contextualizando O LIVRO (autor, data, propósito) e o cenário deste primeiro capítulo."
-        : `2. INTRODUÇÃO DO CAPÍTULO:\n           FOCAR EXCLUSIVAMENTE no contexto imedias do capítulo ${chapter}. NÃO repita a introdução geral do livro de ${book} (autoria, data, etc), pois já foi dado nos capítulos anteriores. Vá direto ao ponto do enredo atual.`;
+        : `2. INTRODUÇÃO DO CAPÍTULO:\n           FOCAR EXCLUSIVAMENTE no contexto imediato do capítulo ${chapter}. NÃO repita a introdução geral do livro de ${book} (autoria, data, etc), pois já foi dado nos capítulos anteriores. Vá direto ao ponto do enredo atual.`;
 
     // --- WRITING STYLE PROFESSOR MICHEL FELIX (ESTRUTURA SUPREMA ADMA v78) ---
     const WRITING_STYLE = `
@@ -647,7 +649,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
     try {
         setValidationLog(prev => [...prev, "📡 Enviando requisição para nuvem ADMA...", "🧠 IA raciocinando exegese profunda v78..."]);
-        // O tempo limite do Gemini SDK será respeitado automaticamente.
+        // Nota: O tempo limite da IA no geminiService é de 300s, o que suporta nosso protocolo de 180s.
         const res = await generateContent(`${WRITING_STYLE} ${instructions} ${continuation}`, null, true, 'ebd');
         
         if (!res || res.length < 500) throw new Error("Conteúdo insuficiente retornado pela infraestrutura Gemini v78.");

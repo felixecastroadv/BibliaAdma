@@ -7,7 +7,7 @@ export const config = {
 /**
  * EXECUTOR MAGISTRAL ADMA v79.0 - ALTA FIDELIDADE & RESILIÊNCIA
  * Este arquivo é o motor que aciona a IA Gemini 2.5 (Versão Gratuita/Lite).
- * OBJETIVO: Garantir 2500+ palavras, exegese microscópica e obediência total ao PanoramaView.
+ * OBJETIVO: Garantir 2500 palavras exatas, exegese microscópica e obediência total ao PanoramaView.
  */
 export default async function handler(request, response) {
   response.setHeader('Access-Control-Allow-Credentials', true);
@@ -41,21 +41,21 @@ export default async function handler(request, response) {
     
     if (taskType === 'ebd' || isLongOutput) {
         systemInstruction += `
-            PROTOCOLO MAGNUM OPUS v79.0 (OBEDIÊNCIA CEGA AO CÓDIGO FONTE):
-            1. VARREDURA OBRIGATÓRIA: Você deve passar por cada diretriz do código do PanoramaView (linhas 566-642 do prompt) antes de gerar o conteúdo.
-            2. DENSIDADE EXTREMA: O alvo é no MÍNIMO 2500 PALAVRAS. Se o conteúdo for rico, use o máximo de palavras possível. PROIBIDO RESUMIR.
-            3. MICROSCOPIA TOTAL: Fracione a explicação em porções de 2 a 3 versículos. Analise detalhes históricos, culturais e termos originais.
-            4. CONVERSÕES TÉCNICAS: Converta moedas e medidas antigas para valores atuais (reais/métrica) em todos os casos.
-            5. CONTEXTO DE ÉPOCA: Use referências reais de documentos do Oriente Próximo, Midrash e Talmud para enriquecer o cenário histórico.
-            6. BLINDAGEM DOUTRINÁRIA: Samuel não apareceu em 1 Sm 28. O abismo de Lucas 16:26 é instransponível.
-            7. ESTILO VISUAL: Use listas, negritos e parágrafos bem espaçados conforme o padrão acadêmico ADMA.
+            PROTOCOLO MAGNUM OPUS v80.0 (VERSÃO ÚNICA E PADRONIZADA):
+            1. ENTREGA ÚNICA: Gere apenas UMA versão do estudo. Proibido criar "Versão 1" e "Versão 2".
+            2. ALVO DE DENSIDADE: Estabilize o conteúdo em aproximadamente 2500 PALAVRAS. Não exceda 3000 para evitar dispersão.
+            3. VARREDURA OBRIGATÓRIA: Você deve passar por cada diretriz do código do PanoramaView (linhas 566-642 do prompt) antes de gerar o conteúdo.
+            4. MICROSCOPIA TOTAL: Fracione a explicação em porções de 2 a 3 versículos. Analise detalhes históricos, culturais e termos originais.
+            5. CONVERSÕES TÉCNICAS: Converta moedas e medidas antigas para valores atuais (reais/métrica) em todos os casos.
+            6. CONTEXTO DE ÉPOCA: Use referências reais de documentos do Oriente Próximo, Midrash e Talmud para enriquecer o cenário histórico.
+            7. BLINDAGEM DOUTRINÁRIA: Samuel não apareceu em 1 Sm 28. O abismo de Lucas 16:26 é instransponível.
+            8. ESTILO VISUAL: Use listas, negritos e parágrafos bem espaçados conforme o padrão acadêmico ADMA.
         `;
     } else if (taskType === 'commentary') {
         systemInstruction += " TAREFA: Comentário exegético profundo em 3 parágrafos com referências cruzadas detalhadas.";
     }
 
     // SELEÇÃO DE MODELO: 'gemini-flash-lite-latest' (Referente à versão 2.5 Lite Gratuita)
-    // Este modelo é o mais estável para evitar o erro de "API Key Not Valid" em tiers gratuitos.
     const modelName = 'gemini-flash-lite-latest';
 
     let lastError;
@@ -68,15 +68,14 @@ export default async function handler(request, response) {
                 systemInstruction,
                 responseMimeType: schema ? "application/json" : "text/plain",
                 responseSchema: schema || undefined,
-                temperature: 0.8, // Ligeiramente maior para favorecer a expansão do texto e riqueza de detalhes
-                topP: 0.95,
+                temperature: 0.7, // Reduzido ligeiramente para maior foco e evitar repetições/versões múltiplas
+                topP: 0.9,
             };
 
-            // Configuração para sustentar a Densidade de 2500+ palavras
+            // Configuração para sustentar a Densidade de 2500 palavras
             if (taskType === 'ebd' || isLongOutput) {
-                // maxOutputTokens no Flash Lite suporta até 8192 em uma única saída (aprox 6000 palavras)
-                generationConfig.maxOutputTokens = 8192; 
-                generationConfig.thinkingConfig = { thinkingBudget: 0 }; // Lite não suporta thinkingBudget, priorizamos tokens de saída
+                generationConfig.maxOutputTokens = 6000; // Suficiente para 2500-3000 palavras sem truncar ou exagerar
+                generationConfig.thinkingConfig = { thinkingBudget: 0 }; 
             }
 
             const responseContent = await ai.models.generateContent({
@@ -86,21 +85,17 @@ export default async function handler(request, response) {
             });
 
             if (responseContent.text) {
-                // SUCESSO ABSOLUTO: Conteúdo gerado conforme a densidade exigida
                 return response.status(200).json({ text: responseContent.text });
             }
         } catch (err) {
             lastError = err;
             console.error(`Falha no Executor com a chave: ${key.substring(0, 8)}... - Erro:`, err.message);
-            // Se o erro for de cota (429) ou instabilidade (503), pula para a próxima chave
             if (err.message.includes('429') || err.message.includes('quota') || err.message.includes('503')) continue;
-            // Se for erro de chave inválida e houver mais chaves, continua tentando
             if (err.message.includes('API key not valid')) continue;
             break;
         }
     }
     
-    // Retorna o último erro detalhado para facilitar o debug pelo Administrador
     return response.status(500).json({ error: lastError?.message || 'Falha na geração Magnum Opus após esgotar o pool de chaves.' });
   } catch (error) {
     console.error("Erro Crítico no Servidor de IA:", error);
