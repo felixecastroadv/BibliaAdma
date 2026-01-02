@@ -1,3 +1,4 @@
+
 export interface BibleBook {
   name: string;
   abbrev: string;
@@ -23,9 +24,9 @@ export interface ActivePlan {
 export interface UserProgress {
   user_email: string;
   user_name: string;
-  password_pin?: string; // Senha numérica de 6 dígitos
-  is_blocked?: boolean; // Se o admin bloqueou o usuário
-  reset_requested?: boolean; // Se o usuário pediu reset de senha
+  password_pin?: string; 
+  is_blocked?: boolean; 
+  reset_requested?: boolean; 
   chapters_read: string[];
   total_chapters: number;
   last_book: string;
@@ -100,7 +101,7 @@ export interface PrayerRequest {
   user_name: string;
   user_email: string;
   request_text: string;
-  date: string; // ISO
+  date: string; 
   prayer_count: number;
   category: 'saude' | 'familia' | 'espiritual' | 'financeiro' | 'outros';
 }

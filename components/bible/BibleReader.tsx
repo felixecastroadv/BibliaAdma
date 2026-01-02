@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, ChevronRight, List, Book, ChevronDown, RefreshCw, WifiOff, Zap, Volume2, X, FastForward, Search, Trash2, Sparkles, Loader2, Clock, Lock, Bookmark } from 'lucide-react';
 import VersePanel from './VersePanel';
@@ -398,22 +399,12 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
         }
     };
 
+    // Simplified to use the hybrid 'get' method which handles cloud-to-local synchronization.
     const loadMetadata = async () => {
         setMetadata(null);
         try {
-            // Tenta pegar local primeiro
-            let meta = await db.entities.ChapterMetadata.get(chapterKey);
-            
-            if (!meta) {
-               // Tenta pegar da nuvem
-               const cloudMeta = await db.entities.ChapterMetadata.getCloud(chapterKey);
-               if (cloudMeta) {
-                   meta = cloudMeta;
-                   // Sincroniza localmente para o futuro
-                   await db.entities.ChapterMetadata.save(meta);
-               }
-            }
-            
+            // db.entities.ChapterMetadata.get is a hybrid method (Cloud -> Local Cache)
+            const meta = await db.entities.ChapterMetadata.get(chapterKey);
             if (meta) {
                 setMetadata(meta);
             } 
@@ -601,7 +592,7 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
 
                             {isGeneratingMeta ? (
                                 <div className="flex flex-col items-center text-[#C5A059] animate-pulse mt-4">
-                                    <Sparkles className="w-5 h-5 mb-2" />
+                                    <span className="w-5 h-5 mb-2"><Sparkles className="w-5 h-5" /></span>
                                     <p className="font-cinzel text-[10px] font-bold uppercase tracking-[0.3em]">Contextualizando...</p>
                                 </div>
                             ) : metadata ? (

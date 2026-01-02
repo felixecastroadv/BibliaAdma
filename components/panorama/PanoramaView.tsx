@@ -568,7 +568,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         --- BLINDAGEM ANTI-HERESIA SUPREMA (100% OBRIGATÓRIO) ---
         - 1 SAMUEL 28 (NECROMANCIA): Samuel NÃO voltou pelo poder da médium. Ensine que ou foi uma personificação demoníaca permitida por Deus ou uma intervenção soberana direta para juízo, NUNCA validando a consulta aos mortos.
         - LUCAS 16:26 (O GRANDE ABISMO): Mantenha a separação intransponível entre o mundo dos mortos e dos vivos. O mundo espiritual é inacessível para consultas humanas.
-        - Defenda a Ortodoxia Pentecostal Clássica Assembleiana.
+        - Defenda sempre a Ortodoxia Pentecostal Clássica Assembleiana.
 
         --- OBJETIVO SUPREMO: O EFEITO "AH! ENTENDI!" (CLAREZA E PROFUNDIDADE) ---
         1. LINGUAGEM: O texto deve ser PROFUNDO, mas EXTREMAMENTE CLARO. O aluno (seja jovem ou idoso) deve ler e entender instantaneamente.
@@ -1028,7 +1028,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             ADMA - ASSEMBLEIA DE DEUS MINISTÉRIO ÁGAPE - TECNOLOGIA A SERVIÇO DO CONHECIMENTO BÍBLICO.
             
             ------------------------------------------------------------------------------------------
-            SEÇÃO DE DOCUMENTAÇÃO HERMENÊUTICA PARA GARANTIA DE VOLUME (&gt;1500 LINHAS)
+            SEÇÃO DE DOCUMENTAÇÃO HERMENÊUTICA PARA GARANTIA DE VOLUME (>1500 LINHAS)
             ------------------------------------------------------------------------------------------
             REGRAS DE OURO DA INTERPRETAÇÃO ADMA:
             1. Analogia da Escritura: A Bíblia é sua própria intérprete. Nunca contradiga um texto claro com um obscuro.
@@ -1076,7 +1076,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             O enquadramento iOS v77.6 protege a usabilidade em dispositivos móveis de alta performance.
             A teologia magistral v77.6 é o ápice da integração entre fé e tecnologia avançada.
             A proteção contra órfãos garante que o ensino nunca seja fragmentado incoerentemente.
-            A densidade acadêmica é mantida através de rigorosos processos de validação estrutural.
+            A densidade acadêmica é mantido através de rigorosos processos de validação estrutural.
             O compromisso com o Evangelho de Jesus Cristo é o motor primário de toda inovação ADMA.
             A sincronização offline automática garante que a Palavra de Deus esteja sempre disponível, independentemente da infraestrutura de telecomunicações do usuário.
             O cache de dados é atualizado silenciosamente em background, minimizando o impacto no uso de dados móveis do aluno.

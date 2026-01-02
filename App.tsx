@@ -29,28 +29,22 @@ export default function App() {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [navParams, setNavParams] = useState<any>({});
 
-  // Config e Módulos Dinâmicos
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
   const [activeModule, setActiveModule] = useState<DynamicModule | null>(null);
 
   useEffect(() => {
-    // 1. Carrega Config Global
     const loadConfig = async () => {
         try {
-            // No schema, list() retorna a coleção. Pegamos o primeiro item.
             const configs = await db.entities.AppConfig.list();
             const cfg = configs[0];
             if (cfg) {
                 setAppConfig(cfg);
-                // Aplica Cores Dinâmicas via CSS Variables
                 if (cfg.theme) {
                     if (cfg.theme.primaryColor) document.documentElement.style.setProperty('--primary-color', cfg.theme.primaryColor);
                     if (cfg.theme.secondaryColor) document.documentElement.style.setProperty('--secondary-color', cfg.theme.secondaryColor);
                 }
             }
-        } catch(e) {
-            console.error("Erro ao carregar configurações", e);
-        }
+        } catch(e) {}
     };
     loadConfig();
 
@@ -62,24 +56,22 @@ export default function App() {
         loadProgress(u.user_email, u.user_name);
     }
     
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        setDarkMode(true);
-    }
+    const isDark = localStorage.getItem('adma_dark_mode') === 'true' || 
+                 (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    setDarkMode(isDark);
   }, []);
 
-  // EFEITO DE SINCRONIZAÇÃO OFFLINE (NOVO v77.6)
   useEffect(() => {
-      if (isAuthenticated) {
-          // Dispara sincronização silenciosa em background após login/entrada
-          syncManager.fullSync();
-      }
+      if (isAuthenticated) syncManager.fullSync();
   }, [isAuthenticated]);
 
   useEffect(() => {
       if (darkMode) {
           document.documentElement.classList.add('dark');
+          localStorage.setItem('adma_dark_mode', 'true');
       } else {
           document.documentElement.classList.remove('dark');
+          localStorage.setItem('adma_dark_mode', 'false');
       }
   }, [darkMode]);
 
@@ -105,7 +97,6 @@ export default function App() {
     const fullName = `${first} ${last}`;
     const email = `${first.toLowerCase()}.${last.toLowerCase()}@adma.local`;
     const u = { user_name: fullName, user_email: email };
-    
     localStorage.setItem('adma_user', JSON.stringify(u));
     setUser(u);
     setIsAuthenticated(true);
@@ -137,16 +128,13 @@ export default function App() {
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
   const handleNavigate = (v: string, params?: any) => {
-      // Se for navegação para módulo dinâmico
       if (v.startsWith('module_')) {
-          const modId = v.replace('module_', '');
           if (params && params.module) {
               setActiveModule(params.module);
               setView('dynamic_module');
           }
           return;
       }
-      
       setView(v);
       if(params) setNavParams(params);
       window.scrollTo(0, 0);
@@ -157,38 +145,13 @@ export default function App() {
   const renderView = () => {
     switch(view) {
         case 'dashboard':
-            return <DashboardHome 
-                onNavigate={handleNavigate} 
-                isAdmin={isAdmin} 
-                onEnableAdmin={() => setShowAdminModal(true)}
-                user={user}
-                userProgress={userProgress}
-                darkMode={darkMode}
-                toggleDarkMode={toggleDarkMode}
-                onShowToast={showToast}
-                onLogout={handleLogout}
-                appConfig={appConfig}
-            />;
+            return <DashboardHome onNavigate={handleNavigate} isAdmin={isAdmin} onEnableAdmin={() => setShowAdminModal(true)} user={user} userProgress={userProgress} darkMode={darkMode} toggleDarkMode={toggleDarkMode} onShowToast={showToast} onLogout={handleLogout} appConfig={appConfig} />;
         case 'reader':
-            return <BibleReader 
-                onBack={() => setView('dashboard')} 
-                isAdmin={isAdmin}
-                onShowToast={showToast}
-                initialBook={navParams.book}
-                initialChapter={navParams.chapter}
-                userProgress={userProgress}
-                onProgressUpdate={setUserProgress}
-            />;
+            return <BibleReader onBack={() => setView('dashboard')} isAdmin={isAdmin} onShowToast={showToast} initialBook={navParams.book} initialChapter={navParams.chapter} userProgress={userProgress} onProgressUpdate={setUserProgress} />;
         case 'admin':
             return <AdminPanel onBack={() => setView('dashboard')} onShowToast={showToast} />;
         case 'panorama':
-            return <PanoramaView 
-                onBack={() => setView('dashboard')} 
-                isAdmin={isAdmin} 
-                onShowToast={showToast}
-                userProgress={userProgress} 
-                onProgressUpdate={setUserProgress} 
-            />;
+            return <PanoramaView onBack={() => setView('dashboard')} isAdmin={isAdmin} onShowToast={showToast} userProgress={userProgress} onProgressUpdate={setUserProgress} />;
         case 'devotional':
             return <DevotionalView onBack={() => setView('dashboard')} onShowToast={showToast} isAdmin={isAdmin} />;
         case 'plans':
@@ -209,11 +172,9 @@ export default function App() {
         <div className={`flex-1 ${isAuthenticated ? 'pb-20' : ''}`}>
             {renderView()}
         </div>
-        
         {isAuthenticated && view !== 'dynamic_module' && view !== 'reader' && (
             <BottomNav currentView={view} onNavigate={handleNavigate} />
         )}
-
         <AdminPasswordModal isOpen={showAdminModal} onClose={() => setShowAdminModal(false)} onSuccess={handleAdminSuccess} />
         <NetworkStatus />
         {toast.msg && <Toast message={toast.msg} type={toast.type} onClose={() => setToast({ ...toast, msg: '' })} />}

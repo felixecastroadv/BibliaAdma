@@ -1,9 +1,4 @@
-/**
- * SERVIÇO GEMINI AI - ADMA EDITION
- * Adaptado para comunicação segura via proxy local.
- */
 
-// Tipos de tarefas para seleção inteligente de modelo no servidor
 export type TaskType = 'commentary' | 'dictionary' | 'devotional' | 'ebd' | 'metadata' | 'general';
 
 export const generateContent = async (
@@ -13,18 +8,10 @@ export const generateContent = async (
   taskType: TaskType = 'general'
 ) => {
     try {
-        // Envia a requisição para o endpoint local da Vercel
-        // Isso evita o erro de "API Key must be set in browser" e protege as chaves no servidor.
         const response = await fetch('/api/gemini', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                prompt,
-                schema: jsonSchema,
-                taskType
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt, schema: jsonSchema, taskType })
         });
 
         if (!response.ok) {
@@ -37,10 +24,8 @@ export const generateContent = async (
 
         if (!text) throw new Error("A IA retornou uma resposta vazia.");
 
-        // Se houver um schema, tentamos o parse final (embora o endpoint já deva garantir)
         if (jsonSchema) {
             try {
-                // Remove blocos de código se a IA os incluiu por engano na resposta JSON
                 const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
                 return JSON.parse(cleanJson);
             } catch (e) {
@@ -48,16 +33,13 @@ export const generateContent = async (
                 throw new Error("Erro de formatação na resposta da IA.");
             }
         }
-
         return text;
-
     } catch (error: any) {
         console.error("Gemini Proxy Error:", error);
         throw new Error(error.message || "Falha na comunicação com o Professor Virtual.");
     }
 };
 
-// Helpers de compatibilidade mantidos para não quebrar referências no app
 export const getStoredApiKey = (): string | null => "internal_proxy";
 export const setStoredApiKey = (key: string) => {}; 
 export const clearStoredApiKey = () => {};
