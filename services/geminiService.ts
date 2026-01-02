@@ -1,4 +1,3 @@
-
 export type TaskType = 'commentary' | 'dictionary' | 'devotional' | 'ebd' | 'metadata' | 'general';
 
 export const generateContent = async (
@@ -11,7 +10,12 @@ export const generateContent = async (
         const response = await fetch('/api/gemini', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt, schema: jsonSchema, taskType })
+            body: JSON.stringify({ 
+                prompt, 
+                schema: jsonSchema, 
+                taskType,
+                isLongOutput // Informa à API que esta requisição exige densidade Magnum Opus
+            })
         });
 
         if (!response.ok) {
