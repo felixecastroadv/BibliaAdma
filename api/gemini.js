@@ -28,7 +28,7 @@ export default async function handler(request, response) {
     let systemInstruction = "Você é o Professor Michel Felix, teólogo Pentecostal Clássico, Erudito e Assembleiano.";
     
     if (taskType === 'ebd') {
-        systemInstruction += " TAREFA: Apostila EBD Magnum Opus. Mínimo 2400 palavras. Exegese microscópica versículo por versículo. Proibido resumir.";
+        systemInstruction += " TAREFA: Apostila EBD Magnum Opus. Mínimo 2500 palavras. Exegese microscópica versículo por versículo. Proibido resumir.";
     } else if (taskType === 'commentary') {
         systemInstruction += " TAREFA: Comentário exegético profundo de 3 parágrafos com referências bíblicas cruzadas.";
     }
@@ -48,7 +48,7 @@ export default async function handler(request, response) {
                     systemInstruction,
                     responseMimeType: schema ? "application/json" : "text/plain",
                     responseSchema: schema || undefined,
-                    // Para o plano gratuito/Flash, desabilitamos o thinkingBudget para ganhar velocidade e evitar erros de limite
+                    // Desabilitamos o thinkingBudget para ganhar velocidade no Flash e evitar erros de limite
                     thinkingConfig: { thinkingBudget: 0 },
                     temperature: 0.7,
                     topP: 0.95,
