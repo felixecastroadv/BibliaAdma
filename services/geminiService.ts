@@ -14,7 +14,7 @@ export const generateContent = async (
                 prompt, 
                 schema: jsonSchema, 
                 taskType,
-                isLongOutput // Informa à API que esta requisição exige densidade Magnum Opus
+                isLongOutput // Informa à API que esta requisição exige densidade Magnum Opus de 2500+ palavras
             })
         });
 

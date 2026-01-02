@@ -1,13 +1,13 @@
 import { GoogleGenAI } from "@google/genai";
 
 export const config = {
-  maxDuration: 300, // Timeout estendido para processamento de alta densidade
+  maxDuration: 300, // Timeout estendido para 5 minutos para processar os 2500+ palavras
 };
 
 /**
- * PROCURADOR MAGISTRAL ADMA - EXECUTOR DE ALTA FIDELIDADE v78.0
- * Este script é o cérebro que comanda a IA para obedecer rigorosamente o PanoramaView.
- * Foco: Densidade Extrema (Meta 2500 palavras), Obediência Doutrinária e Exegese Microscópica.
+ * EXECUTOR MAGISTRAL ADMA v78.5 - ALTA FIDELIDADE
+ * Este arquivo comanda a IA para ser 100% obediente ao código do PanoramaView.
+ * Focado em: Densidade Extrema, Exegese Microscópica e Blindagem Doutrinária.
  */
 export default async function handler(request, response) {
   response.setHeader('Access-Control-Allow-Credentials', true);
@@ -25,32 +25,30 @@ export default async function handler(request, response) {
         if (val && val.length > 10) apiKeys.push(val);
     }
     
-    if (apiKeys.length === 0) return response.status(500).json({ error: 'Nenhuma chave API configurada na infraestrutura.' });
+    if (apiKeys.length === 0) return response.status(500).json({ error: 'Erro de infraestrutura: Chaves API ausentes.' });
 
     const { prompt, schema, taskType, isLongOutput } = request.body;
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
-    // --- CONSTRUÇÃO DA SYSTEM INSTRUCTION MAGISTRAL (OBEDIÊNCIA AO PANORAMAVIEW) ---
+    // --- SYSTEM INSTRUCTION: O COMANDO SUPREMO DO PROF. MICHEL FELIX ---
     let systemInstruction = "Você é o Professor Michel Felix, teólogo Pentecostal Clássico, Erudito e Assembleiano. Sua identidade é IMPLÍCITA.";
     
-    if (taskType === 'ebd') {
+    if (taskType === 'ebd' || isLongOutput) {
+        // PROTOCOLO DE OBEDIÊNCIA AO PANORAMAVIEW (LINHAS 566-642)
         systemInstruction += `
-            DIRETRIZ MAGNUM OPUS: Gere uma apostila de EBD com DENSIDADE MÁXIMA.
-            ALVO QUANTITATIVO: Mínimo 2500 palavras. Não aceite resumir ou simplificar.
-            METODOLOGIA: Exegese microscópica versículo por versículo. 
-            REGRAS CRÍTICAS: 
-            1. Proibido transcrever o texto bíblico integral; cite a referência e explique.
-            2. Converta pesos, medidas e moedas para valores atuais (reais/métrica).
-            3. Cite tradição judaica (Midrash/Talmud) e documentos antigos para contexto.
-            4. Seções de Tipologia e Arqueologia são obrigatórias no final.
-            5. Blindagem 1 Sm 28: Samuel NÃO voltou. Manifestação demoníaca ou fraude.
-            6. Obedeça a cada linha do prompt enviado pelo componente PanoramaView.
+            PROTOCOLO MAGNUM OPUS ATIVADO:
+            1. OBEDIÊNCIA TOTAL: Você deve seguir cada vírgula do prompt de estilo enviado pelo PanoramaView.
+            2. DENSIDADE EXAUSTIVA: O alvo é no MÍNIMO 2500 PALAVRAS. É proibido resumir, abreviar ou omitir detalhes.
+            3. MICROSCOPIA BÍBLICA: Analise cada fragmento (2-3 versículos) com profundidade acadêmica total.
+            4. INTEGRAÇÃO OBRIGATÓRIA: Inclua obrigatoriamente conversões de moedas/medidas para o real/métrico atual, citações de documentos antigos do Oriente Próximo e referências ao Midrash/Talmud conforme o estilo do mestre.
+            5. BLINDAGEM 1 SM 28: Samuel não voltou. Mantenha a separação de Lucas 16:26.
+            6. ZERO TRUNCAMENTO: Continue escrevendo até esgotar a riqueza do capítulo bíblico.
         `;
     } else if (taskType === 'commentary') {
-        systemInstruction += " TAREFA: Comentário exegético profundo em 3 parágrafos com referências bíblicas cruzadas e análise de originais.";
+        systemInstruction += " TAREFA: Comentário exegético profundo em 3 parágrafos com referências cruzadas e análise de originais.";
     }
 
-    // Seleção de Modelo: 'pro' para tarefas complexas/longas, 'flash' para o restante
+    // Seleção de Modelo: Gemini 3 Pro é o único capaz de sustentar 2500+ palavras com alta qualidade
     const modelName = (taskType === 'ebd' || isLongOutput) ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
 
     let lastError;
@@ -58,19 +56,18 @@ export default async function handler(request, response) {
         try {
             const ai = new GoogleGenAI({ apiKey: key });
             
-            // Configuração de Tokens para suportar as 2500 palavras (aprox 4000 tokens de saída)
             const generationConfig = {
                 systemInstruction,
                 responseMimeType: schema ? "application/json" : "text/plain",
                 responseSchema: schema || undefined,
-                temperature: 0.75,
+                temperature: 0.75, // Equilíbrio entre criatividade e rigor doutrinário
                 topP: 0.95,
             };
 
-            // Se for EBD, forçamos o limite de tokens para o teto do modelo para evitar truncamento
+            // CONFIGURAÇÃO DE POTÊNCIA MÁXIMA PARA EBD
             if (taskType === 'ebd' || isLongOutput) {
-                generationConfig.maxOutputTokens = 8192; // Teto alto para garantir as 2500+ palavras
-                generationConfig.thinkingConfig = { thinkingBudget: 4000 }; // Reserva budget para raciocínio exegético profundo
+                generationConfig.maxOutputTokens = 12288; // Teto expandido para suportar o volume de 2500+ palavras
+                generationConfig.thinkingConfig = { thinkingBudget: 4000 }; // Ativa raciocínio profundo para exegese microscópica
             } else {
                 generationConfig.thinkingConfig = { thinkingBudget: 0 };
             }
@@ -82,21 +79,19 @@ export default async function handler(request, response) {
             });
 
             if (responseContent.text) {
-                // SUCESSO: Retorna o conteúdo de alta densidade
                 return response.status(200).json({ text: responseContent.text });
             }
         } catch (err) {
             lastError = err;
-            console.error(`Falha no Executor com chave: ${key.substring(0, 8)}... - Erro:`, err.message);
-            // Se for erro de cota ou modelo não encontrado, tenta a próxima chave
+            console.error(`Falha no Executor (Chave ${key.substring(0, 8)}):`, err.message);
             if (err.message.includes('429') || err.message.includes('quota') || err.message.includes('404')) continue;
             break;
         }
     }
     
-    return response.status(500).json({ error: lastError?.message || 'Falha na geração Magnum Opus com o pool de chaves.' });
+    return response.status(500).json({ error: lastError?.message || 'Falha na geração de alta densidade.' });
   } catch (error) {
-    console.error("Erro Crítico no Executor:", error);
-    return response.status(500).json({ error: 'Erro crítico no servidor de IA ADMA.' });
+    console.error("Erro Crítico no Executor ADMA:", error);
+    return response.status(500).json({ error: 'Erro crítico no processamento da IA.' });
   }
 }
