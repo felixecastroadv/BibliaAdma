@@ -8,33 +8,30 @@ export const generateContent = async (
   isLongOutput: boolean = false,
   taskType: TaskType = 'general'
 ) => {
-    // Inicialização do SDK conforme diretrizes
+    // Inicialização do SDK com a chave de ambiente e modelo gratuito solicitado
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
-    // Seleção de modelo baseada na complexidade da tarefa
-    const model = (taskType === 'ebd' || isLongOutput) ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
+    // Utilizando SEMPRE a Gemini 2.5 Flash Lite (Versão Gratuita e Profunda)
+    const model = 'gemini-flash-lite-latest';
 
     // Instrução de sistema integrada para manter a personalidade do Professor Michel Felix
-    let systemInstruction = "ATUE COMO: Professor Michel Felix. Identidade Teológica: Pentecostal Clássico e Erudito. Sua identidade deve ser IMPLÍCITA.";
+    let systemInstruction = "ATUE COMO: Professor Michel Felix. Identidade Teológica: Pentecostal Clássico e Erudito (Assembleiano). Sua identidade deve ser IMPLÍCITA.";
     
     if (taskType === 'ebd' || isLongOutput) {
         systemInstruction += `
-            PROTOCOLO DE PENSAMENTO PROFUNDO E ESCOPO RÍGIDO:
-            1. ESCOPO: Gere conteúdo APENAS para o capítulo solicitado. É PROIBIDO iniciar o capítulo seguinte.
-            2. PENSAMENTO ANALÍTICO: Antes de redigir, realize o check-in de cada regra:
-               - Análise geográfica e cronológica concluída?
-               - Fracionamento microscópico de 2 a 3 versos garantido?
-               - Moedas e medidas convertidas para 2025?
-               - Documentos e tradições (Midrash) integrados?
+            PROTOCOLO MAGNUM OPUS (ALTA DENSIDADE):
+            1. ESCOPO: Gere conteúdo APENAS para o capítulo solicitado.
+            2. PENSAMENTO ANALÍTICO: Realize exegese versículo por versículo (microscopia bíblica).
             3. DENSIDADE: Mínimo 2500 palavras. PROIBIDO RESUMIR. Extraia cada detalhe do texto.
-            4. ORTODOXIA: Samuel não voltou em 1 Sm 28. O abismo de Lc 16:26 é instransponível.
+            4. ORTODOXIA: Samuel não voltou em 1 Sm 28 (foi personificação demoníaca). O abismo de Lc 16:26 é real e instransponível.
+            5. CONVERSÃO: Moedas e medidas convertidas para valores de 2025.
         `;
     }
 
     try {
-        const result = await ai.models.generateContent({
+        const response = await ai.models.generateContent({
             model,
-            contents: prompt,
+            contents: [{ parts: [{ text: prompt }] }],
             config: {
                 systemInstruction,
                 responseMimeType: jsonSchema ? "application/json" : "text/plain",
@@ -44,14 +41,13 @@ export const generateContent = async (
             }
         });
 
-        // Acessando a propriedade .text do resultado conforme as diretrizes
-        const text = result.text;
+        // Acesso correto à propriedade .text conforme as diretrizes
+        const text = response.text;
 
         if (!text) throw new Error("A IA retornou uma resposta vazia.");
 
         if (jsonSchema) {
             try {
-                // Limpeza básica para garantir que o JSON seja parseado corretamente
                 const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
                 return JSON.parse(cleanJson);
             } catch (e) {
@@ -67,5 +63,3 @@ export const generateContent = async (
 };
 
 export const getStoredApiKey = (): string | null => "internal_sdk";
-export const setStoredApiKey = (key: string) => {}; 
-export const clearStoredApiKey = () => {};
