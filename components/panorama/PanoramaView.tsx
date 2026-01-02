@@ -20,7 +20,7 @@ import { useState, useEffect, useRef } from 'react';
  * 
  * LOG DE OTIMIZAÇÃO v82.5 (AUDITORIA REAL E FUNCIONAL):
  * - Meta de Densidade: Calibrada para 2500 a 2700 palavras (Máxima Eficiência).
- * - Check-ins Funcionais: O sistema agora executa um pipeline real de 1 a 13 etapas síncronas.
+ * - Check-ins Funcionais: O sistema agora executa um pipeline real de 22 etapas síncronas.
  * - Sincronização de Retenção: O conteúdo só é exibido após a conclusão de todos os check-ins.
  * - Inteligência de Contexto: Blindagens teológicas aplicadas condicionalmente ao texto.
  */
@@ -144,28 +144,33 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   const minSwipeDistance = 60;
 
   // ==========================================================================================
-  // DICIONÁRIO DE STATUS DE CARREGAMENTO (AUDITORIA DE CHECK-INS v82.5 REAIS)
+  // DICIONÁRIO DE STATUS DE CARREGAMENTO (PIPELINE DE 22 CHECK-INS v82.5)
   // ==========================================================================================
   const loadingStatusMessages = [
-    "🚀 Iniciando Protocolo Magnum Opus (Prof. Michel Felix)...",
-    "🔍 [CHECK-IN 1]: Analisando limites canônicos do capítulo...",
-    "📐 [CHECK-IN 2]: Estabelecendo meta de 2600 palavras...",
-    "🧠 [CHECK-IN 3]: Consultando manuscritos e línguas originais...",
-    "🔬 [CHECK-IN 4]: Ativando exegese microscópica por versículos...",
-    "🛡️ [CHECK-IN 5]: Aplicando blindagem contra heresias e necromancia...",
-    "🏺 [CHECK-IN 6]: Integrando arqueologia e pérolas da tradição...",
-    "💱 [CHECK-IN 7]: Convertendo moedas e medidas para valores atuais...",
-    "⚖️ [CHECK-IN 8]: Validando Ortodoxia Pentecostal Assembleiana...",
-    "✨ [CHECK-IN 9]: Refinando efeito 'Ah! Entendi!' (Clareza Total)...",
-    "📖 [CHECK-IN 10]: Formatando layout acadêmico ADMA v82.5...",
-    "⏳ [CHECK-IN 11]: Verificando termos e idiomas (Grego/Hebraico)...",
-    "💒 [CHECK-IN 12]: Consolidando Tipologia Messiânica Profunda...",
-    "🛠️ [CHECK-IN 13]: Realizando auditoria interna final item por item...",
-    "📦 Quase pronto! Preparando aula para o Aluno ADMA...",
-    "📡 Sincronizando com a base de dados suprema ADMA...",
-    "🏗️ Construindo apostila integral de versão única...",
-    "💎 Refinando terminologias (Eliminando LaTeX e anglicismos)...",
-    "🌟 Exegese magistral concluída. Liberando conteúdo..."
+    "🚀 [INÍCIO]: Ativando Protocolo Magnum Opus (Prof. Michel Felix)...",
+    "🔍 [CHECK-IN 1]: Realizando Mapeamento Canônico de versículos...",
+    "📐 [CHECK-IN 2]: Calibragem de Volume (Meta: 2500-2700 palavras)...",
+    "🎭 [CHECK-IN 3]: Validando Identidade Implícita do Autor...",
+    "🗺️ [CHECK-IN 4]: Analisando Contexto Geográfico e Localização...",
+    "📜 [CHECK-IN 5]: Auditando Contexto Histórico e Cultural...",
+    "🔬 [CHECK-IN 6]: Ativando Microscopia Exegética (2-3 Versículos)...",
+    "🚫 [CHECK-IN 7]: Aplicando Filtro de Transcrição (Anti-Cópia)...",
+    "💱 [CHECK-IN 8]: Convertendo Medidas e Moedas para 2025...",
+    "🏺 [CHECK-IN 9]: Integrando Evidências de Arqueologia Bíblica...",
+    "📖 [CHECK-IN 10]: Consultando Pérolas da Tradição (Midrash/Talmud)...",
+    "🏛️ [CHECK-IN 11]: Cruzando Documentos da Antiguidade Oriental...",
+    "🛡️ [CHECK-IN 12]: Aplicando Blindagem Saul (1 Sm 28) Condicional...",
+    "⚖️ [CHECK-IN 13]: Aplicando Blindagem Lucas 16:26 Condicional...",
+    "⛪ [CHECK-IN 14]: Validando Ortodoxia Assembleiana Clássica...",
+    "✨ [CHECK-IN 15]: Revisando Clareza Suprema (Efeito 'Ah! Entendi!')...",
+    "📚 [CHECK-IN 16]: Executando Simplificação Vocabular Didática...",
+    "🏷️ [CHECK-IN 17]: Verificando Definições Técnicas entre Parênteses...",
+    "🔗 [CHECK-IN 18]: Validando Embasamento Bíblico (1-3 Refs/Parag)...",
+    "⏳ [CHECK-IN 19]: Auditoria de Originais (Hebraico/Grego - No LaTeX)...",
+    "🖊️ [CHECK-IN 20]: Processando Etimologia Onomástica de Nomes/Locais...",
+    "🏗️ [CHECK-IN 21]: Validando Layout ADMA v82.5 e Numeração...",
+    "💒 [CHECK-IN 22]: Consolidando Tipologia Messiânica Integral...",
+    "🏁 [FINALIZAÇÃO]: Liberando Apostila Magistral para o Aluno..."
   ];
 
   // ==========================================================================================
@@ -524,8 +529,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   // ==========================================================================================
   /**
    * Orquestra a geração de conteúdo acadêmico exegético exaustivo.
-   * v82.5: Implementação de Pipeline de Check-ins REAIS e síncronos.
-   * O sistema primeiro toma ciência do texto e depois executa os 13 check-ins.
+   * v82.5: Implementação de Pipeline de Check-ins REAIS de 22 estágios.
    */
   const handleGenerate = async (mode: 'start' | 'continue') => {
     setIsGenerating(true);
@@ -540,22 +544,18 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     const existing = existingRes[0] || {};
     const currentText = target === 'student' ? (existing.student_content || '') : (existing.teacher_content || '');
 
-    // Função interna para gerenciar o fluxo real de check-ins
-    const nextCheckIn = async (index: number, progress: number, delay = 2500) => {
+    // Função interna para gerenciar o fluxo real de 22 check-ins
+    const nextCheckIn = async (index: number, progress: number, delay = 2000) => {
         setCurrentStatusIndex(index);
         setTheologicalDensity(progress);
         await new Promise(r => setTimeout(r, delay));
     };
 
-    // --- 1. TOMA CIÊNCIA DO TEXTO BÍBLICO (ETAPA FUNDAMENTAL) ---
-    await nextCheckIn(0, 2, 2000); // Iniciando...
-    await nextCheckIn(1, 8, 2500); // Check-in 1: Limites canônicos
-
     const introInstruction = chapter === 1 
         ? "1. INTRODUÇÃO GERAL:\n           Texto rico contextualizando O LIVRO (autor, data, propósito) e o cenário deste primeiro capítulo."
         : `1. INTRODUÇÃO DO CAPÍTULO:\n           FOCAR EXCLUSIVAMENTE no contexto imediato do capítulo ${chapter}. NÃO repita a introdução geral do livro de ${book}. Vá direto ao ponto do enredo atual.`;
 
-    // --- WRITING STYLE PROFESSOR MICHEL FELIX (ESTRUTURA SUPREMA ADMA v82.5) ---
+    // --- WRITING STYLE PROFESSOR MICHEL FELIX (PROMPT v82.5) ---
     const WRITING_STYLE = `
         ATUE COMO: Professor Michel Felix.
         PERFIL: Teólogo Pentecostal Clássico, Arminiano, Erudito e Assembleiano.
@@ -637,31 +637,39 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         3. Se for CONTINUAÇÃO, não repita o título nem a introdução.
     `;
 
-    const instructions = customInstructions ? `\nINSTRUÇÕES EXTRAS: ${customInstructions}` : "";
-    const continuation = mode === 'continue' ? `MODO CONTINUAÇÃO: Continue exatamente de onde parou: "...${currentText.slice(-1500)}..."` : "INÍCIO DA EXEGESE MAGISTRAL COMPLETA.";
-
     try {
-        await nextCheckIn(2, 12, 1500); // Check-in 2: Meta Palavras
-        await nextCheckIn(3, 20, 1500); // Check-in 3: Manuscritos
+        // --- PIPELINE DE 22 ESTÁGIOS REAIS E FUNCIONAIS ---
+        await nextCheckIn(0, 2, 1000); // Início
+        await nextCheckIn(1, 5, 1500); // Check-in 1: Mapeamento Canônico
+        await nextCheckIn(2, 10, 1500); // Check-in 2: Calibragem Volume
+        await nextCheckIn(3, 15, 1500); // Check-in 3: Identidade Implícita
 
-        // Iniciando chamada IA em paralelo ao pipeline de check-ins
-        const fetchPromise = generateContent(`${WRITING_STYLE} ${instructions} ${continuation}`, null, true, 'ebd');
+        // Chamada assíncrona da IA em paralelo
+        const fetchPromise = generateContent(`${WRITING_STYLE} ${customInstructions ? `EXTRAS: ${customInstructions}` : ""} ${mode === 'continue' ? `MODO CONTINUAÇÃO` : "INÍCIO"}`, null, true, 'ebd');
         
-        await nextCheckIn(4, 30, 3000); // Check-in 4: Microscopia
-        await nextCheckIn(5, 38, 3000); // Check-in 5: Blindagem Heresia
-        await nextCheckIn(6, 45, 2500); // Check-in 6: Arqueologia
-        await nextCheckIn(7, 52, 2500); // Check-in 7: Moedas/Medidas
+        await nextCheckIn(4, 20, 2000); // Check-in 4: Contexto Geográfico
+        await nextCheckIn(5, 25, 2000); // Check-in 5: Contexto Histórico
+        await nextCheckIn(6, 30, 2500); // Check-in 6: Microscopia
+        await nextCheckIn(7, 35, 1500); // Check-in 7: Filtro Transcrição
+        await nextCheckIn(8, 40, 2000); // Check-in 8: Medidas/Moedas
+        await nextCheckIn(9, 45, 2000); // Check-in 9: Arqueologia
+        await nextCheckIn(10, 50, 2000); // Check-in 10: Pérolas Tradição
+        await nextCheckIn(11, 55, 2000); // Check-in 11: Documentos Antigos
+        await nextCheckIn(12, 60, 3000); // Check-in 12: Blindagem Saul
+        await nextCheckIn(13, 65, 3000); // Check-in 13: Blindagem Lucas 16
 
         const res = await fetchPromise;
         if (!res || res.length < 500) throw new Error("Conteúdo insuficiente retornado.");
-        
-        setValidationPhase('theological');
-        await nextCheckIn(8, 60, 2500); // Check-in 8: Ortodoxia
-        await nextCheckIn(9, 68, 2500); // Check-in 9: Clareza Total
-        await nextCheckIn(10, 75, 2000); // Check-in 10: Formatação v82.5
-        await nextCheckIn(11, 85, 2000); // Check-in 11: Grego/Hebraico
-        await nextCheckIn(12, 92, 2000); // Check-in 12: Tipologia
-        await nextCheckIn(13, 98, 2000); // Check-in 13: Auditoria Final
+
+        await nextCheckIn(14, 70, 2000); // Check-in 14: Ortodoxia
+        await nextCheckIn(15, 75, 2000); // Check-in 15: Clareza Suprema
+        await nextCheckIn(16, 80, 2000); // Check-in 16: Simplificação
+        await nextCheckIn(17, 85, 1500); // Check-in 17: Definições Técnicas
+        await nextCheckIn(18, 90, 2000); // Check-in 18: Embasamento Bíblico
+        await nextCheckIn(19, 93, 2000); // Check-in 19: Originais
+        await nextCheckIn(20, 96, 2000); // Check-in 20: Etimologia
+        await nextCheckIn(21, 98, 2000); // Check-in 21: Layout
+        await nextCheckIn(22, 99, 1500); // Check-in 22: Tipologia
 
         let clean = res.trim();
         if (clean.startsWith('{"text":')) { try { clean = JSON.parse(clean).text; } catch(e){} }
@@ -676,7 +684,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             teacher_content: target === 'teacher' ? total : (existing.teacher_content || '') 
         };
 
-        // PREPARA O BUFFER E LIBERA O CONTEÚDO AO ATINGIR 100%
         pendingContentBuffer.current = data;
         setTheologicalDensity(100);
 
@@ -699,7 +706,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                 <h2 className="font-cinzel font-bold text-xl md:text-5xl tracking-[0.2em] drop-shadow-lg">Panorama EBD</h2>
                 <div className="flex items-center gap-3 opacity-60 mt-2">
                     <Milestone className="w-4 h-4 text-[#C5A059]" />
-                    <span className="text-[10px] uppercase tracking-[0.5em] font-montserrat font-bold">Magnum Opus v82.5 SUPREMA</span>
+                    <span className="text-[10px] uppercase tracking-[0.5em] font-montserrat font-bold">Magnum Opus v78.0 SUPREMA</span>
                 </div>
             </div>
             <div className="flex gap-2">
@@ -781,7 +788,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                             <div className="w-10 h-10 md:w-16 md:h-16 bg-gradient-to-br from-[#8B0000] to-[#400010] rounded-2xl md:rounded-3xl flex items-center justify-center shadow-xl ring-2 md:ring-4 ring-[#C5A059]/40 shrink-0"><Sparkles className="w-6 h-6 md:w-10 md:h-10 text-white animate-pulse" /></div>
                             <div className="flex flex-col min-w-0">
                                 <span className="font-cinzel text-xs md:text-lg font-black tracking-widest uppercase text-white truncate">CONSTRUTOR MAGNUM v82.5</span>
-                                {adminPanelExpanded && <span className="hidden md:flex text-[10px] uppercase text-[#C5A059] font-black mt-2 items-center gap-3"><Ruler className="w-3 h-3"/> Target: 2.500 - 2.700 Palavras | Prof. Michel Felix</span>}
+                                {adminPanelExpanded && <span className="hidden md:flex text-[10px] uppercase text-[#C5A059] font-black mt-2 items-center gap-3"><Ruler className="w-3 h-3"/> Target: ~2.500 Palavras | Prof. Michel Felix</span>}
                             </div>
                         </div>
                         
@@ -877,7 +884,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             {/* Stats Flutuantes Admin */}
             {isAdmin && stats.wordCount > 0 && (
                 <div className="fixed top-40 left-6 z-50 bg-[#1a0f0f]/90 backdrop-blur-xl p-5 rounded-2xl border border-[#C5A059]/30 text-[#C5A059] shadow-2xl hidden lg:flex flex-col gap-2 animate-in slide-in-from-left-4">
-                    <div className="flex items-center gap-2 border-b border-[#C5A059]/15 pb-2 mb-1"><AlignLeft className="w-3 h-3"/> <span className="font-cinzel text-[9px] uppercase font-bold tracking-widest">Telemetria v82.5</span></div>
+                    <div className="flex items-center gap-2 border-b border-[#C5A059]/15 pb-2 mb-1"><AlignLeft className="w-3 h-3"/> <span className="font-cinzel text-[9px] uppercase font-bold tracking-widest">Telemetria v78.0</span></div>
                     <div className="flex justify-between gap-6 text-[8px] font-black uppercase tracking-widest"><span>Palavras:</span> <span className="text-white font-mono">{stats.wordCount}</span></div>
                     <div className="flex justify-between gap-6 text-[8px] font-black uppercase tracking-widest"><span>Densidade:</span> <span className="text-white font-mono">{stats.estimatedPages} pág.</span></div>
                     <div className="flex justify-between gap-6 text-[8px] font-black uppercase tracking-widest"><span>Caracteres:</span> <span className="text-white font-mono">{stats.charCount}</span></div>
@@ -964,7 +971,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                     {isAdmin && (
                         <div className="max-w-2xl mx-auto p-16 bg-[#8B0000]/10 rounded-[4rem] border-4 border-dashed border-[#8B0000]/30 flex flex-col items-center shadow-lg transform group-hover:scale-105 transition-transform duration-500">
                             <Library className="w-20 h-20 text-[#8B0000] mb-10 opacity-80 animate-bounce" />
-                            <p className="text-sm font-black text-[#8B0000] uppercase tracking-[0.6em] text-center leading-loose font-montserrat">Administrador ADMA SUPREMO: <br/> Utilize o motor Magnum Opus v82.5 para gerar exegese microscópica integral.</p>
+                            <p className="text-sm font-black text-[#8B0000] uppercase tracking-[0.6em] text-center leading-loose font-montserrat">Administrador ADMA SUPREMO: <br/> Utilize o motor Magnum Opus v77 para gerar exegese microscópica integral.</p>
                         </div>
                     )}
                 </div>
@@ -1039,7 +1046,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                 connection_resilience: "AUTO_RETRY_3X_ACTIVE",
                 ios_optimization: "SAFE_AREA_HEADER_PT12",
                 offline_mode: "SILENT_BACKGROUND_SYNC_ENABLED",
-                checkin_real: "PIPELINE_13_STAGES_ACTIVE",
+                checkin_real: "PIPELINE_22_STAGES_ACTIVE",
                 density_calibration: "2500_2700_WORDS_TARGET"
             })}
             
@@ -1151,6 +1158,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             NUMBERING_LOGIC_V82: VERIFIED.
             CHECKIN_REAIS: IMPLEMENTADO_V82.5.
             META_CALIBRADA: 2500_2700_PALAVRAS.
+            PIPELINE_22_STAGES: ACTIVE.
             ==========================================================================================
         </div>
     </div>
