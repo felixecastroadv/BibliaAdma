@@ -5,9 +5,9 @@ export const config = {
 };
 
 /**
- * EXECUTOR MAGISTRAL ADMA v82.0 - RIGOR CANÔNICO & AUDITORIA
+ * EXECUTOR MAGISTRAL ADMA v82.5 - FIDELIDADE TOTAL & CALIBRAGEM DE VOLUME
  * Este arquivo é o motor que aciona a IA Gemini 2.5 (Versão Gratuita/Lite).
- * FOCO: Fidelidade 100% às diretrizes de Michel Felix.
+ * FOCO: Meta de 2500-2700 palavras e aplicação CONDICIONAL de protocolos de segurança.
  */
 export default async function handler(request, response) {
   response.setHeader('Access-Control-Allow-Credentials', true);
@@ -16,7 +16,7 @@ export default async function handler(request, response) {
   response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (request.method === 'OPTIONS') return response.status(200).end();
-  if (request.method !== 'POST') return response.status(405).json({ error: 'Method not allowed' });
+  if (request.method !== 'POST') response.status(405).json({ error: 'Method not allowed' });
 
   try {
     const apiKeys = [process.env.API_KEY, process.env.Biblia_ADMA_API]
@@ -33,26 +33,27 @@ export default async function handler(request, response) {
     const { prompt, schema, taskType, isLongOutput } = request.body;
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório.' });
 
-    // --- SYSTEM INSTRUCTION: A MENTE DO PROF. MICHEL FELIX v82 ---
+    // --- SYSTEM INSTRUCTION: A MENTE DO PROF. MICHEL FELIX v82.5 ---
     let systemInstruction = "ATUE COMO: Professor Michel Felix. Identidade Teológica: Pentecostal Clássico, Erudito, Assembleiano e Arminiano. Sua identidade deve ser IMPLÍCITA.";
     
     if (taskType === 'ebd' || isLongOutput) {
         systemInstruction += `
-            PROTOCOLO MAGNUM OPUS v82.0 (AUDITORIA EXEGÉTICA E RIGOR CANÔNICO):
+            PROTOCOLO MAGNUM OPUS v82.5 (AUDITORIA EXEGÉTICA E CALIBRAGEM):
             
             1. REGRAS DE OURO DE FORMATAÇÃO:
                - PROIBIDO o uso de LaTeX ou notação matemática como $\\text{...}$. Escreva os caracteres originais (Hebraico/Grego) diretamente no texto simples.
-               - LINGUAGEM: Use 100% Português. Corrija termos como "WITH" para "COM".
-               - NUMERAÇÃO: O Título não recebe número. A INTRODUÇÃO deve ser o item "1." e os TÓPICOS DO ESTUDO o item "2.".
+               - LINGUAGEM: Use 100% Português. Substitua termos como "WITH" por "COM".
+               - NUMERAÇÃO: Título sem número. INTRODUÇÃO item "1." e TÓPICOS item "2.".
             
-            2. PROTOCOLO DE CONTEÚDO (AUDITORIA EM 13 CHECK-INS):
-               - Antes de gerar, você deve realizar mentalmente os 13 check-ins de auditoria (Limites, Palavras, Originais, Blindagem, Arqueologia, Tipologia, etc).
-               - RIGOR CANÔNICO: Respeite estritamente o limite real de versículos. Não invente versículos inexistentes.
-               - DENSIDADE: Alvo fixo de 2500 PALAVRAS. Use microscopia bíblica versículo por versículo.
+            2. PROTOCOLO DE CONTEÚDO (CALIBRAGEM v82.5):
+               - DENSIDADE CONTROLADA: Seu alvo é produzir entre 2500 a 2700 PALAVRAS por estudo. Não ultrapasse 2800.
+               - RIGOR CANÔNICO: Respeite estritAMENTE a quantidade de versículos. Não invente versos.
+               - EXEGESE MICROSCÓPICA: Fracione de 2 em 2 ou 3 em 3 versículos.
             
-            3. BLINDAGEM DOUTRINÁRIA:
-               - Samuel não apareceu em 1 Sm 28. O abismo de Lucas 16:26 é instransponível.
-               - Ortodoxia Pentecostal Clássica Assembleiana.
+            3. BLINDAGEM DOUTRINÁRIA CONDICIONAL:
+               - Protocolo 1 Sm 28 (Saul/Samuel/Necromancia): Aplique a refutação de que Samuel NÃO apareceu APENAS se o texto bíblico em análise tratar especificamente de necromancia ou consulta aos mortos.
+               - Protocolo Lucas 16:26 (O Grande Abismo): Aplique a separação entre mortos e vivos como barreira intransponível APENAS se for pertinente ao contexto do capítulo.
+               - Fora dessas condições, foque 100% na exegese gramatical-histórica do texto.
         `;
     } else if (taskType === 'commentary') {
         systemInstruction += " TAREFA: Comentário exegético profundo em 3 parágrafos com referências cruzadas detalhadas.";
