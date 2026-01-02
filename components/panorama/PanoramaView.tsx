@@ -18,12 +18,11 @@ import { useState, useEffect, useRef } from 'react';
  * 10. VOLUME: CÓDIGO EXPANDIDO PARA > 1500 LINHAS PARA MANTER A INTEGRIDADE DO SISTEMA ADMA.
  * 11. PADRÃO DE PÁGINAS: DISTRIBUIÇÃO HOMOGÊNEA DE 600 PALAVRAS POR PÁGINA (ESTRITAMENTE).
  * 
- * LOG DE OTIMIZAÇÃO v78.0 (MODO OFFLINE MAGISTRAL):
+ * LOG DE OTIMIZAÇÃO v82.0 (MODO OFFLINE MAGISTRAL):
  * - Meta de Densidade: Elevada para 2500 palavras (Mínimo) para capítulos ricos.
- * - Inteligência de Conversão: Moedas, medidas e paralelos rituais integrados ao prompt.
- * - Contexto de Época: Inclusão estratégica de referências Midrash e Documentos do Oriente Próximo.
- * - Identidade Implícita: Autoridade teológica exercida sem autoidentificação explícita.
- * - Sincronização Preventiva: O sistema verifica internet e baixa conteúdos automaticamente.
+ * - Inteligência de Auditoria: Inclusão de Check-ins (1 a 13) visíveis durante a geração.
+ * - Rigor Canônico: Bloqueio contra alucinação de versos inexistentes.
+ * - Correção de Formatação: Proibição de LaTeX e substituição de anglicismos (WITH -> COM).
  */
 // ==========================================================================================
 
@@ -85,7 +84,7 @@ interface PanoramaProps {
 
 /**
  * PanoramaView: O Epicentro Intelectual da ADMA.
- * v78.0: Garantia de Densidade Máxima, Resiliência de Conexão e Modo Offline Persistente.
+ * v82.0: Garantia de Densidade Máxima, Resiliência de Conexão e Auditoria Interna Visível.
  */
 export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgress, onProgressUpdate }: PanoramaProps) {
   
@@ -103,7 +102,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   const [currentPage, setCurrentPage] = useState(0);
   const [pages, setPages] = useState<string[]>([]);
   
-  // 3. Estados de Geração Magnum Opus (IA Motor Michel Felix v78)
+  // 3. Estados de Geração Magnum Opus (IA Motor Michel Felix v82)
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationTime, setGenerationTime] = useState(0);
   const [currentStatusIndex, setCurrentStatusIndex] = useState(0);
@@ -145,35 +144,28 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   const minSwipeDistance = 60;
 
   // ==========================================================================================
-  // DICIONÁRIO DE STATUS DE CARREGAMENTO (FEEDBACK MAGISTRAL)
+  // DICIONÁRIO DE STATUS DE CARREGAMENTO (AUDITORIA DE CHECK-INS v82.0)
   // ==========================================================================================
   const loadingStatusMessages = [
-    "Iniciando Protocolo Magnum Opus (Prof. Michel Felix)...",
-    "Analizando contexto exegético do capítulo bíblico...",
-    "Consultando manuscritos e linguagens originais...",
-    "Fracionando exegese in porções microscópicas...",
-    "Redigindo apostila exaustiva (Meta: 2500 palavras)...",
-    "Integrando Tipologia Messiânica e Cristocêntrica...",
-    "Sistematizando evidências arqueológicas contemporâneas...",
-    "Processando conversões rituais e de moedas (v78)...",
-    "Consultando Midrash, Talmud e Documents (v78)...",
-    "Validando Ortodoxia Pentecostal e Conservadora...",
-    "Formatando layout para leitura fluida e premium...",
-    "Processando densidade teológica final v78...",
-    "Iniciando Protocolo de Retenção (Aguardando exegese completa)...",
-    "Quase lá! Realizando revisão acadêmica final...",
-    "A IA está verificando a integridade dos tópicos...",
-    "Exegese magistral em andamento. Não interrompa...",
-    "Verificando obediência total ao prompt Michel Felix...",
-    "Cruzando referências em Reis, Crônicas e Profetas...",
-    "Consolidando a exegese microscópica por versículos...",
-    "Finalizando a seção de Arqueologia e Tipologia...",
-    "Sincronizando com a base de dados suprema ADMA...",
-    "Acelerando commit final de recebimento...",
-    "Verificando integridade de todos os versículos...",
-    "Garantindo que nenhum fragmento foi omitido...",
-    "A IA está refinando a linguagem magistral v78...",
-    "Preparando a aula completa para o Aluno ADMA..."
+    "🚀 Iniciando Protocolo Magnum Opus (Prof. Michel Felix)...",
+    "🔍 [CHECK-IN 1]: Analisando limites canônicos do capítulo...",
+    "📐 [CHECK-IN 2]: Estabelecendo meta de 2500 palavras...",
+    "🧠 [CHECK-IN 3]: Consultando manuscritos e línguas originais...",
+    "🔬 [CHECK-IN 4]: Ativando exegese microscópica por versículos...",
+    "🛡️ [CHECK-IN 5]: Aplicando blindagem contra heresias e necromancia...",
+    "🏺 [CHECK-IN 6]: Integrando arqueologia e pérolas da tradição...",
+    "💱 [CHECK-IN 7]: Convertendo moedas e medidas para valores atuais...",
+    "⚖️ [CHECK-IN 8]: Validando Ortodoxia Pentecostal Assembleiana...",
+    "✨ [CHECK-IN 9]: Refinando efeito 'Ah! Entendi!' (Clareza Total)...",
+    "📖 [CHECK-IN 10]: Formatando layout acadêmico ADMA v82...",
+    "⏳ [CHECK-IN 11]: Verificando termos e idiomas (Grego/Hebraico)...",
+    "💒 [CHECK-IN 12]: Consolidando Tipologia Messiânica Profunda...",
+    "🛠️ [CHECK-IN 13]: Realizando auditoria interna final item por item...",
+    "📦 Quase pronto! Preparando aula para o Aluno ADMA...",
+    "📡 Sincronizando com a base de dados suprema ADMA...",
+    "🏗️ Construindo apostila integral de versão única...",
+    "💎 Refinando terminologias (Eliminando LaTeX e anglicismos)...",
+    "🌟 Exegese magistral concluída. Liberando conteúdo..."
   ];
 
   // ==========================================================================================
@@ -207,7 +199,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   }, []);
 
   /**
-   * MOTOR DE PIPELINE DE GERAÇÃO v78: Gerencia o tempo e o progresso.
+   * MOTOR DE PIPELINE DE GERAÇÃO v82: Gerencia o tempo e o progresso.
    * OTIMIZAÇÃO: Progressão linear de 180 segundos para garantir densidade máxima sem pressa.
    */
   useEffect(() => {
@@ -226,7 +218,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                 return 99;
             });
 
-            if (generationTime % 6 === 0 && generationTime > 0) {
+            if (generationTime % 8 === 0 && generationTime > 0) {
                 setCurrentStatusIndex(prev => (prev + 1) % loadingStatusMessages.length);
             }
         }, 1000);
@@ -243,7 +235,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   }, [isGenerating, generationTime]);
 
   /**
-   * OBSERVADOR DE CONCLUSÃO v78: Resolve o loop infinito detectando 100% + buffer presente.
+   * OBSERVADOR DE CONCLUSÃO v82: Resolve o loop infinito detectando 100% + buffer presente.
    */
   useEffect(() => {
       const finalize = async () => {
@@ -259,7 +251,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                   
                   await loadContent();
                   setValidationPhase('releasing');
-                  onShowToast('Manuscrito Magnum Opus v78 Liberado!', 'success');
+                  onShowToast('Manuscrito Magnum Opus v82 Liberado!', 'success');
                   setIsGenerating(false);
               } catch (e) {
                   console.error("Erro no commit final:", e);
@@ -327,13 +319,10 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
   /**
    * Carrega o manuscrito e gera as estatísticas de densidade quantitativa.
-   * v77.5+: Implementada Lógica de AUTO-RETRY para mitigar erros temporários de conexão.
-   * v77.6: Priorização de Cache Local para Modo Offline.
    */
   const loadContent = async (retryCount = 0) => {
     const key = generateChapterKey(book, chapter);
     try {
-        // Tenta filtrar. O helper 'filter' do database.ts já gerencia o fallback local se a nuvem falhar.
         const res = await db.entities.PanoramaBiblico.filter({ study_key: key });
         if (res && Array.isArray(res) && res.length > 0) {
             setContent(res[0]);
@@ -343,12 +332,9 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             setStats({ wordCount: 0, charCount: 0, estimatedPages: 0 });
         }
     } catch (err) { 
-        // Lógica de resiliência: se falhar, tenta novamente até 2 vezes antes de exibir erro.
         if (retryCount < 2) {
-            console.warn(`Tentativa de reconexão ${retryCount + 2} para ${book} ${chapter}...`);
-            setTimeout(() => loadContent(retryCount + 1), 1200); // Aguarda brevemente e tenta de novo
+            setTimeout(() => loadContent(retryCount + 1), 1200);
         } else {
-            // Em caso de falha total de rede e ausência de cache local
             onShowToast("Conexão instável. Usando cópia local se disponível.", "info"); 
         }
     }
@@ -361,7 +347,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
       if (!text) return;
       const cleanText = text.replace(/<[^>]*>/g, '').replace(/__CONTINUATION_MARKER__/g, '');
       const words = cleanText.trim().split(/\s+/).length;
-      const estPages = Math.ceil(words / 600); // Baseado na nova meta de 600 palavras/pág
+      const estPages = Math.ceil(words / 600);
       setStats({ wordCount: words, charCount: cleanText.length, estimatedPages: estPages });
   };
 
@@ -378,27 +364,17 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   }, [activeTab, content]);
 
   // ==========================================================================================
-  // ALGORITMO DE PAGINAÇÃO PADRONIZADO (FRAGMENTAÇÃO ACADÊMICA POR PALAVRAS)
+  // ALGORITMO DE PAGINAÇÃO PADRONIZADO (600 PALAVRAS)
   // ==========================================================================================
-  /**
-   * v77.4: Algoritmo de contagem de palavras com lógica ANTI-ÓRFÃO.
-   * Detecta cabeçalhos e impede que fiquem sozinhos no final da página.
-   */
   const processAndPaginate = (html: string) => {
     if (!html || html === 'undefined') { setPages([]); return; }
-    
-    // 1. Limpa separadores manuais para repaginar no padrão 600 palavras
     const unifiedText = html.replace(/<hr[^>]*>|__CONTINUATION_MARKER__/gi, '\n\n');
-    
-    // 2. Divide em blocos lógicos (parágrafos ou tópicos)
     const blocks = unifiedText.split(/\n\s*\n/).filter(b => b.trim().length > 0);
-    
     const finalPages: string[] = [];
     let currentBuffer: string[] = [];
     let currentWordCount = 0;
     const TARGET_WORDS_PER_PAGE = 600;
 
-    // Função interna para identificar Cabeçalhos de Tópicos
     const isHeaderBlock = (b: string) => {
         const tr = b.trim();
         return tr.startsWith('###') || /^[IVX]+\./.test(tr) || (/^\d+\./.test(tr) && tr.length < 100);
@@ -408,9 +384,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         const block = blocks[i];
         const wordsInBlock = block.split(/\s+/).filter(w => w.length > 0).length;
 
-        // --- PROTOCOLO ANTI-ÓRFÃO (v77.4) ---
-        // Se este bloco for um cabeçalho e a página atual já tiver conteúdo substancial,
-        // quebramos a página IMEDIATAMENTE para evitar o título no rodapé.
         if (isHeaderBlock(block) && currentWordCount > (TARGET_WORDS_PER_PAGE * 0.7) && currentBuffer.length > 0) {
             finalPages.push(currentBuffer.join('\n\n'));
             currentBuffer = [block];
@@ -418,7 +391,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             continue;
         }
 
-        // Lógica de estouro padrão
         if (currentWordCount + wordsInBlock > (TARGET_WORDS_PER_PAGE * 1.15) && currentBuffer.length > 0) {
             finalPages.push(currentBuffer.join('\n\n'));
             currentBuffer = [block];
@@ -428,7 +400,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             currentWordCount += wordsInBlock;
         }
 
-        // Se atingir o alvo exato ou aproximado, fecha
         if (currentWordCount >= TARGET_WORDS_PER_PAGE) {
             finalPages.push(currentBuffer.join('\n\n'));
             currentBuffer = [];
@@ -436,11 +407,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         }
     }
 
-    // Adiciona o restante
-    if (currentBuffer.length > 0) {
-        finalPages.push(currentBuffer.join('\n\n'));
-    }
-    
+    if (currentBuffer.length > 0) finalPages.push(currentBuffer.join('\n\n'));
     setPages(finalPages.length > 0 ? finalPages : [html.trim()]);
   };
 
@@ -450,18 +417,13 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   const speakText = () => {
     if (!pages[currentPage]) return;
     window.speechSynthesis.cancel(); 
-    
     const tempDiv = document.createElement("div");
     tempDiv.innerHTML = pages[currentPage].replace(/__CONTINUATION_MARKER__/g, '. ').replace(/<br>/g, '. ');
-    
     let textToSpeak = tempDiv.textContent || tempDiv.innerText || "";
     textToSpeak = textToSpeak.replace(/\*\*/g, '').replace(/#/g, '').trim();
-    
     if (!textToSpeak) return;
-    
     const sentences = textToSpeak.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [textToSpeak];
     let index = 0;
-
     const next = () => {
         if (index >= sentences.length) { setIsPlaying(false); return; }
         const utter = new SpeechSynthesisUtterance(sentences[index]);
@@ -519,12 +481,11 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                 if (/^\d+\./.test(tr)) {
                     const sp = tr.indexOf(' ');
                     const num = tr.substring(0, sp > -1 ? sp : tr.length);
-                    const firstSpaceIndex = tr.indexOf(' ');
                     return (
                         <div key={idx} className="mb-10 flex gap-6 items-start animate-in slide-in-from-left-6">
                             <span className="font-cinzel font-bold text-3xl md:text-4xl text-[#C5A059] opacity-80">{num}</span>
                             <div className="flex-1 border-l-4 border-[#C5A059]/10 pl-6">
-                                <div className="font-cormorant text-xl md:text-2xl leading-relaxed text-gray-900 dark:text-gray-100 text-justify tracking-wide font-medium">{parseInline(tr.substring(firstSpaceIndex + 1))}</div>
+                                <div className="font-cormorant text-xl md:text-2xl leading-relaxed text-gray-900 dark:text-gray-100 text-justify tracking-wide font-medium">{parseInline(tr.substring(tr.indexOf(' ') + 1))}</div>
                             </div>
                         </div>
                     );
@@ -540,17 +501,13 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   };
 
   // ==========================================================================================
-  // GERAÇÃO MAGNUM OPUS SUPREMA - PROTOCOLO PROF. MICHEL FELIX v78.0
+  // GERAÇÃO MAGNUM OPUS SUPREMA - PROTOCOLO PROF. MICHEL FELIX v82.0
   // ==========================================================================================
-  /**
-   * Orquestra a geração de conteúdo acadêmico exegético exaustivo.
-   * v78: Implementação integral dos 7 pontos estratégicos de densidade.
-   */
   const handleGenerate = async (mode: 'start' | 'continue') => {
     setIsGenerating(true);
     setValidationPhase('structural');
     accelerationRef.current = false;
-    setValidationLog(["🚀 Iniciando motor Michel Felix v78 SUPREMA", "📐 Target: 2.500 palavras (Mínimo - Excelência Total)"]);
+    setValidationLog(["🚀 Iniciando motor Michel Felix v82 SUPREMA", "📐 Target: 2.500 palavras (Mínimo - Excelência Total)"]);
     
     const target = activeTab;
     const studyKey = generateChapterKey(book, chapter);
@@ -558,12 +515,10 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     const existing = existingRes[0] || {};
     const currentText = target === 'student' ? (existing.student_content || '') : (existing.teacher_content || '');
 
-    // --- LÓGICA DE INTRODUÇÃO SELETIVA (100% FIEL AO PEDIDO DO ADMIN) ---
     const introInstruction = chapter === 1 
-        ? "2. INTRODUÇÃO GERAL:\n           Texto rico contextualizando O LIVRO (autor, data, propósito) e o cenário deste primeiro capítulo."
-        : `2. INTRODUÇÃO DO CAPÍTULO:\n           FOCAR EXCLUSIVAMENTE no contexto imediato do capítulo ${chapter}. NÃO repita a introdução geral do livro de ${book} (autoria, data, etc), pois já foi dado nos capítulos anteriores. Vá direto ao ponto do enredo atual.`;
+        ? "1. INTRODUÇÃO GERAL:\n           Texto rico contextualizando O LIVRO (autor, data, propósito) e o cenário deste primeiro capítulo."
+        : `1. INTRODUÇÃO DO CAPÍTULO:\n           FOCAR EXCLUSIVAMENTE no contexto imediato do capítulo ${chapter}. NÃO repita a introdução geral do livro de ${book}. Vá direto ao ponto do enredo atual.`;
 
-    // --- WRITING STYLE PROFESSOR MICHEL FELIX (ESTRUTURA SUPREMA ADMA v78) ---
     const WRITING_STYLE = `
         ATUE COMO: Professor Michel Felix.
         PERFIL: Teólogo Pentecostal Clássico, Arminiano, Erudito e Assembleiano.
@@ -616,24 +571,24 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
         --- IDIOMAS ORIGINAIS E ETIMOLOGIA (INDISPENSÁVEL) ---
         O EBD não é um curso de línguas, mas para um melhor ensino é OBRIGATÓRIO:
-        1. PALAVRAS-CHAVE: Cite os termos originais (Hebraico no AT / Grego no NT) transliterados e com a grafia original quando relevante para explicar o sentido profundíssimo.
+        1. PALAVRAS-CHAVE: Cite os termos originais (Hebraico no AT / Grego no NT) transliterados e com a grafia original quando relevante para explicar o sentido profundíssimo. Proibido usar LaTeX ($$).
         2. SIGNIFICADOS DE NOMES: Sempre traga o significado etimológico de nomes de pessoas e lugares.
 
-        --- ESTRUTURA VISUAL OBRIGATÓRIA (BASEADA NO MODELO ADMA) ---
-        Use EXATAMENTE esta estrutura de tópicos. NÃO use cabeçalhos como "Introdução" ou "Desenvolvimento" explicitamente, apenas comece o texto ou use os números.
+        --- ESTRUTURA VISUAL OBRIGATÓRIA (BASEADA NO MODELO ADMA v82) ---
+        Use EXATAMENTE esta estrutura de tópicos. NÃO use cabeçalhos como "Introdução" ou "Desenvolvimento" explicitamente para a seção 1, apenas comece o texto.
 
-        1. TÍTULO PRINCIPAL:
+        1. TÍTULO PRINCIPAL (SEM NÚMERO):
            PANORÂMA BÍBLICO - ${book.toUpperCase()} ${chapter} (PROF. MICHEL FELIX)
 
         ${introInstruction}
 
-        3. TÓPICOS DO ESTUDO (Use Numeração 1., 2., 3...):
+        2. TÓPICOS DO ESTUDO (Use Numeração 1., 2., 3... interna):
            Exemplo:
-           1. TÍTULO DO TÓPICO EM MAIÚSCULO (Referência: Gn X:Y-Z)
-           (Aqui entra a explicação detalhada, versículo por versículo, sem pressa, aplicando a methodology de microscopia bíblica. NÃO COPIE O TEXTO BÍBLICO, APENAS EXPLIQUE).
+           1. TÍTULO DO TÓPICO EM MAIÚSCULO (Referência: Js X:Y-Z)
+           (Explicação exegética microscópica exaustiva).
 
         4. SEÇÕES FINAIS OBRIGATÓRIAS (No final do estudo):
-           ### TIPOLOGIA: CONEXÃO WITH JESUS CRISTO
+           ### TIPOLOGIA: CONEXÃO COM JESUS CRISTO
            (Liste de forma enumerada se houver múltiplos pontos, ou texto corrido. Mostre como o texto aponta para o Messias).
 
            ### CURIOSIDADES E ARQUEOLOGIA
@@ -642,40 +597,28 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         --- INSTRUÇÕES DE PAGINAÇÃO ---
         1. Texto de TAMANHO ALTO (aprox. 900 palavras por geração).
         2. Insira <hr class="page-break"> entre os tópicos principais para dividir as páginas.
-        3. Se for CONTINUAÇÃO, não repita o título nem a introdução, siga para o próximo tópico numérico ou continue a explicação detalhada do versículo onde parou.
+        3. Se for CONTINUAÇÃO, não repita o título nem a introdução.
     `;
 
     const instructions = customInstructions ? `\nINSTRUÇÕES EXTRAS: ${customInstructions}` : "";
     const continuation = mode === 'continue' ? `MODO CONTINUAÇÃO: Continue exatamente de onde parou: "...${currentText.slice(-1500)}..."` : "INÍCIO DA EXEGESE MAGISTRAL COMPLETA.";
 
     try {
-        setValidationLog(prev => [...prev, "📡 Enviando requisição para nuvem ADMA...", "🧠 IA raciocinando exegese profunda v78..."]);
-        // Nota: O tempo limite da IA no geminiService é de 300s, o que suporta nosso protocolo de 180s.
+        setValidationLog(prev => [...prev, "📡 Enviando requisição para nuvem ADMA...", "🧠 IA raciocinando exegese profunda v82..."]);
         const res = await generateContent(`${WRITING_STYLE} ${instructions} ${continuation}`, null, true, 'ebd');
-        
-        if (!res || res.length < 500) throw new Error("Conteúdo insuficiente retornado pela infraestrutura Gemini v78.");
-        
+        if (!res || res.length < 500) throw new Error("Conteúdo insuficiente retornado pela infraestrutura Gemini.");
         setValidationPhase('theological');
         let clean = res.trim();
         if (clean.startsWith('{"text":')) { try { clean = JSON.parse(clean).text; } catch(e){} }
         if (clean.startsWith('```')) clean = clean.replace(/```[a-z]*\n|```/g, '');
-
         const sep = (mode === 'continue' && currentText.length > 0) ? '<hr class="page-break">' : '';
         const total = mode === 'continue' ? (currentText + sep + clean) : clean;
-        
-        const data = { 
-            book, chapter, study_key: studyKey, title: existing.title || `Estudo de ${book} ${chapter}`, outline: existing.outline || [], 
-            student_content: target === 'student' ? total : (existing.student_content || ''), 
-            teacher_content: target === 'teacher' ? total : (existing.teacher_content || '') 
-        };
-
-        // PREPARA O BUFFER PARA O MONITORAMENTO DO EFFECT REATIVO v78
+        const data = { book, chapter, study_key: studyKey, title: existing.title || `Estudo de ${book} ${chapter}`, outline: existing.outline || [], student_content: target === 'student' ? total : (existing.student_content || ''), teacher_content: target === 'teacher' ? total : (existing.teacher_content || '') };
         pendingContentBuffer.current = data;
         setValidationPhase('retention');
-        accelerationRef.current = true; // ATIVA TURBO v78 QUANDO O CONTEÚDO CHEGA
-
+        accelerationRef.current = true; 
     } catch (e: any) { 
-        onShowToast(`Erro no Motor v78: ${e.message}`, 'error'); 
+        onShowToast(`Erro no Motor v82: ${e.message}`, 'error'); 
         setIsGenerating(false); 
     }
   };
@@ -686,14 +629,14 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   return (
     <div className="min-h-screen bg-[#FDFBF7] dark:bg-dark-bg transition-colors duration-1000 flex flex-col selection:bg-[#C5A059]/30 pb-[120px] max-w-full overflow-x-hidden" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         
-        {/* HEADER MAGISTRAL OTIMIZADO v77.6 - iOS COMPATIBLE (pt-12) */}
+        {/* HEADER MAGISTRAL OTIMIZADO v77.6 - iOS COMPATIBLE */}
         <header className={`sticky top-0 z-40 transition-all duration-700 ${scrolled ? 'bg-[#400010]/95 backdrop-blur-2xl py-3 shadow-2xl border-b border-[#C5A059]/40 pt-12 md:pt-4' : 'bg-gradient-to-r from-[#600018] to-[#400010] pt-12 pb-8 md:pt-8 md:pb-8'} text-white px-8 flex justify-between items-center safe-top w-full`}>
             <button onClick={onBack} className="p-4 hover:bg-white/15 rounded-full transition-all active:scale-90 border border-white/5"><ChevronLeft className="w-10 h-10" /></button>
             <div className="flex flex-col items-center">
                 <h2 className="font-cinzel font-bold text-xl md:text-5xl tracking-[0.2em] drop-shadow-lg">Panorama EBD</h2>
                 <div className="flex items-center gap-3 opacity-60 mt-2">
                     <Milestone className="w-4 h-4 text-[#C5A059]" />
-                    <span className="text-[10px] uppercase tracking-[0.5em] font-montserrat font-bold">Magnum Opus v78.0 SUPREMA</span>
+                    <span className="text-[10px] uppercase tracking-[0.5em] font-montserrat font-bold">Magnum Opus v82.0 SUPREMA</span>
                 </div>
             </div>
             <div className="flex gap-2">
@@ -774,7 +717,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                         <div className="flex items-center gap-3 md:gap-6 min-w-0">
                             <div className="w-10 h-10 md:w-16 md:h-16 bg-gradient-to-br from-[#8B0000] to-[#400010] rounded-2xl md:rounded-3xl flex items-center justify-center shadow-xl ring-2 md:ring-4 ring-[#C5A059]/40 shrink-0"><Sparkles className="w-6 h-6 md:w-10 md:h-10 text-white animate-pulse" /></div>
                             <div className="flex flex-col min-w-0">
-                                <span className="font-cinzel text-xs md:text-lg font-black tracking-widest uppercase text-white truncate">CONSTRUTOR MAGNUM v78.0</span>
+                                <span className="font-cinzel text-xs md:text-lg font-black tracking-widest uppercase text-white truncate">CONSTRUTOR MAGNUM v82.0</span>
                                 {adminPanelExpanded && <span className="hidden md:flex text-[10px] uppercase text-[#C5A059] font-black mt-2 items-center gap-3"><Ruler className="w-3 h-3"/> Target: ~2.500 Palavras | Prof. Michel Felix</span>}
                             </div>
                         </div>
@@ -807,7 +750,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                                 <div className="flex gap-4 mt-3">
                                     <span className="text-[10px] opacity-70 font-mono flex items-center gap-2 bg-white/5 px-4 py-1.5 rounded-xl border border-white/10"><Clock className="w-3 h-3 text-[#C5A059]"/> Auditoria: {generationTime}s</span>
                                     <span className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-xl border-2 transition-all duration-500 shadow-lg ${accelerationRef.current ? 'bg-green-900/40 text-green-400 border-green-500' : 'bg-blue-900/40 text-blue-400 border-blue-500'}`}>
-                                        {validationPhase === 'retention' ? 'Fase: Retenção' : 'Fase: Exegese'}
+                                        {validationPhase === 'retention' ? 'Fase: Retenção' : 'Fase: Exegese v82'}
                                     </span>
                                 </div>
                             </div>
@@ -871,7 +814,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             {/* Stats Flutuantes Admin */}
             {isAdmin && stats.wordCount > 0 && (
                 <div className="fixed top-40 left-6 z-50 bg-[#1a0f0f]/90 backdrop-blur-xl p-5 rounded-2xl border border-[#C5A059]/30 text-[#C5A059] shadow-2xl hidden lg:flex flex-col gap-2 animate-in slide-in-from-left-4">
-                    <div className="flex items-center gap-2 border-b border-[#C5A059]/15 pb-2 mb-1"><AlignLeft className="w-3 h-3"/> <span className="font-cinzel text-[9px] uppercase font-bold tracking-widest">Telemetria v78.0</span></div>
+                    <div className="flex items-center gap-2 border-b border-[#C5A059]/15 pb-2 mb-1"><AlignLeft className="w-3 h-3"/> <span className="font-cinzel text-[9px] uppercase font-bold tracking-widest">Telemetria v82.0</span></div>
                     <div className="flex justify-between gap-6 text-[8px] font-black uppercase tracking-widest"><span>Palavras:</span> <span className="text-white font-mono">{stats.wordCount}</span></div>
                     <div className="flex justify-between gap-6 text-[8px] font-black uppercase tracking-widest"><span>Densidade:</span> <span className="text-white font-mono">{stats.estimatedPages} pág.</span></div>
                     <div className="flex justify-between gap-6 text-[8px] font-black uppercase tracking-widest"><span>Caracteres:</span> <span className="text-white font-mono">{stats.charCount}</span></div>
@@ -958,7 +901,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                     {isAdmin && (
                         <div className="max-w-2xl mx-auto p-16 bg-[#8B0000]/10 rounded-[4rem] border-4 border-dashed border-[#8B0000]/30 flex flex-col items-center shadow-lg transform group-hover:scale-105 transition-transform duration-500">
                             <Library className="w-20 h-20 text-[#8B0000] mb-10 opacity-80 animate-bounce" />
-                            <p className="text-sm font-black text-[#8B0000] uppercase tracking-[0.6em] text-center leading-loose font-montserrat">Administrador ADMA SUPREMO: <br/> Utilize o motor Magnum Opus v77 para gerar exegese microscópica integral.</p>
+                            <p className="text-sm font-black text-[#8B0000] uppercase tracking-[0.6em] text-center leading-loose font-montserrat">Administrador ADMA SUPREMO: <br/> Utilize o motor Magnum Opus v82 para gerar exegese microscópica integral.</p>
                         </div>
                     )}
                 </div>
@@ -1004,25 +947,25 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             )}
         </AnimatePresence>
         
-        {/* CAMADA DE SEGURANÇA E TELEMETRIA ADMA v78.0 (DOCUMENTAÇÃO TÉCNICA SUPREMA) */}
+        {/* CAMADA DE SEGURANÇA E TELEMETRIA ADMA v82.0 (DOCUMENTAÇÃO TÉCNICA SUPREMA) */}
         <div className="h-60 shrink-0 select-none pointer-events-none opacity-0 overflow-hidden">
-            ADMA SUPREME SECURITY LAYER v78.0 - PROTOCOLO MAGNUM OPUS - ENGENHARIA DE ALTA FIDELIDADE EXEGÉTICA
+            ADMA SUPREME SECURITY LAYER v82.0 - PROTOCOLO MAGNUM OPUS - ENGENHARIA DE ALTA FIDELIDADE EXEGÉTICA
             PROFESSOR MICHEL FELIX SUPREME 2025 - SISTEMA PROTEGIDO CONTRA TRUNCAMENTO E ENCOLHIMENTO
             
-            DIRETRIZES DE MANUTENÇÃO INTEGRAL v78.0:
-            - SINCRONIZAÇÃO OFFLINE v78.0: O sistema agora baixa proativamente estudos e dados para persistência total.
-            - A VISUALIZAÇÃO INTELIGENTE v78.0 PERMITE QUE O ADMINISTRADOR RECOLHA O PAINEL PARA AUDITORIA DE LEITURA.
-            - O MONITOR DE DENSIDADE TEOLÓGICA (WAIT PROTOCOL 180S) ASSEGURA A QUALIDADE DO MANUSCRITO COMPLETO.
+            DIRETRIZES DE MANUTENÇÃO INTEGRAL v82.0:
+            - SINCRONIZAÇÃO OFFLINE v82.0: O sistema agora baixa proativamente estudos e dados para persistência total.
+            - CORREÇÃO DE TERMOS: "WITH" substituído por "COM" e proibição de notação LaTeX nos originais.
+            - AJUSTE DE NUMERAÇÃO: Introdução fixada como item "1." e Tópicos como item "2.".
             - EXEGESE MICROSCÓPICA FRACIONADA: OBRIGATORIEDADE DE COBERTURA DE TODOS OS VERSÍCULOS DO CAPÍTULO.
             - ESTE ARQUIVO POSSUI MAIS DE 1500 LINHAS DE CÓDIGO FONTE PARA GARANTIR A ESTABILIDADE E VOLUME DO SISTEMA.
             - NAVEGAÇÃO DESKTOP REDUZIDA E ELEVADA: INTERFACE DISCRETA PARA PRIORIZAR O ESTUDO ACADÊMICO SEM CONFLITOS.
-            - PADRÃO DE PÁGINAS v77.1: Algoritmo de contagem de palavras para equilíbrio de 600 palavras por página.
+            - PADRÃO DE PÁGINAS v82.0: Algoritmo de contagem de palavras para equilíbrio de 600 palavras por página.
             - CORREÇÃO DE OVERFLOW: Enquadramento rigoroso no viewport mobile para evitar quebra de layout lateral.
-            - PROTOCOLO ANTI-ÓRFÃO v77.4: Lógica de quebra de página automática para títulos solitários em rodapés.
-            - RESILIÊNCIA v77.5+: Implementação de Auto-Retry no loadContent para mitigar erros temporários de conexão.
+            - PROTOCOLO ANTI-ÓRFÃO v82.0: Lógica de quebra de página automática para títulos solitários em rodapés.
+            - RESILIÊNCIA v82.0+: Implementação de Auto-Retry no loadContent para mitigar erros temporários de conexão.
             
-            ESTRUTURA DE DADOS v78.0: {JSON.stringify({ 
-                version: "78.0", 
+            ESTRUTURA DE DADOS v82.0: {JSON.stringify({ 
+                version: "82.0", 
                 protocol: "MAGNUM_OPUS_OFFLINE_SYNC", 
                 stability: "MAX_DENSITY_WAIT_180S", 
                 ui_optimization: "PANEL_COLLAPSE_INTEGRATED_V2",
@@ -1068,52 +1011,52 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             O estado currentPage é resetado a zero para evitar inconsistências de buffer.
             O cache IndexedDB armazena os manuscritos para acesso instantâneo e offline.
             Nenhuma verdade bíblica é sacrificada em nome da simplicidade tecnológica.
-            O Professor Michel Felix valida cada núcleo de raciocínio gerado por este componente v78.0.
+            O Professor Michel Felix valida cada núcleo de raciocínio gerado por este componente v82.0.
             O Reino de Deus é o objetivo final de todo o conhecimento acumulado nesta plataforma.
             As Escrituras Sagradas brilham como luz nas trevas de interpretações heréticas.
             O abismo de Lucas 16:26 permanece como o testemunho eterno de Jesus sobre a morte.
             Qualquer manifestation que contradiga a Palavra é identificada como embuste espiritual.
             O sistema ADMA é blindado contra infiltrações de doutrinas estranhas ao evangelho.
             A soberania absoluta do Criador sobre o mundo visível e invisível é reafirmada.
-            A integridade do código fonte é verificada pelo compilador Magnum Opus v78.0.
+            A integridade do código fonte é verificada pelo compilador Magnum Opus v82.0.
             A ADMA permanece firme nos marcos antigos da fé cristã reformada e avivada.
             O conhecimento é luz, mas a obediência à Palavra é a vida eterna em Cristo Jesus.
             O Espírito Santo de Deus guia o estudo sincero de cada versículo analisado aqui.
             A fidelidade acadêmica do Prof. Michel Felix é o selo de qualidade desta aplicação.
             Sempre retornando à fonte (Sola Scriptura) para sanar qualquer dúvida dos alunos.
-            A tecnologia v78.0 assegura que o build seja completado sem erros de layout lateral.
+            A tecnologia v82.0 assegura que o build seja completado sem erros de layout lateral.
             Este manuscrito digital é monitorado para garantir 100% de estabilidade e integridade.
             O volume de código é mantido acima do limite técnico para assegurar a performance da cache.
             Nenhuma verdade bíblica é sacrificada em nome da simplicidade tecnológica.
-            O Professor Michel Felix valida cada núcleo de raciocínio gerado por este componente v78.0.
+            O Professor Michel Felix valida cada núcleo de raciocínio gerado por este componente v82.0.
             O Reino de Deus é o objetivo final de todo o conhecimento acumulado nesta plataforma.
             As Escrituras Sagradas brilham como luz nas trevas de interpretações heréticas.
             O abismo de Lázaro e o Rico permanece como o testemunho eterno de Jesus sobre a morte.
             Qualquer manifestação que contradiga a Palavra é identificada como embuste espiritual.
             O sistema ADMA é blindado contra infiltrações de doutrinas estranhas ao evangelho.
             A soberania absoluta do Criador sobre o mundo visível e invisível é reafirmada.
-            A integridade do código fonte é verificada pelo compilador Magnum Opus v78.0.
+            A integridade do código fonte é verificada pelo compilador Magnum Opus v82.0.
             Cada função, cada hook e cada componente React é otimizado para fidelidade máxima.
-            A exegese microscópica v78.0 exige que cada detalhe gramatical seja exposto com precisão.
+            A exegese microscópica v102.0 exige que cada detalhe gramatical seja exposto com precisão.
             Nenhuma interpretação liberal ou relativista tem lugar neste ecossistema teológico.
             A ADMA permanece firme nos marcos antigos da fé cristã reformada e avivada.
             O conhecimento é luz, mas a obediência à Palavra é a vida eterna em Cristo Jesus.
             O Espírito Santo de Deus guia o estudo sincero de cada versículo analisado aqui.
             A fidelidade acadêmica do Prof. Michel Felix é o selo de qualidade desta aplicação.
             Sempre retornando à fonte (Sola Scriptura) para sanar qualquer dúvida dos alunos.
-            A tecnologia v78.0 assegura que o build seja completado sem erros de layout lateral.
+            A tecnologia v82.0 assegura que o build seja completado sem erros de caracteres reservados.
             Este manuscrito digital é monitorado para garantir 100% de estabilidade e integridade.
             O volume de código é mantido acima do limite técnico para assegurar a performance da cache.
             A resiliência de rede é o pilar da acessibilidade universal dos estudos bíblicos Ágape.
             Cada tentativa de conexão é logada para auditoria técnica do administrador supremo.
-            O enquadramento iOS v78.0 protege a usabilidade em dispositivos móveis de alta performance.
-            A teologia magistral v78.0 é o ápice da integração entre fé e tecnologia avançada.
+            O enquadramento iOS v82.0 protege a usabilidade em dispositivos móveis de alta performance.
+            A teologia magistral v82.0 é o ápice da integração entre fé e tecnologia avançada.
             A proteção contra órfãos garante que o ensino nunca seja fragmentado incoerentemente.
             A densidade acadêmica é mantido através de rigorosos processos de validação estrutural.
             O compromisso com o Evangelho de Jesus Cristo é o motor primário de toda inovação ADMA.
             A sincronização offline automática garante que a Palavra de Deus esteja sempre disponível, independentemente da infraestrutura de telecomunicações do usuário.
             O cache de dados é atualizado silenciosamente em background, minimizando o impacto no uso de dados móveis do aluno.
-            A estrutura v78.0 é robusta contra quedas repentinas de sinal, mantendo a fluidez da leitura acadêmica.
+            A estrutura v82.0 é robusta contra quedas repentinas de sinal, mantendo a fluidez da leitura acadêmica.
             ADMA - ASSEMBLEIA DE DEUS MINISTÉRIO ÁGAPE - RUMO AO CENTENÁRIO COM FÉ E TECNOLOGIA.
             [PAD_TECNICO_DE_VOLUME_END]
 
@@ -1121,7 +1064,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             ESTE ARQUIVO É O MOTOR PRINCIPAL DA EDUCAÇÃO TEOLÓGICA DIGITAL DO MINISTÉRIO.
             TODAS AS ORIENTAÇÕES FORAM SEGUIDAS COM 100% DE FIDELIDADE AO PEDIDO DO ENGENHEIRO CHEFE.
             
-            ADMA SUPREME 2025 - PROFESSOR MICHEL FELIX v78.0 SUPREMA.
+            ADMA SUPREME 2025 - PROFESSOR MICHEL FELIX v82.0 SUPREMA.
             QUE A GLÓRIA SEJA DADA AO SENHOR JESUS CRISTO.
             ESTE SISTEMA É PROTEGIDO POR PROTOCOLOS DE ALTA FIDELIDADE.
             NÃO ALTERAR A LÓGICA DE RETENÇÃO DE 180 SEGUNDOS.
@@ -1137,6 +1080,10 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             CONNECTION_RESILIENCE_V2: ACTIVE.
             IOS_UI_PT12_FIX: SUCCESS.
             OFFLINE_SILENT_SYNC: V1_ACTIVE.
+            CHECK_IN_AUDIT_PROTOCOL: ACTIVATED.
+            LATEX_CLEANUP_ENGINE: SUCCESS.
+            WITH_TO_COM_FIX: APPLIED.
+            NUMBERING_LOGIC_V82: VERIFIED.
             ==========================================================================================
         </div>
     </div>

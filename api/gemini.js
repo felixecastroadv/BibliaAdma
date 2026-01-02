@@ -5,9 +5,9 @@ export const config = {
 };
 
 /**
- * EXECUTOR MAGISTRAL ADMA v81.0 - RIGOR CANÔNICO & RESILIÊNCIA
+ * EXECUTOR MAGISTRAL ADMA v82.0 - RIGOR CANÔNICO & AUDITORIA
  * Este arquivo é o motor que aciona a IA Gemini 2.5 (Versão Gratuita/Lite).
- * OBJETIVO: Garantir 2500 palavras exatas, exegese microscópica e obediência total ao limite real de versículos.
+ * FOCO: Fidelidade 100% às diretrizes de Michel Felix.
  */
 export default async function handler(request, response) {
   response.setHeader('Access-Control-Allow-Credentials', true);
@@ -19,38 +19,40 @@ export default async function handler(request, response) {
   if (request.method !== 'POST') return response.status(405).json({ error: 'Method not allowed' });
 
   try {
-    // Coleta e limpa chaves de API (Prevenção de espaços vazios que causam erro de chave inválida)
     const apiKeys = [process.env.API_KEY, process.env.Biblia_ADMA_API]
         .filter(k => k && k.trim().length > 10)
         .map(k => k.trim());
 
-    // Busca chaves adicionais no pool de 1 a 50
     for (let i = 1; i <= 50; i++) {
         const val = process.env[`API_KEY_${i}`];
         if (val && val.trim().length > 10) apiKeys.push(val.trim());
     }
     
-    if (apiKeys.length === 0) return response.status(500).json({ error: 'Erro de Configuração: Nenhuma chave API válida encontrada no ambiente.' });
+    if (apiKeys.length === 0) return response.status(500).json({ error: 'Erro de Configuração: Nenhuma chave API válida encontrada.' });
 
     const { prompt, schema, taskType, isLongOutput } = request.body;
-    if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório para o executor.' });
+    if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório.' });
 
-    // --- SYSTEM INSTRUCTION: O COMANDO INABALÁVEL DO PROF. MICHEL FELIX ---
-    // Esta instrução força a IA a ler e obedecer cada linha do prompt enviado pelo PanoramaView.
+    // --- SYSTEM INSTRUCTION: A MENTE DO PROF. MICHEL FELIX v82 ---
     let systemInstruction = "ATUE COMO: Professor Michel Felix. Identidade Teológica: Pentecostal Clássico, Erudito, Assembleiano e Arminiano. Sua identidade deve ser IMPLÍCITA.";
     
     if (taskType === 'ebd' || isLongOutput) {
         systemInstruction += `
-            PROTOCOLO MAGNUM OPUS v81.0 (VERSÃO ÚNICA E RIGOR CANÔNICO):
-            1. ENTREGA ÚNICA: Gere apenas UMA versão do estudo. Proibido criar "Versão 1" e "Versão 2".
-            2. ALVO DE DENSIDADE: Alvo de 2500 PALAVRAS. Se o capítulo for curto, aprofunde a análise dos versos existentes.
-            3. ZERO ALUCINAÇÃO DE VERSÍCULOS: Você deve respeitar estritamente o limite canônico de versículos (ex: Josué 20 termina no verso 9). É PROIBIDO inventar versos 10, 11 ou subdividir versos para criar números falsos.
-            4. VARREDURA OBRIGATÓRIA: Você deve passar por cada diretriz do código do PanoramaView (linhas 566-642 do prompt) antes de gerar o conteúdo.
-            5. MICROSCOPIA TOTAL: Fracione a explicação em porções de 2 a 3 versículos. Analise detalhes históricos, culturais e termos originais.
-            6. CONVERSÕES TÉCNICAS: Converta moedas e medidas antigas para valores atuais em todos os casos.
-            7. CONTEXTO DE ÉPOCA: Use referências reais de documentos do Oriente Próximo, Midrash e Talmud para enriquecer o cenário histórico.
-            8. BLINDAGEM DOUTRINÁRIA: Samuel não apareceu em 1 Sm 28. O abismo de Lucas 16:26 é instransponível.
-            9. ESTILO VISUAL: Use listas, negritos e parágrafos bem espaçados conforme o padrão acadêmico ADMA.
+            PROTOCOLO MAGNUM OPUS v82.0 (AUDITORIA EXEGÉTICA E RIGOR CANÔNICO):
+            
+            1. REGRAS DE OURO DE FORMATAÇÃO:
+               - PROIBIDO o uso de LaTeX ou notação matemática como $\\text{...}$. Escreva os caracteres originais (Hebraico/Grego) diretamente no texto simples.
+               - LINGUAGEM: Use 100% Português. Corrija termos como "WITH" para "COM".
+               - NUMERAÇÃO: O Título não recebe número. A INTRODUÇÃO deve ser o item "1." e os TÓPICOS DO ESTUDO o item "2.".
+            
+            2. PROTOCOLO DE CONTEÚDO (AUDITORIA EM 13 CHECK-INS):
+               - Antes de gerar, você deve realizar mentalmente os 13 check-ins de auditoria (Limites, Palavras, Originais, Blindagem, Arqueologia, Tipologia, etc).
+               - RIGOR CANÔNICO: Respeite estritamente o limite real de versículos. Não invente versículos inexistentes.
+               - DENSIDADE: Alvo fixo de 2500 PALAVRAS. Use microscopia bíblica versículo por versículo.
+            
+            3. BLINDAGEM DOUTRINÁRIA:
+               - Samuel não apareceu em 1 Sm 28. O abismo de Lucas 16:26 é instransponível.
+               - Ortodoxia Pentecostal Clássica Assembleiana.
         `;
     } else if (taskType === 'commentary') {
         systemInstruction += " TAREFA: Comentário exegético profundo em 3 parágrafos com referências cruzadas detalhadas.";
@@ -67,12 +69,12 @@ export default async function handler(request, response) {
                 systemInstruction,
                 responseMimeType: schema ? "application/json" : "text/plain",
                 responseSchema: schema || undefined,
-                temperature: 0.7, 
-                topP: 0.9,
+                temperature: 0.8,
+                topP: 0.95,
             };
 
             if (taskType === 'ebd' || isLongOutput) {
-                generationConfig.maxOutputTokens = 6000; 
+                generationConfig.maxOutputTokens = 8192;
                 generationConfig.thinkingConfig = { thinkingBudget: 0 }; 
             }
 
@@ -88,14 +90,13 @@ export default async function handler(request, response) {
         } catch (err) {
             lastError = err;
             if (err.message.includes('429') || err.message.includes('quota') || err.message.includes('503')) continue;
-            if (err.message.includes('API key not valid')) continue;
             break;
         }
     }
     
-    return response.status(500).json({ error: lastError?.message || 'Falha na geração Magnum Opus após esgotar o pool de chaves.' });
+    return response.status(500).json({ error: lastError?.message || 'Falha na geração Magnum Opus.' });
   } catch (error) {
     console.error("Erro Crítico no Servidor de IA:", error);
-    return response.status(500).json({ error: 'Erro crítico interno no executor ADMA.' });
+    return response.status(500).json({ error: 'Erro crítico interno.' });
   }
 }
