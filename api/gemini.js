@@ -16,7 +16,6 @@ export default async function handler(request, response) {
 
   try {
     const apiKeys = [process.env.API_KEY, process.env.Biblia_ADMA_API].filter(k => k && k.length > 10);
-    // Suporte para pool de chaves em variáveis de ambiente
     for (let i = 1; i <= 50; i++) {
         const val = process.env[`API_KEY_${i}`];
         if (val && val.length > 10) apiKeys.push(val);
@@ -27,7 +26,6 @@ export default async function handler(request, response) {
     const { prompt, schema, taskType } = request.body;
     if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
 
-    // Instrução do Sistema fixa conforme o Protocolo Professor Michel Felix
     let systemInstruction = "Você é o Professor Michel Felix, teólogo Pentecostal Clássico, Erudito e Assembleiano.";
     
     if (taskType === 'ebd') {
@@ -37,17 +35,13 @@ export default async function handler(request, response) {
     }
 
     let lastError;
-    // Tenta as chaves do pool até uma funcionar ou esgotar
+    // Utilizamos o modelo Gemini 3 Flash Preview por ser gratuito e extremamente rápido
+    const modelName = 'gemini-3-flash-preview';
+
     for (const key of apiKeys) {
         try {
             const ai = new GoogleGenAI({ apiKey: key });
             
-            // Para EBD e Comentários complexos, usamos o Pro Preview (Complex Text Tasks)
-            // Para tarefas gerais, o Flash Preview (Basic Text Tasks)
-            const modelName = (taskType === 'ebd' || taskType === 'commentary') 
-                ? 'gemini-3-pro-preview' 
-                : 'gemini-3-flash-preview';
-
             const responseContent = await ai.models.generateContent({
                 model: modelName,
                 contents: [{ parts: [{ text: prompt }] }],
@@ -55,10 +49,8 @@ export default async function handler(request, response) {
                     systemInstruction,
                     responseMimeType: schema ? "application/json" : "text/plain",
                     responseSchema: schema || undefined,
-                    // Configuração de Pensamento para máxima profundidade teológica
-                    thinkingConfig: { 
-                        thinkingBudget: modelName === 'gemini-3-pro-preview' ? 32768 : 24576 
-                    },
+                    // Para o plano gratuito/Flash, desabilitamos o thinkingBudget para ganhar velocidade e evitar erros de limite
+                    thinkingConfig: { thinkingBudget: 0 },
                     temperature: 0.7,
                     topP: 0.95,
                 }
@@ -69,15 +61,13 @@ export default async function handler(request, response) {
             }
         } catch (err) {
             lastError = err;
-            console.error(`Erro com a chave ${key.substring(0, 8)}...:`, err.message);
-            // Se for erro de quota (429), tenta a próxima chave
+            console.error(`Chave instável: ${key.substring(0, 8)}... - Erro:`, err.message);
             if (err.message.includes('429') || err.message.includes('quota')) continue;
-            // Outros erros param o loop
             break;
         }
     }
     
-    return response.status(500).json({ error: lastError?.message || 'Falha na geração após tentar o pool de chaves.' });
+    return response.status(500).json({ error: lastError?.message || 'Falha na geração com IA nativa gratuita.' });
   } catch (error) {
     return response.status(500).json({ error: 'Erro crítico no servidor de IA.' });
   }
