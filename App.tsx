@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import LoginScreen from './components/auth/LoginScreen';
 import DashboardHome from './components/dashboard/DashboardHome';
@@ -13,7 +14,7 @@ import AdminPasswordModal from './components/modals/AdminPasswordModal';
 import Toast from './components/ui/Toast';
 import BottomNav from './components/ui/BottomNav';
 import NetworkStatus from './components/ui/NetworkStatus';
-import { db } from './services/database';
+import { db, syncManager } from './services/database';
 import { AppConfig, DynamicModule } from './types';
 
 export default function App() {
@@ -65,6 +66,14 @@ export default function App() {
         setDarkMode(true);
     }
   }, []);
+
+  // EFEITO DE SINCRONIZAÇÃO OFFLINE (NOVO v77.6)
+  useEffect(() => {
+      if (isAuthenticated) {
+          // Dispara sincronização silenciosa em background após login/entrada
+          syncManager.fullSync();
+      }
+  }, [isAuthenticated]);
 
   useEffect(() => {
       if (darkMode) {

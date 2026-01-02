@@ -1,3 +1,4 @@
+
 // --- INDEXED DB FOR BIBLE TEXT (Offline - Grande Volume) ---
 const DB_NAME = 'adma_bible_db';
 const STORE_NAME = 'bible_verses';
@@ -215,6 +216,42 @@ const createBibleHelpers = () => ({
         return []; // Não lista do IndexedDB diretamente pois é muito pesado, usa count() na UI
     }
 });
+
+// --- SYNC MANAGER (NOVO v77.6) ---
+/**
+ * Gerencia a sincronização silenciosa de conteúdos gerados.
+ * Baixa estudos da EBD, avisos e metadados para garantir funcionamento offline total.
+ */
+export const syncManager = {
+    fullSync: async () => {
+        if (typeof window === 'undefined' || !navigator.onLine) return;
+        
+        console.log("🚀 Iniciando Protocolo de Sincronização Offline ADMA...");
+        
+        const collectionsToSync = [
+            'panorama_biblico',
+            'announcements',
+            'chapter_metadata',
+            'devotionals',
+            'dynamic_modules',
+            'app_config'
+        ];
+
+        for (const col of collectionsToSync) {
+            try {
+                const cloudData = await apiCall('list', col);
+                if (cloudData && Array.isArray(cloudData)) {
+                    localBackup.sync(col, cloudData);
+                    console.log(`✅ Sincronizado: ${col} (${cloudData.length} itens)`);
+                }
+            } catch (e) {
+                console.warn(`⚠️ Falha ao sincronizar coleção ${col}:`, e);
+            }
+        }
+        
+        console.log("🏁 Sincronização Offline Concluída.");
+    }
+};
 
 export const db = {
     entities: {
