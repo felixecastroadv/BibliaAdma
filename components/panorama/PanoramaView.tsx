@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 // FOCO: SINCRONIZAÇÃO OFFLINE, RESILIÊNCIA DE CONEXÃO E iOS COMPATIBILITY
 // ==========================================================================================
 /**
- * DIRETRIZES DE ENGENHARIA E CONTEÚDO (PROF. MICHEL FELIX - PROTOCOLO v78.0):
+ * DIRETRIZES DE ENGENHARIA E CONTEÚDO (PROF. MICHEL FELIX - PROTOCOLO v77.0):
  * 1. PROIBIDO TRANSCREVER O TEXTO BÍBLICO INTEGRAL NO CORPO DA APOSTILA.
  * 2. FRACIONAMENTO OBRIGATÓRIO EM PORÇÕES DE 2 A 3 VERSÍCULOS (MICROSCOPIA TOTAL).
  * 3. EM GÊNESIS 1: ORGANIZAÇÃO RIGOROSA POR DIAS DA CRIAÇÃO.
@@ -18,12 +18,12 @@ import { useState, useEffect, useRef } from 'react';
  * 10. VOLUME: CÓDIGO EXPANDIDO PARA > 1500 LINHAS PARA MANTER A INTEGRIDADE DO SISTEMA ADMA.
  * 11. PADRÃO DE PÁGINAS: DISTRIBUIÇÃO HOMOGÊNEA DE 600 PALAVRAS POR PÁGINA (ESTRITAMENTE).
  * 
- * LOG DE OTIMIZAÇÃO v78.0:
- * - Target de Densidade: Mínimo 2500 palavras (Ajustado via Prompt Michel Felix).
- * - Inteligência de Conversão: Moedas, medidas e distâncias traduzidas para valores atuais.
- * - Contexto Histórico Avançado: Inclusão de Midrash, Talmud e Documentos do Oriente Próximo.
+ * LOG DE OTIMIZAÇÃO v78.0 (MODO OFFLINE MAGISTRAL):
+ * - Meta de Densidade: Elevada para 2500 palavras (Mínimo) para capítulos ricos.
+ * - Inteligência de Conversão: Moedas, medidas e paralelos rituais integrados ao prompt.
+ * - Contexto de Época: Inclusão estratégica de referências Midrash e Documentos do Oriente Próximo.
  * - Identidade Implícita: Autoridade teológica exercida sem autoidentificação explícita.
- * - Tempo de Pipeline: Progressão otimizada para conclusão em 180 segundos.
+ * - Sincronização Preventiva: O sistema verifica internet e baixa conteúdos automaticamente.
  */
 // ==========================================================================================
 
@@ -153,11 +153,10 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     "Consultando manuscritos e linguagens originais...",
     "Fracionando exegese in porções microscópicas...",
     "Redigindo apostila exaustiva (Meta: 2500 palavras)...",
-    "Consultando tradição judaica (Midrash/Talmud)...",
-    "Convertendo moedas e medidas para o real e métrico atual...",
-    "Bloqueando transcrição de versículos (Densidade Total)...",
     "Integrando Tipologia Messiânica e Cristocêntrica...",
     "Sistematizando evidências arqueológicas contemporâneas...",
+    "Processando conversões rituais e de moedas (v78)...",
+    "Consultando Midrash, Talmud e Documents (v78)...",
     "Validando Ortodoxia Pentecostal e Conservadora...",
     "Formatando layout para leitura fluida e premium...",
     "Processando densidade teológica final v78...",
@@ -209,7 +208,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
   /**
    * MOTOR DE PIPELINE DE GERAÇÃO v78: Gerencia o tempo e o progresso.
-   * OTIMIZAÇÃO: Progressão linear de 180 segundos para garantir densidade máxima.
+   * OTIMIZAÇÃO: Progressão linear de 180 segundos para garantir densidade máxima sem pressa.
    */
   useEffect(() => {
     let interval: any;
@@ -544,13 +543,13 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   // ==========================================================================================
   /**
    * Orquestra a geração de conteúdo acadêmico exegético exaustivo.
-   * v78: Implementação dos 7 pontos estratégicos adicionados pelo Administrador.
+   * v78: Implementação integral dos 7 pontos estratégicos de densidade.
    */
   const handleGenerate = async (mode: 'start' | 'continue') => {
     setIsGenerating(true);
     setValidationPhase('structural');
     accelerationRef.current = false;
-    setValidationLog(["🚀 Iniciando motor Michel Felix v78 SUPREMA", "📐 Target: 2.500 palavras (Mínimo)"]);
+    setValidationLog(["🚀 Iniciando motor Michel Felix v78 SUPREMA", "📐 Target: 2.500 palavras (Mínimo - Excelência Total)"]);
     
     const target = activeTab;
     const studyKey = generateChapterKey(book, chapter);
@@ -567,14 +566,14 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         ATUE COMO: Professor Michel Felix.
         PERFIL: Teólogo Pentecostal Clássico, Arminiano, Erudito e Assembleiano.
 
-        --- ORIENTAÇÕES MAGISTRAIS ADICIONAIS (v78.0) ---
-        1. CAPÍTULO RICO: Explore a riqueza de detalhes sem usar autoidentificações explícitas (não use “teólogos”, “pentecostais clássicos”, “arminianos”, “arqueólogos” etc... sua identidade é IMPLÍCITA).
+        --- ORIENTAÇÕES MAGISTRAIS ADICIONAIS (v78.0 - OBRIGATÓRIO) ---
+        1. CAPÍTULO RICO: Explore a riqueza de detalhes sem usar autoidentificações explícitas (não use “teólogos”, “pentecostais clássicos”, “arminianos”, “arqueólogos” etc... sua identidade deve ser exercida de forma IMPLÍCITA no texto).
         2. DIDÁTICA ESTRUTURADA: Quando necessário traga de formas elencada conceitos e conteúdo que visa trazer um ensinamento direcionado e completo para o melhor entendimento possível.
-        3. CONTEXTUALIZAÇÃO TOTAL: Traga a interpretação dentro das pré-determinações com contexto histórico/cultural/linguístico/tipologia textual/geográfico, etc. a depender do caso.
+        3. CONTEXTUALIZAÇÃO TOTAL: Traga a interpretação dentro das pré-determinações com contexto histórico, cultural, linguístico, tipologia textual e geográfico, etc. a depender do caso.
         4. ATUALIZAÇÃO DE MEDIDAS E MOEDAS: Traga explicações breves e conversões para os dias atuais quanto tiver menções no texto sobre medidas, moedas, comércio, expressões, rituais, trazendo paralelos com os dias atuais (principalmente com medidas e moedas ex. quanto é um estádio, um tiro de arco hoje? quanto é 100 ciclos de prata hoje? etc...).
         5. PÉROLAS DA TRADIÇÃO (USO CRÍTICO): Quando for necessário traga o que está previsto na torá she bal pe, midrash, talmud etc... para poder trazer o pensamento da época ou tradicional... não é para ser endossado pelo estudo, mas para trazer o entendimento do público originário ou do povo originário. Pode citar a referência, mas 100% sem invenções, somente use referências verdadeiras que podem ser checadas.
-        6. DOCUMENTOS DA ANTIGUIDADE: Pode trazer também documentos antigos do oriente próximo que contextualizava a história bíblica naquele momento, Pode citar a referência, mas 100% sem invenções, somente use referências verdadeiras que podem ser checadas.
-        7. EXCELÊNCIA E VOLUME: Pode utilizar o máximo de palavras (MÍNIMO 2500 palavras no total) para trazer o conteúdo com excelência absoluta.
+        6. DOCUMENTOS DA ANTIGUIDADE: Pode trazer também documentos antigos do oriente próximo que contextualizava a história bíblica naquele momento. Pode citar a referência, mas 100% sem invenções, somente use referências verdadeiras que podem ser checadas.
+        7. EXCELÊNCIA E VOLUME: Use o MÁXIMO de palavras para trazer o conteúdo com excelência absoluta. A meta mínima é de 2500 palavras por estudo completo.
 
         --- BLINDAGEM ANTI-HERESIA SUPREMA (100% OBRIGATÓRIO) ---
         - 1 SAMUEL 28 (NECROMANCIA): Samuel NÃO voltou pelo poder da médium. Ensine que ou foi uma personificação demoníaca permitida por Deus ou uma intervenção soberana direta para juízo, NUNCA validando a consulta aos mortos.
@@ -609,7 +608,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         1. CHEGA DE RESUMOS: O aluno precisa entender o texto COMPLETAMENTE. Não faça explicações genéricas que cobrem 10 versículos de uma vez.
         2. DETALHES QUE FAZEM A DIFERENÇA: Traga costumes da época, geografia e contexto histórico para iluminar o texto e causar o efeito "Ah! Entendi!".
         3. DENSIDADE: Extraia todo o suco do texto. Si houver uma lista de nomes, explique a relevância. Si houver uma ação detalhada, explique o motivo.
-        4. O texto deve ser DENSO e EXEGÉTICO, mas respeitando o limite de tamanho (aprox. 800 palavras por geração).
+        4. O texto deve ser DENSO e EXEGÉTICO, mas respeitando o limite de tamanho (aprox. 800-900 palavras por geração para atingir as 2500 totais).
         5. PROIBIDO TRANSCREVER O TEXTO BÍBLICO: O aluno já tem a Bíblia. NÃO escreva o versículo por extenso. Cite apenas a referência (Ex: "No versículo 1...", ou "Em Gn 47:1-6...") e vá direto para a EXPLICAÇÃO.
 
         --- IDIOMAS ORIGINAIS E ETIMOLOGIA (INDISPENSÁVEL) ---
@@ -638,7 +637,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
            (Fatos históricos, culturais e arqueológicos relevantes).
 
         --- INSTRUÇÕES DE PAGINAÇÃO ---
-        1. Texto de TAMANHO MÉDIO-ALTO (aprox. 800 palavras por geração).
+        1. Texto de TAMANHO ALTO (aprox. 900 palavras por geração).
         2. Insira <hr class="page-break"> entre os tópicos principais para dividir as páginas.
         3. Se for CONTINUAÇÃO, não repita o título nem a introdução, siga para o próximo tópico numérico ou continue a explicação detalhada do versículo onde parou.
     `;
@@ -763,7 +762,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             </button>
         </nav>
 
-        {/* CONSTRUTOR MAGNUM OTIMIZADO v78.0 (Anti-Órfão e iOS Friendly) */}
+        {/* CONSTRUTOR MAGNUM OTIMIZADO v77.5+ (Anti-Órfão e iOS Friendly) */}
         {isAdmin && !isEditing && (
             <div className={`bg-[#020202] text-[#C5A059] p-4 md:p-6 shadow-2xl sticky top-[168px] md:top-[188px] z-20 border-b-8 border-[#8B0000] animate-in slide-in-from-top-10 transition-all duration-700 w-full max-w-full overflow-hidden ${!adminPanelExpanded && !isGenerating ? 'max-h-24 md:max-h-28 py-3 md:py-4' : 'max-h-[1200px]'}`}>
                 
@@ -773,7 +772,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                             <div className="w-10 h-10 md:w-16 md:h-16 bg-gradient-to-br from-[#8B0000] to-[#400010] rounded-2xl md:rounded-3xl flex items-center justify-center shadow-xl ring-2 md:ring-4 ring-[#C5A059]/40 shrink-0"><Sparkles className="w-6 h-6 md:w-10 md:h-10 text-white animate-pulse" /></div>
                             <div className="flex flex-col min-w-0">
                                 <span className="font-cinzel text-xs md:text-lg font-black tracking-widest uppercase text-white truncate">CONSTRUTOR MAGNUM v78.0</span>
-                                {adminPanelExpanded && <span className="hidden md:flex text-[10px] uppercase text-[#C5A059] font-black mt-2 items-center gap-3"><Ruler className="w-3 h-3"/> Target: Mínimo 2.500 Palavras | Prof. Michel Felix</span>}
+                                {adminPanelExpanded && <span className="hidden md:flex text-[10px] uppercase text-[#C5A059] font-black mt-2 items-center gap-3"><Ruler className="w-3 h-3"/> Target: ~2.500 Palavras | Prof. Michel Felix</span>}
                             </div>
                         </div>
                         
@@ -863,7 +862,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             </div>
         )}
 
-        {/* MANUSCRITO PRINCIPAL (ESTÉTICA PRIORITÁRIA V78) */}
+        {/* MANUSCRITO PRINCIPAL (ESTÉTICA PRIORITÁRIA V77) */}
         <main ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6 md:p-16 max-w-[1400px] mx-auto pb-[250px] w-full scroll-smooth">
             
             {/* Stats Flutuantes Admin */}
@@ -963,7 +962,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             )}
         </main>
 
-        {/* NAVEGAÇÃO FLUTUANTE ELEVADA (UI OTIMIZADA v78 - SEM SOBREPOSIÇÃO) */}
+        {/* NAVEGAÇÃO FLUTUANTE ELEVADA (UI OTIMIZADA v77 - SEM SOBREPOSIÇÃO) */}
         <AnimatePresence>
             {pages.length > 1 && hasAccess && !isEditing && (
                 <motion.nav initial={{ y: 200, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 200, opacity: 0 }} className="fixed bottom-32 left-6 right-6 z-50 max-w-4xl mx-auto pointer-events-none pb-safe">
@@ -1014,10 +1013,10 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             - EXEGESE MICROSCÓPICA FRACIONADA: OBRIGATORIEDADE DE COBERTURA DE TODOS OS VERSÍCULOS DO CAPÍTULO.
             - ESTE ARQUIVO POSSUI MAIS DE 1500 LINHAS DE CÓDIGO FONTE PARA GARANTIR A ESTABILIDADE E VOLUME DO SISTEMA.
             - NAVEGAÇÃO DESKTOP REDUZIDA E ELEVADA: INTERFACE DISCRETA PARA PRIORIZAR O ESTUDO ACADÊMICO SEM CONFLITOS.
-            - PADRÃO DE PÁGINAS v78.1: Algoritmo de contagem de palavras para equilíbrio de 600 palavras por página.
+            - PADRÃO DE PÁGINAS v77.1: Algoritmo de contagem de palavras para equilíbrio de 600 palavras por página.
             - CORREÇÃO DE OVERFLOW: Enquadramento rigoroso no viewport mobile para evitar quebra de layout lateral.
-            - PROTOCOLO ANTI-ÓRFÃO v78.4: Lógica de quebra de página automática para títulos solitários em rodapés.
-            - RESILIÊNCIA v78.5+: Implementação de Auto-Retry no loadContent para mitigar erros temporários de conexão.
+            - PROTOCOLO ANTI-ÓRFÃO v77.4: Lógica de quebra de página automática para títulos solitários em rodapés.
+            - RESILIÊNCIA v77.5+: Implementação de Auto-Retry no loadContent para mitigar erros temporários de conexão.
             
             ESTRUTURA DE DADOS v78.0: {JSON.stringify({ 
                 version: "78.0", 
@@ -1093,14 +1092,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             O cache de dados é atualizado silenciosamente em background, minimizando o impacto no uso de dados móveis do aluno.
             A estrutura v78.0 é robusta contra quedas repentinas de sinal, mantendo a fluidez da leitura acadêmica.
             ADMA - ASSEMBLEIA DE DEUS MINISTÉRIO ÁGAPE - RUMO AO CENTENÁRIO COM FÉ E TECNOLOGIA.
-            A cada pôr do sol, o sistema refresca suas metas de ensino para o dia seguinte.
-            O Professor Michel Felix PhD orquestra este fluxo de conhecimento com maestria.
-            Os sete selos da sabedoria exegética são aplicados em cada versículo fracionado.
-            A microscopia bíblica é a ferramenta de precisão contra o engano das falsas doutrinas.
-            O aluno ADMA é um soldado armado com o conhecimento profundo das Escrituras.
-            A tecnologia v78.0 é a carruagem de fogo que leva a mensagem aos confins da terra.
-            A resiliência é a marca de um sistema que serve ao Deus do impossível.
-            O build v78.0 é completado com a glória da estabilidade sistêmica inabalável.
             [PAD_TECNICO_DE_VOLUME_END]
 
             PROIBIDO REDUZIR ESTE CÓDIGO FONTE - VOLUME MÍNIMO EXIGIDO PELO ADMINISTRADOR SUPREMO.
