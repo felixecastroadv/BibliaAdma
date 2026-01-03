@@ -90,21 +90,15 @@ export const bibleStorage = {
 };
 
 const apiCall = async (action: string, collection: string, payload: any = {}) => {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    
     try {
         const res = await fetch('/api/storage', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action, collection, ...payload }),
-            signal: controller.signal
+            body: JSON.stringify({ action, collection, ...payload })
         });
-        clearTimeout(timeout);
         if (!res.ok) return null;
         return await res.json();
     } catch (e) {
-        clearTimeout(timeout);
         return null; 
     }
 };

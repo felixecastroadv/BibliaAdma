@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 
 export const config = {
@@ -10,61 +11,32 @@ export default async function handler(request, response) {
   }
 
   try {
-    const allKeys = [];
-    if (process.env.API_KEY) allKeys.push({ name: 'MAIN_KEY', key: process.env.API_KEY });
-    if (process.env.Biblia_ADMA_API) allKeys.push({ name: 'ADMA_KEY', key: process.env.Biblia_ADMA_API });
+    // The API key must be obtained exclusively from the environment variable process.env.API_KEY.
+    const apiKey = process.env.API_KEY;
 
-    for (let i = 1; i <= 50; i++) {
-        const keyName = `API_KEY_${i}`;
-        const val = process.env[keyName];
-        if (val && val.trim().length > 20) { 
-            allKeys.push({ name: keyName, key: val.trim() });
-        }
-    }
-
-    const uniqueKeys = [];
-    const seen = new Set();
-    for (const k of allKeys) {
-        if (!seen.has(k.key)) {
-            seen.add(k.key);
-            uniqueKeys.push(k);
-        }
-    }
-
-    if (uniqueKeys.length === 0) {
+    if (!apiKey) {
         return response.status(200).json({ keys: [], total: 0, healthy: 0 });
     }
 
-    const checkKey = async (keyEntry) => {
+    const checkKey = async (name, key) => {
         const start = Date.now();
         let usedModel = "gemini-3-flash-preview";
 
         try {
-            const ai = new GoogleGenAI({ apiKey: keyEntry.key });
+            // Always initialize right before use.
+            const ai = new GoogleGenAI({ apiKey: key });
             
-            const performCall = async (modelName) => {
-                return await ai.models.generateContent({
-                    model: modelName,
-                    contents: [{ parts: [{ text: "Hello" }] }],
-                    config: { 
-                        maxOutputTokens: 30, 
-                        temperature: 0.1
-                    } 
-                });
-            };
-
-            let result;
-            try {
-                result = await performCall("gemini-3-flash-preview");
-            } catch (errPrimary) {
-                const msg = errPrimary.message || JSON.stringify(errPrimary);
-                if (msg.includes("404") || msg.includes("not found")) {
-                    usedModel = "gemini-flash-lite-latest";
-                    result = await performCall("gemini-flash-lite-latest");
-                } else {
-                    throw errPrimary;
-                }
-            }
+            // Perform a minimal check call to verify key health.
+            const result = await ai.models.generateContent({
+                model: usedModel,
+                contents: [{ parts: [{ text: "Hello" }] }],
+                config: { 
+                    maxOutputTokens: 30,
+                    // If maxOutputTokens is set, thinkingBudget must also be set.
+                    thinkingConfig: { thinkingBudget: 15 },
+                    temperature: 0.1
+                } 
+            });
 
             const textOutput = result?.text;
             if (!textOutput) {
@@ -72,8 +44,8 @@ export default async function handler(request, response) {
             }
 
             return {
-                name: keyEntry.name,
-                mask: `...${keyEntry.key.slice(-4)}`,
+                name: name,
+                mask: `...${key.slice(-4)}`,
                 status: 'active',
                 latency: Date.now() - start,
                 msg: 'OK',
@@ -97,8 +69,8 @@ export default async function handler(request, response) {
             }
 
             return {
-                name: keyEntry.name,
-                mask: `...${keyEntry.key.slice(-4)}`,
+                name: name,
+                mask: `...${key.slice(-4)}`,
                 status,
                 latency: Date.now() - start,
                 msg
@@ -106,26 +78,15 @@ export default async function handler(request, response) {
         }
     };
 
-    const BATCH_SIZE = 5;
-    const finalResults = [];
-
-    for (let i = 0; i < uniqueKeys.length; i += BATCH_SIZE) {
-        const batch = uniqueKeys.slice(i, i + BATCH_SIZE);
-        const batchResults = await Promise.all(batch.map(k => checkKey(k)));
-        finalResults.push(...batchResults);
-        
-        if (i + BATCH_SIZE < uniqueKeys.length) {
-            await new Promise(r => setTimeout(r, 300));
-        }
-    }
-
-    const healthyCount = finalResults.filter(r => r.status === 'active').length;
+    const result = await checkKey('MAIN_KEY', apiKey);
+    const finalResults = [result];
+    const healthyCount = result.status === 'active' ? 1 : 0;
 
     return response.status(200).json({
         keys: finalResults,
-        total: finalResults.length,
+        total: 1,
         healthy: healthyCount,
-        healthPercentage: finalResults.length > 0 ? Math.round((healthyCount / finalResults.length) * 100) : 0
+        healthPercentage: healthyCount === 1 ? 100 : 0
     });
 
   } catch (error) {

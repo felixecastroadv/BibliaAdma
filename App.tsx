@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import LoginScreen from './components/auth/LoginScreen';
 import DashboardHome from './components/dashboard/DashboardHome';
-import BibleReader from './components/bible/BibleReader';
+// Fix: Use named import for BibleReader as it doesn't have a default export in its definition.
+import { BibleReader } from './components/bible/BibleReader';
 import AdminPanel from './components/admin/AdminPanel';
 import PanoramaView from './components/panorama/PanoramaView';
 import DevotionalView from './components/devotional/DevotionalView';

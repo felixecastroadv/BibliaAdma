@@ -1,3 +1,4 @@
+
 export type TaskType = 'commentary' | 'dictionary' | 'devotional' | 'ebd' | 'metadata' | 'general';
 
 export const generateContent = async (
@@ -14,7 +15,7 @@ export const generateContent = async (
                 prompt, 
                 schema: jsonSchema, 
                 taskType,
-                isLongOutput // Informa à API que esta requisição exige densidade Magnum Opus de 2500+ palavras
+                isLongOutput 
             })
         });
 
@@ -43,7 +44,3 @@ export const generateContent = async (
         throw new Error(error.message || "Falha na comunicação com o Professor Virtual.");
     }
 };
-
-export const getStoredApiKey = (): string | null => "internal_proxy";
-export const setStoredApiKey = (key: string) => {}; 
-export const clearStoredApiKey = () => {};

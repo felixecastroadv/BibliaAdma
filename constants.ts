@@ -102,7 +102,7 @@ export const READING_PLANS: ReadingPlan[] = [
   },
   { 
     id: "profetas_maiores", 
-    name: "Profetas Maiores", 
+    name: "Propetas Maiores", 
     books: ["Isaías", "Jeremias", "Lamentações", "Ezequiel", "Daniel"],
     description: "As grandes profecias messiânicas e de juízo.",
     estimatedDays: 60
