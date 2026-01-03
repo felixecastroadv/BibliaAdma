@@ -136,6 +136,12 @@ const createHelpers = (col: string) => ({
         }
         return await idbManager.get(CONTENT_STORE, `${col}_${id}`);
     },
+    getOffline: async (id: string) => {
+        return await idbManager.get(CONTENT_STORE, `${col}_${id}`);
+    },
+    getCloud: async (id: string) => {
+        return await apiCall('get', col, { id });
+    },
     create: async (data: any) => {
         const id = data.id || Date.now().toString();
         const newItem = { ...data, id };
