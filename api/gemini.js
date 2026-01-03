@@ -110,11 +110,14 @@ export default async function handler(request, response) {
                         { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
                         { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
                     ],
-                    ...(taskType === 'ebd' || taskType === 'commentary' ? { 
-                        thinkingConfig: { thinkingBudget: modelName === 'gemini-3-pro-preview' ? 32768 : 24576 },
-                        systemInstruction: systemInstruction
-                    } : {})
+                    systemInstruction: systemInstruction
                 };
+
+                // Add thinking configuration for complex tasks
+                if (taskType === 'ebd' || taskType === 'commentary') {
+                    config.thinkingConfig = { thinkingBudget: modelName === 'gemini-3-pro-preview' ? 32768 : 24576 };
+                }
+
                 if (schema) {
                     config.responseMimeType = "application/json";
                     config.responseSchema = schema;

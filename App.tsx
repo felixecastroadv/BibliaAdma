@@ -1,9 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import LoginScreen from './components/auth/LoginScreen';
 import DashboardHome from './components/dashboard/DashboardHome';
-// Fix: Use named import for BibleReader as it doesn't have a default export in its definition.
-import { BibleReader } from './components/bible/BibleReader';
+import BibleReader from './components/bible/BibleReader';
 import AdminPanel from './components/admin/AdminPanel';
 import PanoramaView from './components/panorama/PanoramaView';
 import DevotionalView from './components/devotional/DevotionalView';
@@ -15,7 +13,7 @@ import AdminPasswordModal from './components/modals/AdminPasswordModal';
 import Toast from './components/ui/Toast';
 import BottomNav from './components/ui/BottomNav';
 import NetworkStatus from './components/ui/NetworkStatus';
-import { db, syncManager } from './services/database';
+import { db } from './services/database';
 import { AppConfig, DynamicModule } from './types';
 
 export default function App() {
@@ -30,22 +28,28 @@ export default function App() {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [navParams, setNavParams] = useState<any>({});
 
+  // Config e Módulos Dinâmicos
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
   const [activeModule, setActiveModule] = useState<DynamicModule | null>(null);
 
   useEffect(() => {
+    // 1. Carrega Config Global
     const loadConfig = async () => {
         try {
+            // No schema, list() retorna a coleção. Pegamos o primeiro item.
             const configs = await db.entities.AppConfig.list();
             const cfg = configs[0];
             if (cfg) {
                 setAppConfig(cfg);
+                // Aplica Cores Dinâmicas via CSS Variables
                 if (cfg.theme) {
                     if (cfg.theme.primaryColor) document.documentElement.style.setProperty('--primary-color', cfg.theme.primaryColor);
                     if (cfg.theme.secondaryColor) document.documentElement.style.setProperty('--secondary-color', cfg.theme.secondaryColor);
                 }
             }
-        } catch(e) {}
+        } catch(e) {
+            console.error("Erro ao carregar configurações", e);
+        }
     };
     loadConfig();
 
@@ -61,10 +65,6 @@ export default function App() {
                  (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
     setDarkMode(isDark);
   }, []);
-
-  useEffect(() => {
-      if (isAuthenticated) syncManager.fullSync();
-  }, [isAuthenticated]);
 
   useEffect(() => {
       if (darkMode) {
@@ -98,6 +98,7 @@ export default function App() {
     const fullName = `${first} ${last}`;
     const email = `${first.toLowerCase()}.${last.toLowerCase()}@adma.local`;
     const u = { user_name: fullName, user_email: email };
+    
     localStorage.setItem('adma_user', JSON.stringify(u));
     setUser(u);
     setIsAuthenticated(true);
@@ -129,6 +130,7 @@ export default function App() {
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
   const handleNavigate = (v: string, params?: any) => {
+      // Se for navegação para módulo dinâmico
       if (v.startsWith('module_')) {
           if (params && params.module) {
               setActiveModule(params.module);
@@ -136,6 +138,7 @@ export default function App() {
           }
           return;
       }
+      
       setView(v);
       if(params) setNavParams(params);
       window.scrollTo(0, 0);
@@ -146,13 +149,38 @@ export default function App() {
   const renderView = () => {
     switch(view) {
         case 'dashboard':
-            return <DashboardHome onNavigate={handleNavigate} isAdmin={isAdmin} onEnableAdmin={() => setShowAdminModal(true)} user={user} userProgress={userProgress} darkMode={darkMode} toggleDarkMode={toggleDarkMode} onShowToast={showToast} onLogout={handleLogout} appConfig={appConfig} />;
+            return <DashboardHome 
+                onNavigate={handleNavigate} 
+                isAdmin={isAdmin} 
+                onEnableAdmin={() => setShowAdminModal(true)}
+                user={user}
+                userProgress={userProgress}
+                darkMode={darkMode}
+                toggleDarkMode={toggleDarkMode}
+                onShowToast={showToast}
+                onLogout={handleLogout}
+                appConfig={appConfig}
+            />;
         case 'reader':
-            return <BibleReader onBack={() => setView('dashboard')} isAdmin={isAdmin} onShowToast={showToast} initialBook={navParams.book} initialChapter={navParams.chapter} userProgress={userProgress} onProgressUpdate={setUserProgress} />;
+            return <BibleReader 
+                onBack={() => setView('dashboard')} 
+                isAdmin={isAdmin}
+                onShowToast={showToast}
+                initialBook={navParams.book}
+                initialChapter={navParams.chapter}
+                userProgress={userProgress}
+                onProgressUpdate={setUserProgress}
+            />;
         case 'admin':
             return <AdminPanel onBack={() => setView('dashboard')} onShowToast={showToast} />;
         case 'panorama':
-            return <PanoramaView onBack={() => setView('dashboard')} isAdmin={isAdmin} onShowToast={showToast} userProgress={userProgress} onProgressUpdate={setUserProgress} />;
+            return <PanoramaView 
+                onBack={() => setView('dashboard')} 
+                isAdmin={isAdmin} 
+                onShowToast={showToast}
+                userProgress={userProgress} 
+                onProgressUpdate={setUserProgress} 
+            />;
         case 'devotional':
             return <DevotionalView onBack={() => setView('dashboard')} onShowToast={showToast} isAdmin={isAdmin} />;
         case 'plans':
@@ -173,9 +201,11 @@ export default function App() {
         <div className={`flex-1 ${isAuthenticated ? 'pb-20' : ''}`}>
             {renderView()}
         </div>
+        
         {isAuthenticated && view !== 'dynamic_module' && view !== 'reader' && (
             <BottomNav currentView={view} onNavigate={handleNavigate} />
         )}
+
         <AdminPasswordModal isOpen={showAdminModal} onClose={() => setShowAdminModal(false)} onSuccess={handleAdminSuccess} />
         <NetworkStatus />
         {toast.msg && <Toast message={toast.msg} type={toast.type} onClose={() => setToast({ ...toast, msg: '' })} />}

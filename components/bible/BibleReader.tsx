@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, ChevronRight, Book, ChevronDown, Search, Sparkles, Loader2, Clock, Lock } from 'lucide-react';
 import VersePanel from './VersePanel';
@@ -95,8 +94,7 @@ const PremiumNavigator = ({ isOpen, onClose, currentBook, onSelect }: any) => {
     );
 };
 
-// named export for BibleReader as required by App.tsx
-export function BibleReader({ onBack, isAdmin, onShowToast, initialBook, initialChapter, userProgress, onProgressUpdate }: any) {
+export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook, initialChapter, userProgress, onProgressUpdate }: any) {
     const [book, setBook] = useState(initialBook || 'Gênesis');
     const [chapter, setChapter] = useState(initialChapter || 1);
     const [verses, setVerses] = useState<string[]>([]);
