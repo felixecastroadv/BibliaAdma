@@ -1,4 +1,3 @@
-
 import { BibleBook, ReadingPlan } from './types';
 
 export const CHURCH_NAME = "ASSEMBLEIA DE DEUS MINISTÉRIO ÁGAPE";
@@ -76,6 +75,7 @@ export const BIBLE_BOOKS: BibleBook[] = [
 
 export const TOTAL_CHAPTERS = 1189;
 
+// Identifica livros de 1 capítulo (Exportado para uso no BibleReader)
 export const ONE_CHAPTER_BOOKS = BIBLE_BOOKS.filter(b => b.chapters === 1).map(b => b.name);
 
 export const READING_PLANS: ReadingPlan[] = [
@@ -102,10 +102,17 @@ export const READING_PLANS: ReadingPlan[] = [
   },
   { 
     id: "profetas_maiores", 
-    name: "Propetas Maiores", 
+    name: "Profetas Maiores", 
     books: ["Isaías", "Jeremias", "Lamentações", "Ezequiel", "Daniel"],
     description: "As grandes profecias messiânicas e de juízo.",
     estimatedDays: 60
+  },
+  { 
+    id: "profetas_menores", 
+    name: "Profetas Menores", 
+    books: ["Oséias", "Joel", "Amós", "Obadias", "Jonas", "Miquéias", "Naum", "Habacuque", "Sofonias", "Ageu", "Zacarias", "Malaquias"],
+    description: "Os doze profetas finais do AT.",
+    estimatedDays: 30
   },
   { 
     id: "evangelhos", 
@@ -113,6 +120,55 @@ export const READING_PLANS: ReadingPlan[] = [
     books: ["Mateus", "Marcos", "Lucas", "João"],
     description: "A vida e ministério de Jesus Cristo.",
     estimatedDays: 30
+  },
+  { 
+    id: "atos", 
+    name: "Atos dos Apóstolos", 
+    books: ["Atos"],
+    description: "O nascimento e expansão da Igreja.",
+    estimatedDays: 14
+  },
+  { 
+    id: "cartas_paulinas", 
+    name: "Cartas Paulinas", 
+    books: ["Romanos", "1 Coríntios", "2 Coríntios", "Gálatas", "Efésios", "Filipenses", "Colossenses", "1 Tessalonicenses", "2 Tessalonicenses", "1 Timóteo", "2 Timóteo", "Tito", "Filemom"],
+    description: "As epístolas do Apóstolo Paulo.",
+    estimatedDays: 45
+  },
+  { 
+    id: "cartas_gerais", 
+    name: "Cartas Gerais", 
+    books: ["Hebreus", "Tiago", "1 Pedro", "2 Pedro", "1 João", "2 João", "3 João", "Judas"],
+    description: "Epístolas universais para a igreja.",
+    estimatedDays: 21
+  },
+  { 
+    id: "apocalipse", 
+    name: "Apocalipse", 
+    books: ["Apocalipse"],
+    description: "A revelação dos últimos dias.",
+    estimatedDays: 14
+  },
+  { 
+    id: "livros_curtos", 
+    name: "Livros de Capítulo Único", 
+    books: ONE_CHAPTER_BOOKS,
+    description: "Leitura rápida: Todos os livros com apenas 1 capítulo.",
+    estimatedDays: 7
+  },
+  { 
+    id: "novo_testamento", 
+    name: "Novo Testamento Completo", 
+    books: BIBLE_BOOKS.filter(b => b.testament === "new").map(b => b.name),
+    description: "Todo o Novo Testamento.",
+    estimatedDays: 90
+  },
+  { 
+    id: "antigo_testamento", 
+    name: "Antigo Testamento Completo", 
+    books: BIBLE_BOOKS.filter(b => b.testament === "old").map(b => b.name),
+    description: "Todo o Antigo Testamento.",
+    estimatedDays: 270
   }
 ];
 
