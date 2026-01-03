@@ -1,20 +1,16 @@
-
-const DB_NAME = 'adma_supreme_db';
-const BIBLE_STORE = 'bible_verses';
-const CONTENT_STORE = 'adma_content_store'; 
-const DB_VERSION = 2;
+// --- INDEXED DB FOR BIBLE TEXT (Offline - Grande Volume) ---
+const DB_NAME = 'adma_bible_db';
+const STORE_NAME = 'bible_verses';
+const DB_VERSION = 1;
 
 const openDB = (): Promise<IDBDatabase> => {
-    if (typeof window === 'undefined') return Promise.reject("No window context");
+    if (typeof window === 'undefined') return Promise.reject("No window");
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
         request.onupgradeneeded = (event: any) => {
             const db = event.target.result;
-            if (!db.objectStoreNames.contains(BIBLE_STORE)) {
-                db.createObjectStore(BIBLE_STORE);
-            }
-            if (!db.objectStoreNames.contains(CONTENT_STORE)) {
-                db.createObjectStore(CONTENT_STORE);
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME);
             }
         };
         request.onsuccess = (event: any) => resolve(event.target.result);
@@ -22,73 +18,89 @@ const openDB = (): Promise<IDBDatabase> => {
     });
 };
 
-const idbManager = {
-    get: async (store: string, key: string) => {
+export const bibleStorage = {
+    get: async (key: string) => {
         try {
             const db = await openDB();
             return new Promise<any>((resolve, reject) => {
-                const transaction = db.transaction([store], 'readonly');
-                const request = transaction.objectStore(store).get(key);
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.get(key);
                 request.onsuccess = () => resolve(request.result);
                 request.onerror = () => reject(request.error);
             });
         } catch (e) { return null; }
     },
-    save: async (store: string, key: string, data: any) => {
+    save: async (key: string, data: any) => {
         try {
             const db = await openDB();
             return new Promise((resolve, reject) => {
-                const transaction = db.transaction([store], 'readwrite');
-                const request = transaction.objectStore(store).put(data, key);
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.put(data, key);
                 request.onsuccess = () => resolve(true);
                 request.onerror = () => reject(request.error);
             });
         } catch (e) { return false; }
     },
-    list: async (store: string, collection: string) => {
-        try {
-            const db = await openDB();
-            return new Promise<any[]>((resolve, reject) => {
-                const transaction = db.transaction([store], 'readonly');
-                const objectStore = transaction.objectStore(store);
-                const request = objectStore.getAll();
-                request.onsuccess = () => {
-                    const all = request.result || [];
-                    resolve(all.filter((item: any) => item && item.__adma_col === collection));
-                };
-                request.onerror = () => reject(request.error);
-            });
-        } catch (e) { return []; }
-    },
-    delete: async (store: string, key: string) => {
-        try {
-            const db = await openDB();
-            return new Promise((resolve, reject) => {
-                const transaction = db.transaction([store], 'readwrite');
-                const request = transaction.objectStore(store).delete(key);
-                request.onsuccess = () => resolve(true);
-                request.onerror = () => reject(request.error);
-            });
-        } catch (e) { return false; }
-    }
-};
-
-export const bibleStorage = {
-    get: async (key: string) => await idbManager.get(BIBLE_STORE, key),
-    save: async (key: string, data: any) => await idbManager.save(BIBLE_STORE, key, data),
     count: async () => {
-        const db = await openDB();
-        return new Promise<number>((resolve) => {
-            const req = db.transaction([BIBLE_STORE], 'readonly').objectStore(BIBLE_STORE).count();
-            req.onsuccess = () => resolve(req.result);
-        });
+        try {
+            const db = await openDB();
+            return new Promise<number>((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.count();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        } catch (e) { return 0; }
     },
     clear: async () => {
-        const db = await openDB();
-        db.transaction([BIBLE_STORE], 'readwrite').objectStore(BIBLE_STORE).clear();
+        try {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.clear();
+                request.onsuccess = () => resolve(true);
+                request.onerror = () => reject(request.error);
+            });
+        } catch (e) { return false; }
     }
 };
 
+// --- HELPER LOCALSTORAGE (Backup de Segurança para Pequenos Dados) ---
+const localBackup = {
+    list: (collection: string) => {
+        try {
+            const data = localStorage.getItem(`adma_backup_${collection}`);
+            return data ? JSON.parse(data) : [];
+        } catch (e) { return []; }
+    },
+    saveItem: (collection: string, item: any) => {
+        try {
+            const list = localBackup.list(collection);
+            const index = list.findIndex((i: any) => i.id === item.id);
+            if (index > -1) list[index] = item;
+            else list.push(item);
+            localStorage.setItem(`adma_backup_${collection}`, JSON.stringify(list));
+        } catch (e) { console.error("Erro no backup local", e); }
+    },
+    deleteItem: (collection: string, id: string) => {
+        try {
+            const list = localBackup.list(collection);
+            const newList = list.filter((i: any) => i.id !== id);
+            localStorage.setItem(`adma_backup_${collection}`, JSON.stringify(newList));
+        } catch (e) { }
+    },
+    sync: (collection: string, cloudData: any[]) => {
+        if(cloudData && cloudData.length > 0) {
+            localStorage.setItem(`adma_backup_${collection}`, JSON.stringify(cloudData));
+        }
+    }
+};
+
+// --- CLOUD API (Supabase) ---
 const apiCall = async (action: string, collection: string, payload: any = {}) => {
     try {
         const res = await fetch('/api/storage', {
@@ -99,126 +111,123 @@ const apiCall = async (action: string, collection: string, payload: any = {}) =>
         if (!res.ok) return null;
         return await res.json();
     } catch (e) {
-        return null; 
+        return null; // Falha silenciosa para ativar fallback
     }
 };
 
+// --- HYBRID DATA MANAGER ---
 const createHelpers = (col: string) => ({
-    list: async () => {
+    list: async (key?: string, limit?: number) => {
+        // 1. Tenta Nuvem (Prioridade Total)
         const cloudData = await apiCall('list', col);
-        if (cloudData && Array.isArray(cloudData)) {
-            for(const item of cloudData) {
-                await idbManager.save(CONTENT_STORE, `${col}_${item.id}`, { ...item, __adma_col: col });
-            }
+        
+        // 2. Se Nuvem ok, atualiza backup local e retorna nuvem
+        if (cloudData && Array.isArray(cloudData) && cloudData.length > 0) {
+            localBackup.sync(col, cloudData);
             return cloudData;
         }
-        return await idbManager.list(CONTENT_STORE, col);
+
+        // 3. Se Nuvem falhou ou vazia, retorna Backup Local (Modo Offline/Resgate)
+        return localBackup.list(col);
     },
     filter: async (criteria: any) => {
         let allItems = await apiCall('list', col);
+        
         if (!allItems || allItems.length === 0) {
-            allItems = await idbManager.list(CONTENT_STORE, col);
+            allItems = localBackup.list(col);
         } else {
-            for(const item of allItems) {
-                await idbManager.save(CONTENT_STORE, `${col}_${item.id}`, { ...item, __adma_col: col });
-            }
+            localBackup.sync(col, allItems);
         }
+
         return (allItems || []).filter((item: any) => 
             Object.keys(criteria).every(k => item[k] === criteria[k])
         );
     },
     get: async (id?: string) => {
         if (!id) return null;
+        // Tenta nuvem
         const cloudItem = await apiCall('get', col, { id });
-        if (cloudItem) {
-            await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...cloudItem, __adma_col: col });
-            return cloudItem;
-        }
-        return await idbManager.get(CONTENT_STORE, `${col}_${id}`);
-    },
-    getOffline: async (id: string) => {
-        return await idbManager.get(CONTENT_STORE, `${col}_${id}`);
-    },
-    getCloud: async (id: string) => {
-        return await apiCall('get', col, { id });
+        if (cloudItem) return cloudItem;
+        
+        // Tenta local
+        const localList = localBackup.list(col);
+        return localList.find((i: any) => i.id === id) || null;
     },
     create: async (data: any) => {
-        const id = data.id || Date.now().toString();
-        const newItem = { ...data, id };
-        await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...newItem, __adma_col: col });
+        const newItem = { ...data, id: data.id || Date.now().toString() };
+        
+        // Salva Local Primeiro (Feedback Instantâneo)
+        localBackup.saveItem(col, newItem);
+        
+        // Salva Nuvem (Persistência Real)
         await apiCall('save', col, { item: newItem });
+        
         return newItem;
     },
     update: async (id: string, updates: any) => {
         let existing = await apiCall('get', col, { id });
-        if (!existing) existing = await idbManager.get(CONTENT_STORE, `${col}_${id}`);
+        if (!existing) {
+             const localList = localBackup.list(col);
+             existing = localList.find((i: any) => i.id === id);
+        }
+
         if (existing) {
             const merged = { ...existing, ...updates };
-            await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...merged, __adma_col: col });
+            localBackup.saveItem(col, merged);
             await apiCall('save', col, { item: merged });
             return merged;
         }
         return null;
     },
     delete: async (id: string) => {
-        await idbManager.delete(CONTENT_STORE, `${col}_${id}`);
+        localBackup.deleteItem(col, id);
         await apiCall('delete', col, { id });
     },
     save: async (data: any) => {
-        const id = data.id || data.chapter_key || Date.now().toString();
-        const item = { ...data, id };
-        await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...item, __adma_col: col });
-        await apiCall('save', col, { item });
-        return item;
+        const newItem = { ...data, id: data.id || Date.now().toString() };
+        localBackup.saveItem(col, newItem);
+        await apiCall('save', col, { item: newItem });
+        return newItem;
     }
 });
 
+// Helper Especial para Bíblia (Evita LocalStorage, usa IndexedDB + Nuvem)
 const createBibleHelpers = () => ({
-    getOffline: async (key: string) => await idbManager.get(BIBLE_STORE, key),
-    saveOffline: async (key: string, data: any) => await idbManager.save(BIBLE_STORE, key, data),
+    getOffline: async (key: string) => await bibleStorage.get(key),
+    saveOffline: async (key: string, data: any) => await bibleStorage.save(key, data),
     getCloud: async (key: string) => {
         const item = await apiCall('get', 'bible_chapters', { id: key });
         return item ? item.verses : null;
     },
+    // NOVO: Método de salvamento Universal
     saveUniversal: async (key: string, verses: string[]) => {
-        await idbManager.save(BIBLE_STORE, key, verses);
-        await apiCall('save', 'bible_chapters', { item: { id: key, verses } });
+        // 1. Salva no Cache Local (Rápido)
+        await bibleStorage.save(key, verses);
+        
+        // 2. Salva na Nuvem (Seguro)
+        const item = { id: key, verses: verses };
+        await apiCall('save', 'bible_chapters', { item });
     },
     list: async () => {
+        // Tenta listar da nuvem primeiro (para restaurar)
         const cloudList = await apiCall('list', 'bible_chapters');
-        return cloudList || [];
+        if (cloudList) return cloudList;
+        return []; // Não lista do IndexedDB diretamente pois é muito pesado, usa count() na UI
     }
 });
-
-export const syncManager = {
-    fullSync: async () => {
-        if (typeof window === 'undefined' || !navigator.onLine) return;
-        const collections = ['panorama_biblico', 'announcements', 'chapter_metadata', 'devotionals', 'dynamic_modules', 'app_config'];
-        for (const col of collections) {
-            try {
-                const cloudData = await apiCall('list', col);
-                if (cloudData && Array.isArray(cloudData)) {
-                    for(const item of cloudData) {
-                        await idbManager.save(CONTENT_STORE, `${col}_${item.id}`, { ...item, __adma_col: col });
-                    }
-                }
-            } catch (e) {}
-        }
-    }
-};
 
 export const db = {
     entities: {
         ReadingProgress: createHelpers('reading_progress'),
         AppConfig: createHelpers('app_config'),
         DynamicModules: createHelpers('dynamic_modules'),
-        BibleChapter: createBibleHelpers(),
+        BibleChapter: createBibleHelpers(), // Usa helper otimizado
         ChapterMetadata: {
             ...createHelpers('chapter_metadata'),
+            getCloud: async (key: string) => await apiCall('get', 'chapter_metadata', { id: key }),
             save: async (data: any) => {
-                const id = data.chapter_key;
-                const item = { ...data, id };
-                await idbManager.save(CONTENT_STORE, `chapter_metadata_${id}`, { ...item, __adma_col: 'chapter_metadata' });
+                const item = { ...data, id: data.chapter_key };
+                localBackup.saveItem('chapter_metadata', item);
                 await apiCall('save', 'chapter_metadata', { item });
                 return item;
             }
