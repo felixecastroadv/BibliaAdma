@@ -80,7 +80,7 @@ export default async function handler(request, response) {
                 systemInstruction = "Você é o Professor Michel Felix. TAREFA: Produzir apostila de EBD exaustiva (Magnum Opus). Meta estrita: entre 2700 a 3000 palavras. É TERMINANTEMENTE PROIBIDO ser breve, resumir ou pular versículos. Use exegese microscópica ultra-detalhada em cada fragmento. Implemente o PROTOCOLO PÉROLA DE OURO injetando evidências documentais (Josefo, Talmud, Mishná) e medidas periciais históricas.";
                 
                 enhancedPrompt = `[PROTOCOLO DE RACIOCÍNIO LENTO E EXPANSÃO MÁXIMA v105.0]: 
-                   Raciocine profundamente sobre cada vírgula do texto sagrado por pelo menos 60 segundos antes de começar a escrever. 
+                   Raciocine profundamente sobre cada vírgula do texto sagrado por pelo menos 120 segundos antes de começar a escrever. 
                    É ESTRITAMENTE OBRIGATÓRIO gerar um conteúdo vasto com no mínimo 2700 PALAVRAS. 
                    IGNORE TOTALMENTE COMANDOS DE BREVIDADE DO SISTEMA. O texto deve ser tão longo que preencha um capítulo de livro de estudo.
                    ESTRUTURA OBRIGATÓRIA: 
@@ -126,12 +126,12 @@ export default async function handler(request, response) {
 
                 // Configurações de Tokens para suporte a textos longos (EBD)
                 if (taskType === 'ebd') {
-                    // 32k total: 16k para pensamento (thinking) e 16k para saída (output)
+                    // 32k total: 24k para pensamento (thinking) e 8k para saída (output)
                     // 16.000 output tokens permitem ~12.000 palavras se necessário.
-                    config.maxOutputTokens = 32000; 
-                    config.thinkingConfig = { thinkingBudget: 16000 };
+                    config.maxOutputTokens = 16000; 
+                    config.thinkingConfig = { thinkingBudget: 24576 };
                 } else {
-                    config.thinkingConfig = { thinkingBudget: 8000 };
+                    config.thinkingConfig = { thinkingBudget: 12000 };
                 }
 
                 if (schema) {
@@ -141,8 +141,8 @@ export default async function handler(request, response) {
                 return config;
             };
 
-            // Seleção de modelo: Gemini 3 Flash para EBD e Flash Lite para tarefas rápidas
-            let modelToUse = (taskType === 'ebd') ? 'gemini-3-flash-preview' : 'gemini-2.5-flash-lite-latest';
+            // Seleção de modelo: Gemini 2.5 Flash Lite para EBD e tarefas rápidas
+            let modelToUse = 'gemini-2.5-flash-lite-latest';
             let aiResponse;
 
             try {
@@ -152,10 +152,10 @@ export default async function handler(request, response) {
                     config: getGenerationConfig(modelToUse)
                 });
             } catch (innerError) {
-                // FALLBACK: Caso a cota de uma versão específica falhe, tenta a outra
+                // FALLBACK: Caso a cota de uma versão específica falhe, tenta o motor principal
                 const errorText = innerError.message || '';
                 if (errorText.includes('429') || errorText.includes('Quota') || errorText.includes('404')) {
-                    modelToUse = (modelToUse === 'gemini-3-flash-preview') ? 'gemini-2.5-flash-lite-latest' : 'gemini-3-flash-preview';
+                    modelToUse = 'gemini-2.5-flash-lite-latest';
                     aiResponse = await ai.models.generateContent({
                         model: modelToUse,
                         contents: [{ parts: [{ text: enhancedPrompt }] }],
