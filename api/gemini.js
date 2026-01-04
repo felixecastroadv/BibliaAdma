@@ -141,8 +141,8 @@ export default async function handler(request, response) {
                 return config;
             };
 
-            // Seleção de modelo: Gemini 2.5 Flash Lite para EBD e tarefas rápidas
-            let modelToUse = 'gemini-2.5-flash-lite-latest';
+            // Seleção de modelo: Gemini 3 Flash para EBD e Flash Lite para tarefas rápidas
+            let modelToUse = (taskType === 'ebd') ? 'gemini-3-flash-preview' : 'gemini-flash-lite-latest';
             let aiResponse;
 
             try {
@@ -155,7 +155,7 @@ export default async function handler(request, response) {
                 // FALLBACK: Caso a cota de uma versão específica falhe, tenta o motor principal
                 const errorText = innerError.message || '';
                 if (errorText.includes('429') || errorText.includes('Quota') || errorText.includes('404')) {
-                    modelToUse = 'gemini-2.5-flash-lite-latest';
+                    modelToUse = (modelToUse === 'gemini-3-flash-preview') ? 'gemini-flash-lite-latest' : 'gemini-3-flash-preview';
                     aiResponse = await ai.models.generateContent({
                         model: modelToUse,
                         contents: [{ parts: [{ text: enhancedPrompt }] }],
