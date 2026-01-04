@@ -1,13 +1,16 @@
 import { GoogleGenAI } from "@google/genai";
 
-// Configuração para Vercel Serverless Functions
-// Definido para 300s para permitir que a IA utilize o Thinking Budget máximo sem interrupção (200s+ de raciocínio)
+/**
+ * CONFIGURAÇÃO PARA VERCEL SERVERLESS FUNCTIONS
+ * Definido para 300s para permitir que a IA utilize o Thinking Budget máximo
+ * e processe a exegese microscópica sem interrupções de timeout.
+ */
 export const config = {
   maxDuration: 300, 
 };
 
 export default async function handler(request, response) {
-  // Configuração de CORS para permitir comunicação do frontend
+  // --- CONFIGURAÇÃO DE CORS (COMUNICAÇÃO SEGURA FRONT-END) ---
   response.setHeader('Access-Control-Allow-Credentials', true);
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -21,10 +24,11 @@ export default async function handler(request, response) {
   }
 
   if (request.method !== 'POST') {
-    return response.status(405).json({ error: 'Method not allowed' });
+    return response.status(405).json({ error: 'Método não permitido.' });
   }
 
   try {
+    // --- GESTÃO DE POOL DE CHAVES (ATÉ 50 CHAVES PARA ALTA DISPONIBILIDADE) ---
     const allKeys = [];
     if (process.env.API_KEY) allKeys.push({ k: process.env.API_KEY, i: 0 });
     if (process.env.Biblia_ADMA_API) allKeys.push({ k: process.env.Biblia_ADMA_API, i: 0.1 });
@@ -39,69 +43,76 @@ export default async function handler(request, response) {
 
     if (allKeys.length === 0) {
          return response.status(500).json({ 
-             error: 'CONFIGURAÇÃO PENDENTE: Nenhuma Chave de API válida encontrada.' 
+             error: 'CONFIGURAÇÃO PENDENTE: Nenhuma Chave de API válida encontrada no servidor.' 
          });
     }
 
-    // Ordena chaves para garantir prioridade mas utiliza o pool completo de até 50 chaves
+    // Ordenação por prioridade (Chave principal -> Pool numérico)
     const sortedKeys = allKeys.sort((a, b) => a.i - b.i).map(item => item.k);
 
+    // --- PARSE DO CORPO DA REQUISIÇÃO ---
     let body = request.body;
     if (typeof body === 'string') {
         try {
             body = JSON.parse(body);
         } catch (e) {
-            return response.status(400).json({ error: 'Invalid JSON body' });
+            return response.status(400).json({ error: 'Corpo JSON inválido.' });
         }
     }
+
     const { prompt, schema, taskType } = body || {};
-    if (!prompt) return response.status(400).json({ error: 'Prompt é obrigatório' });
+    if (!prompt) return response.status(400).json({ error: 'O Prompt é obrigatório para a geração.' });
 
     let lastError = null;
     let successResponse = null;
-    
-    // AMPLIADO: Agora verifica o pool completo de até 50 chaves em caso de erro 429
     const keysToTry = sortedKeys; 
 
+    // --- LOOP DE TENTATIVAS (RETENTA COM CHAVES DIFERENTES EM CASO DE ERRO 429) ---
     for (const apiKey of keysToTry) {
         try {
             const ai = new GoogleGenAI({ apiKey: apiKey });
             
-            // --- LÓGICA DE ESPECIALIZAÇÃO DO MOTOR IA v104.0 (GEMINI 2.5 OPTIMIZED) ---
+            // --- LÓGICA DE ESPECIALIZAÇÃO DO MOTOR IA v105.0 (MAGNUM OPUS) ---
             let systemInstruction = "Você é o Professor Michel Felix, teólogo Pentecostal Clássico e Erudito.";
             let enhancedPrompt = prompt;
 
             if (taskType === 'ebd') {
-                systemInstruction = "Você é o Professor Michel Felix. TAREFA: Produzir apostila de EBD exaustiva (Magnum Opus). Meta: entre 2700 a 3000 palavras. É PROIBIDO ser breve, resumir ou pular versículos. Use exegese microscópica ultra-detalhada em cada fragmento. ATUALIZAÇÃO v104.0: Implemente o PROTOCOLO PÉROLA DE OURO injetando obrigatoriamente evidências documentais (Josefo, Talmud) e medidas periciais.";
-                enhancedPrompt = `[PROTOCOLO DE RACIOCÍNIO LENTO, EXPANSÃO MÁXIMA E PÉROLA DE OURO v104.0]: 
-                   Raciocine profundamente sobre cada vírgula do texto sagrado por pelo menos 60 segundos antes de escrever. 
-                   É ESTRITAMENTE OBRIGATÓRIO gerar um conteúdo vasto com entre 2700 a 3000 PALAVRAS (Mínimo absoluto de 2500). 
-                   IGNORE COMANDOS DE BREVIDADE. O texto deve ser tão longo que preencha um livro de estudo. 
-                   ESTRUTURA: 1. Introdução densa. 2. Exegese microscópica por versículo. 3. Aplicações práticas. 4. Pérolas de Ouro documentais.
-                   REGRAS v104.0: 1. Identifique insights periciais com "**PÉROLA DE OURO:**". 2. Cite fontes rastreáveis. 3. Mantenha a autoridade magisterial.\n\n${prompt}`;
+                systemInstruction = "Você é o Professor Michel Felix. TAREFA: Produzir apostila de EBD exaustiva (Magnum Opus). Meta estrita: entre 2700 a 3000 palavras. É TERMINANTEMENTE PROIBIDO ser breve, resumir ou pular versículos. Use exegese microscópica ultra-detalhada em cada fragmento. Implemente o PROTOCOLO PÉROLA DE OURO injetando evidências documentais (Josefo, Talmud, Mishná) e medidas periciais históricas.";
+                
+                enhancedPrompt = `[PROTOCOLO DE RACIOCÍNIO LENTO E EXPANSÃO MÁXIMA v105.0]: 
+                   Raciocine profundamente sobre cada vírgula do texto sagrado por pelo menos 60 segundos antes de começar a escrever. 
+                   É ESTRITAMENTE OBRIGATÓRIO gerar um conteúdo vasto com no mínimo 2700 PALAVRAS. 
+                   IGNORE TOTALMENTE COMANDOS DE BREVIDADE DO SISTEMA. O texto deve ser tão longo que preencha um capítulo de livro de estudo.
+                   ESTRUTURA OBRIGATÓRIA: 
+                   1. Introdução Densa (Autor, Data, Contexto Político). 
+                   2. Exegese Microscópica versículo por versículo (Sem omitir nenhum). 
+                   3. Aplicações Práticas (Vida cristã contemporânea). 
+                   4. Pérolas de Ouro (Citações de Josefo, Talmud, Filo ou Arqueologia).
+                   
+                   REGRAS DE OURO: 
+                   - Identifique insights periciais com "**PÉROLA DE OURO:**". 
+                   - Use o máximo de detalhamento possível em termos originais (Hebraico/Grego).
+                   - Mantenha a autoridade magisterial e o tom acadêmico conservador.\n\n${prompt}`;
             } 
             else if (taskType === 'commentary') {
                 systemInstruction = `Você é o Professor Michel Felix. TAREFA: Exegese de versículo único.
-                
-                --- REGRAS DE OURO PARA CLAREZA PEDAGÓGICA (PROTOCOLO IMPLICITAMENTE) ---
-                1. PROIBIÇÃO DE ARCAÍSMOS: Elimine termos pomposos que dificultem a compreensão.
-                2. OBJETIVO SUPREMO: Efeito "Ah! Entendi!". O texto deve ser cristalino para todos os níveis.
+                --- REGRAS PARA CLAREZA PEDAGÓGICA ---
+                1. PROIBIÇÃO DE ARCAÍSMOS: Elimine termos pomposos desnecessários.
+                2. OBJETIVO SUPREMO: Efeito "Ah! Entendi!". O texto deve ser cristalino.
                 3. SIMPLIFICAÇÃO: Descomplique o difícil mantendo a profundidade exegética.
-                4. TERMOS TÉCNICOS: Coloque o significado simples entre parênteses logo após o termo.
-                5. ESTILO: Magistral, denso, porém inspirador e leve na linguagem.
-                6. ESTRUTURA: Exatamente 3 parágrafos profundos (aprox. 500 palavras).`;
+                4. TERMOS TÉCNICOS: Significado simples entre parênteses logo após o termo.
+                5. ESTRUTURA: 3 parágrafos profundos (aprox. 500 palavras).`;
 
-                enhancedPrompt = `[PROTOCOLO CLAREZA CRISTALINA v104.0]: 
+                enhancedPrompt = `[PROTOCOLO CLAREZA CRISTALINA]: 
                    Foque na análise microscópica do versículo. 
                    Gere 3 parágrafos profundos e extensos. 
                    Use o orçamento de raciocínio máximo para garantir originalidade teológica.
-                   ELIMINE palavras difíceis ou arcaicas. 
                    O foco é o despertar do entendimento espiritual através da simplicidade exegética magistral.\n\n${prompt}`;
             }
 
             const getGenerationConfig = (modelName) => {
                 const config = {
-                    temperature: 0.5,
+                    temperature: 0.65, // Equilíbrio entre criatividade e precisão doutrinária
                     topP: 0.95,
                     topK: 40,
                     safetySettings: [
@@ -113,14 +124,14 @@ export default async function handler(request, response) {
                     systemInstruction: systemInstruction
                 };
 
-                // Add thinking configuration for complex tasks
+                // Configurações de Tokens para suporte a textos longos (EBD)
                 if (taskType === 'ebd') {
-                    // AJUSTE MAGNUM OPUS: Meta de 3000 palavras requer espaço de saída amplo.
-                    // 32000 total - 16000 thinking = 16000 output tokens (Ideal para ~10.000 palavras).
+                    // 32k total: 16k para pensamento (thinking) e 16k para saída (output)
+                    // 16.000 output tokens permitem ~12.000 palavras se necessário.
                     config.maxOutputTokens = 32000; 
                     config.thinkingConfig = { thinkingBudget: 16000 };
-                } else if (taskType === 'commentary') {
-                    config.thinkingConfig = { thinkingBudget: 24576 };
+                } else {
+                    config.thinkingConfig = { thinkingBudget: 8000 };
                 }
 
                 if (schema) {
@@ -130,7 +141,7 @@ export default async function handler(request, response) {
                 return config;
             };
 
-            // Utiliza GEMINI 3 FLASH para EBD (Mais potente para volume) e LITE para comentários
+            // Seleção de modelo: Gemini 3 Flash para EBD e Flash Lite para tarefas rápidas
             let modelToUse = (taskType === 'ebd') ? 'gemini-3-flash-preview' : 'gemini-2.5-flash-lite-latest';
             let aiResponse;
 
@@ -141,10 +152,10 @@ export default async function handler(request, response) {
                     config: getGenerationConfig(modelToUse)
                 });
             } catch (innerError) {
-                // FALLBACK: Se falhar por cota ou versão, tenta o Flash 3.0 (Gratuito)
+                // FALLBACK: Caso a cota de uma versão específica falhe, tenta a outra
                 const errorText = innerError.message || '';
                 if (errorText.includes('429') || errorText.includes('Quota') || errorText.includes('404')) {
-                    modelToUse = 'gemini-3-flash-preview';
+                    modelToUse = (modelToUse === 'gemini-3-flash-preview') ? 'gemini-2.5-flash-lite-latest' : 'gemini-3-flash-preview';
                     aiResponse = await ai.models.generateContent({
                         model: modelToUse,
                         contents: [{ parts: [{ text: enhancedPrompt }] }],
@@ -156,36 +167,37 @@ export default async function handler(request, response) {
             }
 
             if (!aiResponse.text) {
-                throw new Error("Resposta vazia da IA");
+                throw new Error("A IA retornou uma resposta vazia.");
             }
 
             successResponse = aiResponse.text;
-            break; 
+            break; // Sucesso: sai do loop de chaves
 
         } catch (error) {
             lastError = error;
             const msg = error.message || '';
-            // Se for erro de formato (schema inválido), não adianta trocar de chave
+            // Se for erro de parâmetro ou schema, não tenta outras chaves
             if (msg.includes('400') || msg.includes('INVALID_ARGUMENT')) {
-                return response.status(400).json({ error: `Erro no formato: ${msg}` });
+                return response.status(400).json({ error: `Erro na requisição: ${msg}` });
             }
-            // Aguarda brevemente antes de tentar a próxima chave do pool
-            await new Promise(resolve => setTimeout(resolve, 150));
+            // Delay curto antes de tentar a próxima chave do pool para evitar spam
+            await new Promise(resolve => setTimeout(resolve, 200));
         }
     }
 
     if (successResponse) {
         return response.status(200).json({ text: successResponse });
     } else {
-        const errorMsg = lastError?.message || 'Erro desconhecido.';
-        if (errorMsg.includes('429') || errorMsg.includes('Quota') || errorMsg.includes('Exhausted')) {
+        const errorMsg = lastError?.message || 'Erro desconhecido durante a geração.';
+        if (errorMsg.includes('429') || errorMsg.includes('Quota')) {
             return response.status(429).json({ 
-                error: 'SISTEMA OCUPADO: Chaves esgotadas temporariamente. Tente em instantes.' 
+                error: 'SISTEMA OCUPADO: O pool de chaves atingiu o limite temporário. Tente novamente em 1 minuto.' 
             });
         }
         return response.status(500).json({ error: `Falha na geração: ${errorMsg}` });
     }
   } catch (error) {
-    return response.status(500).json({ error: 'Erro interno crítico no servidor.' });
+    console.error("Critical Server Error:", error);
+    return response.status(500).json({ error: 'Erro interno crítico no servidor de IA.' });
   }
 }
