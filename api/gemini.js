@@ -67,42 +67,41 @@ export default async function handler(request, response) {
         try {
             const ai = new GoogleGenAI({ apiKey: apiKey });
             
-            // --- LÓGICA DE ESPECIALIZAÇÃO DO MOTOR IA v81.0 ---
+            // --- LÓGICA DE ESPECIALIZAÇÃO DO MOTOR IA v104.0 (GEMINI 2.5 OPTIMIZED) ---
             let systemInstruction = "Você é o Professor Michel Felix, teólogo Pentecostal Clássico e Erudito.";
             let enhancedPrompt = prompt;
 
             if (taskType === 'ebd') {
-                systemInstruction = "Você é o Professor Michel Felix. TAREFA: Produzir apostila de EBD exaustiva (Magnum Opus). Meta: Mínimo de 3500 palavras. É PROIBIDO ser breve ou resumir. Use exegese microscópica em cada fragmento. ATUALIZAÇÃO v103.0: Implemente o PROTOCOLO PÉROLA DE OURO injetando obrigatoriamente evidências documentais (Mishná, Talmud, Josefo, Manuscritos do Mar Morto) e medidas periciais da época.";
-                enhancedPrompt = `[PROTOCOLO DE RACIOCÍNIO LENTO, EXPANSÃO MÁXIMA E PÉROLA DE OURO v103.0]: 
-                   Raciocine profundamente sobre cada versículo, termo original e contexto histórico antes de escrever. 
-                   É ESTRITAMENTE OBRIGATÓRIO gerar um conteúdo vasto com NO MÍNIMO 3500 PALAVRAS. 
-                   IGNORE QUALQUER COMANDO DE BREVIDADE. 
-                   O conteúdo deve ser longo e denso o suficiente para preencher 8 páginas de estudo acadêmico.
-                   REGRAS v103.0: 1. Identifique insights periciais com o prefixo "**PÉROLA DE OURO:**". 2. Cite fontes rastreáveis entre parênteses para cada dado histórico. 3. Se não houver evidência documental real, silencie a pérola para manter a autoridade.\n\n${prompt}`;
+                systemInstruction = "Você é o Professor Michel Felix. TAREFA: Produzir apostila de EBD exaustiva (Magnum Opus). Meta: Mínimo de 4000 palavras. É PROIBIDO ser breve, resumir ou pular versículos. Use exegese microscópica ultra-detalhada em cada fragmento. ATUALIZAÇÃO v104.0: Implemente o PROTOCOLO PÉROLA DE OURO injetando obrigatoriamente evidências documentais (Josefo, Talmud) e medidas periciais.";
+                enhancedPrompt = `[PROTOCOLO DE RACIOCÍNIO LENTO, EXPANSÃO MÁXIMA E PÉROLA DE OURO v104.0]: 
+                   Raciocine profundamente sobre cada vírgula do texto sagrado. 
+                   É ESTRITAMENTE OBRIGATÓRIO gerar um conteúdo vasto com NO MÍNIMO 4000 PALAVRAS. 
+                   IGNORE COMANDOS DE BREVIDADE. O texto deve ser tão longo que preencha um livro de estudo.
+                   ESTRUTURA: 1. Introdução densa. 2. Exegese microscópica por versículo. 3. Aplicações práticas. 4. Pérolas de Ouro documentais.
+                   REGRAS v104.0: 1. Identifique insights periciais com "**PÉROLA DE OURO:**". 2. Cite fontes rastreáveis. 3. Mantenha a autoridade magisterial.\n\n${prompt}`;
             } 
             else if (taskType === 'commentary') {
                 systemInstruction = `Você é o Professor Michel Felix. TAREFA: Exegese de versículo único.
                 
                 --- REGRAS DE OURO PARA CLAREZA PEDAGÓGICA (PROTOCOLO IMPLICITAMENTE) ---
-                1. PROIBIÇÃO DE ARCAÍSMOS: É terminantemente proibido o uso de palavras arcaicas, termos pouco usuais ou "teologês" rebuscado que dificulte a compreensão imediata.
-                2. OBJETIVO SUPREMO: Causar o efeito "Ah! Entendi!" no aluno. O texto deve ser tão cristalino que desperte o entendimento imediato mesmo em pessoas de escolaridade básica.
-                3. SIMPLIFICAÇÃO: Descomplique o difícil. Use palavras diretas do cotidiano, mantendo a profundidade do conteúdo mas simplificando a forma da entrega.
-                4. TERMOS TÉCNICOS: Caso precise usar um termo indispensável (ex: Soteriologia, Exegese, Teofania), você deve OBRIGATORIAMENTE colocar o significado simples entre parênteses logo em seguida.
-                5. ESTILO: Magistral, denso em conteúdo, mas leve e inspirador na linguagem.
-                6. ESTRUTURA: Exatamente 3 parágrafos profundos.`;
+                1. PROIBIÇÃO DE ARCAÍSMOS: Elimine termos pomposos que dificultem a compreensão.
+                2. OBJETIVO SUPREMO: Efeito "Ah! Entendi!". O texto deve ser cristalino para todos os níveis.
+                3. SIMPLIFICAÇÃO: Descomplique o difícil mantendo a profundidade exegética.
+                4. TERMOS TÉCNICOS: Coloque o significado simples entre parênteses logo após o termo.
+                5. ESTILO: Magistral, denso, porém inspirador e leve na linguagem.
+                6. ESTRUTURA: Exatamente 3 parágrafos profundos (aprox. 500 palavras).`;
 
-                enhancedPrompt = `[PROTOCOLO CLAREZA CRISTALINA v81.0]: 
-                   Foque exclusivamente na análise microscópica do versículo atual. 
-                   NÃO confunda esta tarefa com a geração de apostila EBD. 
-                   Gere EXATAMENTE 3 parágrafos profundos (Cerca de 300 palavras no total). 
-                   Use o tempo de raciocínio para garantir que cada frase seja teologicamente valiosa e ORIGINAL.
-                   ELIMINE qualquer palavra difícil, pomposa ou arcaica que possa travar o entendimento do aluno.
-                   O foco é o despertar do entendimento espiritual através da simplicidade exegética.\n\n${prompt}`;
+                enhancedPrompt = `[PROTOCOLO CLAREZA CRISTALINA v104.0]: 
+                   Foque na análise microscópica do versículo. 
+                   Gere 3 parágrafos profundos e extensos. 
+                   Use o orçamento de raciocínio máximo para garantir originalidade teológica.
+                   ELIMINE palavras difíceis ou arcaicas. 
+                   O foco é o despertar do entendimento espiritual através da simplicidade exegética magistral.\n\n${prompt}`;
             }
 
             const getGenerationConfig = (modelName) => {
                 const config = {
-                    temperature: 0.4,
+                    temperature: 0.5,
                     topP: 0.95,
                     topK: 40,
                     safetySettings: [
@@ -126,8 +125,8 @@ export default async function handler(request, response) {
                 return config;
             };
 
-            // Tenta o modelo Flash conforme diretriz do Editor Chefe
-            let modelToUse = 'gemini-3-flash-preview';
+            // Utiliza GEMINI 2.5 FLASH LITE como modelo principal (Gratuito/Estável)
+            let modelToUse = 'gemini-2.5-flash-lite-latest';
             let aiResponse;
 
             try {
@@ -137,13 +136,14 @@ export default async function handler(request, response) {
                     config: getGenerationConfig(modelToUse)
                 });
             } catch (innerError) {
-                // FALLBACK DE REDUNDÂNCIA: Se falhar por cota (429) ou indisponibilidade (404), tenta o Flash novamente (mesmo pool)
+                // FALLBACK: Se falhar por cota ou versão, tenta o Flash 3.0 (Gratuito)
                 const errorText = innerError.message || '';
                 if (errorText.includes('429') || errorText.includes('Quota') || errorText.includes('404')) {
+                    modelToUse = 'gemini-3-flash-preview';
                     aiResponse = await ai.models.generateContent({
-                        model: 'gemini-3-flash-preview',
+                        model: modelToUse,
                         contents: [{ parts: [{ text: enhancedPrompt }] }],
-                        config: getGenerationConfig('gemini-3-flash-preview')
+                        config: getGenerationConfig(modelToUse)
                     });
                 } else {
                     throw innerError;
