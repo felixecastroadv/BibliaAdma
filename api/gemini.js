@@ -126,9 +126,9 @@ export default async function handler(request, response) {
 
                 // Configurações de Tokens para suporte a textos longos (EBD)
                 if (taskType === 'ebd') {
-                    // 32k total: 24k para pensamento (thinking) e 8k para saída (output)
-                    // 16.000 output tokens permitem ~12.000 palavras se necessário.
-                    config.maxOutputTokens = 16000; 
+                    // 35k total: 24.5k para pensamento (thinking) e ~10.5k reais para a saída (output)
+                    // Isso garante que a IA tenha espaço de sobra para as 3000 palavras.
+                    config.maxOutputTokens = 35000; 
                     config.thinkingConfig = { thinkingBudget: 24576 };
                 } else {
                     config.thinkingConfig = { thinkingBudget: 12000 };
@@ -176,8 +176,8 @@ export default async function handler(request, response) {
         } catch (error) {
             lastError = error;
             const msg = error.message || '';
-            // Se for erro de parâmetro ou schema, não tenta outras chaves
-            if (msg.includes('400') || msg.includes('INVALID_ARGUMENT')) {
+            // Se for erro de parâmetro ou schema, não tenta outras chaves (exceto se a chave for inválida)
+            if ((msg.includes('400') || msg.includes('INVALID_ARGUMENT')) && !msg.includes('key not valid')) {
                 return response.status(400).json({ error: `Erro na requisição: ${msg}` });
             }
             // Delay curto antes de tentar a próxima chave do pool para evitar spam
