@@ -116,7 +116,7 @@ export default async function handler(request, response) {
 
                 // Add thinking configuration for complex tasks
                 if (taskType === 'ebd' || taskType === 'commentary') {
-                    config.thinkingConfig = { thinkingBudget: modelName === 'gemini-3-pro-preview' ? 32768 : 24576 };
+                    config.thinkingConfig = { thinkingBudget: 24576 };
                 }
 
                 if (schema) {
@@ -126,8 +126,8 @@ export default async function handler(request, response) {
                 return config;
             };
 
-            // Tenta primeiro o modelo PRO para máxima qualidade (EBD/Comentário)
-            let modelToUse = (taskType === 'ebd' || taskType === 'commentary') ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
+            // Tenta o modelo Flash conforme diretriz do Editor Chefe
+            let modelToUse = 'gemini-3-flash-preview';
             let aiResponse;
 
             try {
@@ -137,14 +137,13 @@ export default async function handler(request, response) {
                     config: getGenerationConfig(modelToUse)
                 });
             } catch (innerError) {
-                // FALLBACK DE REDUNDÂNCIA: Se o Pro falhar por cota (429) ou indisponibilidade (404), tenta o Flash na mesma chave
+                // FALLBACK DE REDUNDÂNCIA: Se falhar por cota (429) ou indisponibilidade (404), tenta o Flash novamente (mesmo pool)
                 const errorText = innerError.message || '';
-                if (modelToUse === 'gemini-3-pro-preview' && (errorText.includes('429') || errorText.includes('Quota') || errorText.includes('404'))) {
-                    modelToUse = 'gemini-3-flash-preview';
+                if (errorText.includes('429') || errorText.includes('Quota') || errorText.includes('404')) {
                     aiResponse = await ai.models.generateContent({
-                        model: modelToUse,
+                        model: 'gemini-3-flash-preview',
                         contents: [{ parts: [{ text: enhancedPrompt }] }],
-                        config: getGenerationConfig(modelToUse)
+                        config: getGenerationConfig('gemini-3-flash-preview')
                     });
                 } else {
                     throw innerError;
