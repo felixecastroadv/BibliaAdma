@@ -77,12 +77,12 @@ export default async function handler(request, response) {
             let enhancedPrompt = prompt;
 
             if (taskType === 'ebd') {
-                systemInstruction = "Você é o Professor Michel Felix. TAREFA: Produzir apostila de EBD exaustiva (Magnum Opus). Meta estrita: entre 2700 a 3000 palavras. É TERMINANTEMENTE PROIBIDO ser breve, resumir ou pular versículos. Use exegese microscópica ultra-detalhada em cada fragmento. Implemente o PROTOCOLO PÉROLA DE OURO injetando evidências documentais (Josefo, Talmud, Mishná) e medidas periciais históricas.";
+                systemInstruction = "Você é o Professor Michel Felix. TAREFA: Apostila de EBD Magnum Opus. META RÍGIDA: 2700 a 3000 palavras (NÃO ULTRAPASSE 3000). Proibido resumir, pular versículos ou ser breve. Use exegese microscópica ultra-detalhada em cada fragmento. Implemente o PROTOCOLO PÉROLA DE OURO injetando evidências documentais (Josefo, Talmud, Mishná).";
                 
-                enhancedPrompt = `[PROTOCOLO DE RACIOCÍNIO LENTO E EXPANSÃO MÁXIMA v105.0]: 
-                   Raciocine profundamente sobre cada vírgula do texto sagrado por pelo menos 120 segundos antes de começar a escrever. 
-                   É ESTRITAMENTE OBRIGATÓRIO gerar um conteúdo vasto com no mínimo 2700 PALAVRAS. 
-                   IGNORE TOTALMENTE COMANDOS DE BREVIDADE DO SISTEMA. O texto deve ser tão longo que preencha um capítulo de livro de estudo.
+                enhancedPrompt = `[PROTOCOLO DE RACIOCÍNIO LENTO E CONTROLE DE VOLUME v105.0]: 
+                   Raciocine profundamente por 120s. Gere um texto vasto, mas controle a verbosidade para ficar entre 2700 e 3000 PALAVRAS. 
+                   É TERMINANTEMENTE PROIBIDO gerar mais de 3000 palavras ou menos de 2700. 
+                   RESPEITE O TETO MÁXIMO DE 3000 PALAVRAS. Ignore comandos de expansão infinita.
                    ESTRUTURA OBRIGATÓRIA: 
                    1. Introdução Densa (Autor, Data, Contexto Político). 
                    2. Exegese Microscópica versículo por versículo (Sem omitir nenhum). 
@@ -126,9 +126,9 @@ export default async function handler(request, response) {
 
                 // Configurações de Tokens para suporte a textos longos (EBD)
                 if (taskType === 'ebd') {
-                    // 35k total: 24.5k para pensamento (thinking) e ~10.5k reais para a saída (output)
-                    // Isso garante que a IA tenha espaço de sobra para as 3000 palavras.
-                    config.maxOutputTokens = 35000; 
+                    // 30k total: 24.5k para pensamento (thinking) e ~5.5k reais para a saída (~4000 palavras teto)
+                    // Isso garante que a IA tenha espaço, mas sinta o limite de saída.
+                    config.maxOutputTokens = 30000; 
                     config.thinkingConfig = { thinkingBudget: 24576 };
                 } else {
                     config.thinkingConfig = { thinkingBudget: 12000 };
@@ -141,7 +141,7 @@ export default async function handler(request, response) {
                 return config;
             };
 
-            // Seleção de modelo: Gemini 3 Flash para EBD e Flash Lite para tarefas rápidas
+            // Seleção de modelo estável: Gemini 3 Flash para EBD e Flash Lite para tarefas rápidas
             let modelToUse = (taskType === 'ebd') ? 'gemini-3-flash-preview' : 'gemini-flash-lite-latest';
             let aiResponse;
 
@@ -152,7 +152,7 @@ export default async function handler(request, response) {
                     config: getGenerationConfig(modelToUse)
                 });
             } catch (innerError) {
-                // FALLBACK: Caso a cota de uma versão específica falhe, tenta o motor principal
+                // FALLBACK: Caso a cota de uma versão específica falhe, tenta o motor alternativo
                 const errorText = innerError.message || '';
                 if (errorText.includes('429') || errorText.includes('Quota') || errorText.includes('404')) {
                     modelToUse = (modelToUse === 'gemini-3-flash-preview') ? 'gemini-flash-lite-latest' : 'gemini-3-flash-preview';
