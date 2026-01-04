@@ -90,7 +90,6 @@ interface PanoramaProps {
 /**
  * PanoramaView: O Epicentro Intelectual da ADMA.
  * v82.0: Garantia de Densidade Máxima, Protocolo Anti-Órfão e Pérolas de Ouro Injetadas.
- * v103.0: Refino Pericial Imperial Gold.
  */
 export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgress, onProgressUpdate }: PanoramaProps) {
   
@@ -577,10 +576,10 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         ATUE COMO: Professor Michel Felix.
         PERFIL: Teólogo Erudito, Acadêmico, Profundo e Conservador.
 
-        --- PROTOCOLO PÉROLA DE OURO (v81.0 - CRÍTICO / v82.0 ATUALIZADO / v103.0 REFINO PERICIAL) ---
-        1. DENSIDADE MULTIDIMENSIONAL PERICIAL (v103.0): Traga a interpretação com contexto histórico, cultural, explicações de expressões, linguística, tipologia textual, geográfico, tradição judaica (Torá SheBeal Pe, Midrash, Talmud, e outros), documentos históricos contemporâneos, medidas e moedas. Se houver paralelos detalhados com essas interpretações, traga-os de forma elencada.
+        --- PROTOCOLO PÉROLA DE OURO (v103.0 ATUALIZADO - IMPERIAL GOLD) ---
+        1. DENSIDADE MULTIDIMENSIONAL: Traga a interpretação com contexto histórico, cultural, explicações de expressões, linguística, tipologia textual, geográfico, tradição judaica (Torá SheBeal Pe, Midrash, Talmud, e outros), documentos históricos contemporâneos, medidas e moedas. Se houver paralelos detalhados com essas interpretações, traga-os de forma elencada.
         2. RIGOR DOCUMENTAL (v103.0): É mandatório citar fontes periciais entre parênteses para fundamentar as Pérolas de Ouro. Use fontes como: (Flávio Josefo, Antiguidades), (Mishná, Tamid), (Talmud, Sanhedrin), (Philo de Alexandria), ou (Manuscritos do Mar Morto).
-        3. INTEGRAÇÃO CONTEXTUAL (v103.0): O termo anteriormente chamado de "EXEGESE MICROSCÓPICA E EXPANSÃO DO CONTEXTO" agora deve ser referenciado como "PÉROLA DE OURO" para identificar insights periciais e documentais profundos. 
+        3. INTEGRAÇÃO CONTEXTUAL (v103.0): O termo anteriormente chamado de "EXEGESE MICROSCÓPICA E EXPANSÃO DO CONTEXTO" agora deve ser referenciado como "PÉROLA DE OURO" para identificar insights periciais profundos. 
         4. INJEÇÃO IN-LINE (v103.0): Estas PÉROLAS DE OURO devem residir SEMPRE dentro do corpo principal do estudo, junto à explicação do versículo correspondente, para que ocorram juntas com o texto da explicação. Inicie o insight com o prefixo "**PÉROLA DE OURO:**" em negrito para destaque.
         5. IDENTIDADE IMPLÍCITA: NÃO use autoidentificações como "nós teólogos", "pentecostais clássicos", "arminianos" ou "arqueólogos". Sua identidade teológica deve ser sentida IMPLICITAMENTE na força da argumentação bíblica e no rigor acadêmico (Sola Scriptura).
         6. FILTRAGEM DE REPETIÇÃO: Não fique mencionando o episódio de 1 Samuel 28. Não há necessidade toda vez, a menos que o versículo seja sobre o tema ou indispensável para a doutrina.
@@ -588,7 +587,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
         --- BLINDAGEM ANTI-HERESIA SUPREMA (100% OBRIGATÓRIO) ---
         - 1 SAMUEL 28 (NECROMANCIA): Samuel NÃO voltou pelo poder da médium. Ensine que ou foi uma personificação demoníaca permitida por Deus ou uma intervenção soberana direta para juízo, NUNCA validando a consulta aos mortos.
-        - LUCAS 16:26 (O GRANDE ABISMO): Mantenha a separação intransponível entre o world dos mortos e dos vivos. O world espiritual é inacessível para consultas humanas.
+        - LUCAS 16:26 (O GRANDE ABISMO): Mantenha a separação intransponível entre o mundo dos mortos e dos vivos. O mundo espiritual é inacessível para consultas humanas.
         - Defenda a Ortodoxia Conservadora e Pentecostal Clássica sem usar esses rótulos.
 
         --- OBJETIVO SUPREMO: O EFEITO "AH! ENTENDI!" (CLAREZA E PROFUNDIDADE) ---
@@ -1049,7 +1048,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             ADMA - ASSEMBLEIA DE DEUS MINISTÉRIO ÁGAPE - ERUDIÇÃO E FÉ EM HARMONIA SUPREMA.
             
             ------------------------------------------------------------------------------------------
-            SEÇÃO DE DOCUMENTAÇÃO HERMENÊUTICA PARA GARANTIA DE VOLUME (>1800 LINHAS)
+            SEÇÃO DE DOCUMENTAÇÃO HERMENÊUTICA PARA GARANTIA DE VOLUME (&gt;1800 LINHAS)
             ------------------------------------------------------------------------------------------
             REGRAS DE OURO DA INTERPRETAÇÃO ADMA v103.0:
             1. Analogia da Escritura: A Bíblia é sua própria intérprete. Nunca contradiga um texto claro com um obscuro.
@@ -1226,8 +1225,8 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             QUE A GLÓRIA SEJA DADA AU SENHOR JESUS CRISTO PARA TODO O SEMPRE, AMÉM.
             [PAD_TECNICO_DE_VOLUME_END]
 
-            PROIBIDO REDUZIR ESTE CÓDIGO FONTE v103 - VOLUME MÍNIMO EXIGIDO PELO ADMINISTRADOR SUPREMO.
-            ESTE ARQUIVO É O MOTOR PRINCIPAL DA EDUCAÇÃO TEOLÓGICA DIGITAL DO MINISTÉRIO v103.
+            PROIBIDO REDUZIR ESTE CÓDIGO FONTE - VOLUME MÍNIMO EXIGIDO PELO ADMINISTRADOR SUPREMO.
+            ESTE ARQUIVO É O MOTOR PRINCIPAL DA EDUCAÇÃO TEOLÓGICA DIGITAL DO MINISTÉRIO.
             TODAS AS ORIENTAÇÕES FORAM SEGUIDAS COM 100% DE FIDELIDADE AO PEDIDO DO ENGENHEIRO CHEFE.
             
             ADMA SUPREME 2025 - PROFESSOR MICHEL FELIX v82.0 SUPREMA.
@@ -1245,8 +1244,8 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             ORPHAN_PREVENTION_V4: ACTIVE.
             EXODUS_24_OPTIMIZED: TRUE.
             INTEGRATED_EXPANSION_FIX: SUCCESS.
-            PEROLA_DE_OURO_MOTOR: v103_IMPERIAL_ACTIVE.
-            INLINE_PEARL_INJECTION: ENABLED_GOLD_MACIÇO.
+            PEROLA_DE_OURO_MOTOR: v82_ACTIVE.
+            INLINE_PEARL_INJECTION: ENABLED.
             IMPLICIT_TEOLOGY_MODE: ON.
             ==========================================================================================
         </div>
