@@ -20,6 +20,7 @@ import { useState, useEffect, useRef } from 'react';
  * 11. PADRÃO DE PÁGINAS: DISTRIBUIÇÃO HOMOGÊNEA DE 600 PALAVRAS POR PÁGINA (ESTRITAMENTE).
  * 12. PROTOCOLO PÉROLA DE OURO (v82.0): Inclusão de Torá SheBeal Pe, Talmud, Midrash e medidas exatas INJETADAS NO TEXTO.
  * 13. ATUALIZAÇÃO v103.0 (IMPERIAL GOLD): Injeção de Fontes Rastreáveis (Josefo, Mishná, Philo) e Design Ouro Maciço.
+ * 14. PROTOCOLO ONE-SHOT v103.1: Geração integral (3000 palavras) em comando único para evitar falhas de continuação.
  * 
  * LOG DE OTIMIZAÇÃO v82.0 (SINCRO PÉROLA DE OURO E INJEÇÃO):
  * - Substituição definitiva do termo "Exegese Microscópica" por "Pérola de Ouro".
@@ -152,11 +153,11 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   // DICIONÁRIO DE STATUS DE CARREGAMENTO (FEEDBACK MAGISTRAL v82.0 / v103.0)
   // ==========================================================================================
   const loadingStatusMessages = [
-    "Iniciando Protocolo Magnum Opus (v82.0)...",
+    "Iniciando Protocolo Magnum Opus One-Shot v103.1...",
     "Analizando contexto exegético do capítulo bíblico...",
     "Consultando manuscritos e linguagens originais...",
     "Fracionando exegese in porções microscópicas...",
-    "Redigindo apostila exaustiva (Meta: 3500 palavras)...",
+    "Redigindo apostila exaustiva (Meta: 3000 palavras)...",
     "Injetando Pérolas de Ouro dentro dos tópicos (v82.0)...",
     "Integrando Contexto Judaico, Talmud e Midrash...",
     "Analisando documentos históricos contemporâneos...",
@@ -166,8 +167,8 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     "Sistematizando evidências arqueológicas contemporâneas...",
     "Validando Ortodoxia com Identidade Implícita...",
     "Formatando layout para leitura fluida e premium...",
-    "Processando densidade teológica final v82.0...",
-    "Iniciando Protocolo de Retenção (Aguardando exegese completa)...",
+    "Processando densidade teológica final v103.1...",
+    "Iniciando Protocolo de Retenção (Geração One-Shot)...",
     "Quase lá! Realizando revisão acadêmica final...",
     "A IA está verificando a integridade das Pérolas...",
     "Exegese magistral em andamento. Não interrompa...",
@@ -268,7 +269,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                   
                   await loadContent();
                   setValidationPhase('releasing');
-                  onShowToast('Manuscrito Pérola de Ouro v103.0 Liberado!', 'success');
+                  onShowToast('Manuscrito Pérola de Ouro v103.1 Liberado!', 'success');
                   setIsGenerating(false);
               } catch (e) {
                   console.error("Erro no commit final:", e);
@@ -551,20 +552,18 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   // GERAÇÃO MAGNUM OPUS SUPREMA - PROTOCOLO PROF. MICHEL FELIX v82.0 / v103.0 (PÉROLAS INJETADAS)
   // ==========================================================================================
   /**
-   * Orquestra a geração de conteúdo acadêmico exegético exaustivo.
+   * Orquestra a geração de conteúdo acadêmico exegético exaustivo em Tiro Único (One-Shot).
    * v82.0: Implementação de INJEÇÃO DE PÉROLAS DE OURO diretamente no corpo do texto explicativo.
    * v103.0: Adição de refino documental e fontes rastreáveis (Josefo, Talmud, etc).
    */
-  const handleGenerate = async (mode: 'start' | 'continue') => {
+  const handleGenerate = async () => {
     setIsGenerating(true);
     setValidationPhase('structural');
     accelerationRef.current = false;
-    setValidationLog(["🚀 Iniciando motor Michel Felix v103.0 SUPREMA", "📐 Target: 3.500 words (Pérolas de Ouro Imperial Gold)"]);
+    setValidationLog(["🚀 Iniciando motor Michel Felix v103.1 SUPREMA ONE-SHOT", "📐 Target: 3.000 words (Protocolo de Geração Única)"]);
     
-    const target = activeTab;
     const studyKey = generateChapterKey(book, chapter);
     const existing = (await db.entities.PanoramaBiblico.filter({ study_key: studyKey }))[0] || {};
-    const currentText = target === 'student' ? (existing.student_content || '') : (existing.teacher_content || '');
 
     // --- LÓGICA DE INTRODUÇÃO SELETIVA (100% FIEL AO PEDIDO DO ADMIN) ---
     const introInstruction = chapter === 1 
@@ -582,7 +581,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         3. INTEGRAÇÃO CONTEXTUAL (v103.0): O termo anteriormente chamado de "EXEGESE MICROSCÓPICA E EXPANSÃO DO CONTEXTO" agora deve ser referenciado como "PÉROLA DE OURO" para identificar insights periciais profundos. 
         4. INJEÇÃO IN-LINE (v103.0): Estas PÉROLAS DE OURO devem residir SEMPRE dentro do corpo principal do estudo, junto à explicação do versículo correspondente, para que ocorram juntas com o texto da explicação. Inicie o insight com o prefixo "**PÉROLA DE OURO:**" em negrito para destaque.
         5. IDENTIDADE IMPLÍCITA: NÃO use autoidentificações como "nós teólogos", "pentecostais clássicos", "arminianos" ou "arqueólogos". Sua identidade teológica deve ser sentida IMPLICITAMENTE na força da argumentação bíblica e no rigor acadêmico (Sola Scriptura).
-        6. FILTRAGEM DE REPETIÇÃO: Não fique mencionando o episódio de 1 Samuel 28. Não há necessidade toda vez, a menos que o versículo seja sobre o tema ou indispensável para a doutrina.
+        6. FILTRAGEM DE REPETIÇÃO: No fique mencionando o episódio de 1 Samuel 28. Não há necessidade toda vez, a menos que o versículo seja sobre o tema ou indispensável para a doutrina.
         7. SELAGEM FINAL: As seções "### TIPOLOGIA: CONEXÃO COM JESUS CRISTO" e "### CURIOSIDADES E ARQUEOLOGIA" são o encerramento absoluto. Nada deve ser escrito após elas.
 
         --- BLINDAGEM ANTI-HERESIA SUPREMA (100% OBRIGATÓRIO) ---
@@ -654,35 +653,31 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     `;
 
     const instructions = customInstructions ? `\nINSTRUÇÕES EXTRAS: ${customInstructions}` : "";
-    const continuation = mode === 'continue' ? `MODO CONTINUAÇÃO v103.0 Imperial Gold: Continue exatamente de onde parou: "...${currentText.slice(-1500)}...". Lembre-se: Injete as PÉROLAS DE OURO com fontes periciais (Josefo, Mishná).` : "INÍCIO DA EXEGESE MAGISTRAL COMPLETA COM INJEÇÃO DE PÉROLAS DE OURO v103.0.";
+    const oneShotCmd = `[PROTOCOLO ONE-SHOT 3000 PALAVRAS]: Gere o estudo COMPLETO do capítulo, do primeiro ao último versículo, em uma única resposta exaustiva. Meta: 3000 palavras. Não resuma o final. Cubra 100% dos versículos com microscopia bíblica e injeção Imperial Gold de Pérolas de Ouro com fontes periciais (Josefo, Mishná).`;
 
     try {
-        setValidationLog(prev => [...prev, "📡 Enviando requisição para nuvem ADMA v103.0...", "🧠 IA raciocinando Pérola de Ouro v103.0 Imperial Gold..."]);
-        const res = await generateContent(`${WRITING_STYLE} ${instructions} ${continuation}`, null, true, 'ebd');
+        setValidationLog(prev => [...prev, "📡 Enviando requisição One-Shot v103.1...", "🧠 IA processando aula integral (Meta: 3000 palavras)..."]);
+        const res = await generateContent(`${WRITING_STYLE} ${instructions} ${oneShotCmd}`, null, true, 'ebd');
         
-        if (!res || res.length < 500) throw new Error("Conteúdo insuficiente retornado pela infraestrutura Gemini v103.0.");
+        if (!res || res.length < 500) throw new Error("Conteúdo insuficiente retornado pelo motor Gemini.");
         
         setValidationPhase('theological');
         let clean = res.trim();
         if (clean.startsWith('{"text":')) { try { clean = JSON.parse(clean).text; } catch(e){} }
         if (clean.startsWith('```')) clean = clean.replace(/```[a-z]*\n|```/g, '');
-
-        const sep = (mode === 'continue' && currentText.length > 0) ? '<hr class="page-break">' : '';
-        const total = mode === 'continue' ? (currentText + sep + clean) : clean;
         
         const data = { 
             book, chapter, study_key: studyKey, title: existing.title || `Estudo de ${book} ${chapter}`, outline: existing.outline || [], 
-            student_content: target === 'student' ? total : (existing.student_content || ''), 
-            teacher_content: target === 'teacher' ? total : (existing.teacher_content || '') 
+            student_content: activeTab === 'student' ? clean : (existing.student_content || ''), 
+            teacher_content: activeTab === 'teacher' ? clean : (existing.teacher_content || '') 
         };
 
-        // PREPARA O BUFFER PARA O MONITORAMENTO DO EFFECT REATIVO v82 / v103.0
         pendingContentBuffer.current = data;
         setValidationPhase('retention');
-        accelerationRef.current = true; // ATIVA TURBO v82 QUANDO O CONTEÚDO CHEGA
+        accelerationRef.current = true; 
 
     } catch (e: any) { 
-        onShowToast(`Erro no Motor v103.0: ${e.message}`, 'error'); 
+        onShowToast(`Erro no Motor v103.1: ${e.message}`, 'error'); 
         setIsGenerating(false); 
     }
   };
@@ -700,7 +695,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                 <h2 className="font-cinzel font-bold text-xl md:text-5xl tracking-[0.2em] drop-shadow-lg">Panorama EBD</h2>
                 <div className="flex items-center gap-3 opacity-60 mt-2">
                     <Milestone className="w-4 h-4 text-[#C5A059]" />
-                    <span className="text-[10px] uppercase tracking-[0.5em] font-montserrat font-bold">Pérola de Ouro v82.0 / v103.0 Imperial Gold</span>
+                    <span className="text-[10px] uppercase tracking-[0.5em] font-montserrat font-bold">Pérola de Ouro v82.0 / v103.1 One-Shot</span>
                 </div>
             </div>
             <div className="flex gap-2">
@@ -719,7 +714,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                         <div className="flex justify-between items-center border-b pb-6 dark:border-white/10">
                             <div className="flex flex-col">
                                 <span className="font-cinzel text-xs font-black uppercase tracking-widest text-[#8B0000] dark:text-[#C5A059]">Narração Magistral Neural</span>
-                                <span className="text-[10px] text-gray-400 mt-1 uppercase tracking-widest flex items-center gap-2 font-bold"><Volume2 className="w-3 h-3"/> Prof. Michel Felix v103.0</span>
+                                <span className="text-[10px] text-gray-400 mt-1 uppercase tracking-widest flex items-center gap-2 font-bold"><Volume2 className="w-3 h-3"/> Prof. Michel Felix v103.1</span>
                             </div>
                             <button onClick={togglePlay} className="bg-[#C5A059] text-black px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
                                 {isPlaying ? <Pause className="w-6 h-6 fill-current inline mr-3"/> : <Play className="w-6 h-6 fill-current inline mr-3"/>} {isPlaying ? 'Pausar' : 'Ouvir Aula'}
@@ -756,7 +751,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
              </div>
              <div className="w-32 md:w-40 relative flex-shrink-0">
                  <HistoryIcon className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-[#C5A059] opacity-70" />
-                 <input type="number" value={chapter} onChange={e => setChapter(Number(e.target.value))} className="w-full pl-16 pr-6 py-5 border-2 border-[#C5A059]/20 rounded-3xl font-cinzel text-lg dark:bg-gray-800 dark:text-white outline-none font-bold shadow-sm" min={1} />
+                 <input type="number" value={chapter} onChange={e => setChapter(Number(e.target.value))} className="w-full pl-16 pr-6 py-5 border-2 border-[#C5A059]/20 rounded-3xl font-cinzel text-lg dark:bg-gray-800 dark:text-white font-bold shadow-sm" min={1} />
              </div>
         </div>
 
@@ -781,8 +776,8 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                         <div className="flex items-center gap-3 md:gap-6 min-w-0">
                             <div className="w-10 h-10 md:w-16 md:h-16 bg-gradient-to-br from-[#8B0000] to-[#400010] rounded-2xl md:rounded-3xl flex items-center justify-center shadow-xl ring-2 md:ring-4 ring-[#C5A059]/40 shrink-0"><Sparkles className="w-6 h-6 md:w-10 md:h-10 text-white animate-pulse" /></div>
                             <div className="flex flex-col min-w-0">
-                                <span className="font-cinzel text-xs md:text-lg font-black tracking-widest uppercase text-white truncate">CONSTRUTOR MAGNUM v103.0</span>
-                                {adminPanelExpanded && <span className="hidden md:flex text-[10px] uppercase text-[#C5A059] font-black mt-2 items-center gap-3"><Gem className="w-3 h-3"/> Protocolo Imperial Gold | Rigor Documental Michel Felix</span>}
+                                <span className="font-cinzel text-xs md:text-lg font-black tracking-widest uppercase text-white truncate">CONSTRUTOR MAGNUM v103.1</span>
+                                {adminPanelExpanded && <span className="hidden md:flex text-[10px] uppercase text-[#C5A059] font-black mt-2 items-center gap-3"><Gem className="w-3 h-3"/> Protocolo Imperial Gold | Geração One-Shot (3000 Palavras)</span>}
                             </div>
                         </div>
                         
@@ -814,7 +809,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                                 <div className="flex gap-4 mt-3">
                                     <span className="text-[10px] opacity-70 font-mono flex items-center gap-2 bg-white/5 px-4 py-1.5 rounded-xl border border-white/10"><Clock className="w-3 h-3 text-[#C5A059]"/> Auditoria: {generationTime}s</span>
                                     <span className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-xl border-2 transition-all duration-500 shadow-lg ${accelerationRef.current ? 'bg-green-900/40 text-green-400 border-green-500' : 'bg-blue-900/40 text-blue-400 border-blue-500'}`}>
-                                        {validationPhase === 'retention' ? 'Fase: Retenção' : 'Fase: Injeção Imperial'}
+                                        {validationPhase === 'retention' ? 'Fase: Retenção' : 'Fase: Injeção Imperial One-Shot'}
                                     </span>
                                 </div>
                             </div>
@@ -832,34 +827,26 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                                         <textarea 
                                             value={customInstructions} 
                                             onChange={(e) => setCustomInstructions(e.target.value)} 
-                                            placeholder="Dê orientações para a Pérola de Ouro v103.0 (ex: Josefo, Mishná, medidas periciais)..." 
+                                            placeholder="Dê orientações para a Pérola de Ouro v103.1 (ex: Josefo, Mishná, medidas periciais)..." 
                                             className="w-full p-4 md:p-6 text-sm md:text-lg text-black rounded-2xl md:rounded-[2.5rem] border-none focus:ring-8 focus:ring-[#C5A059]/20 font-montserrat shadow-inner bg-[#FDFBF7] font-bold leading-snug" 
                                             rows={2} 
                                         />
                                     </motion.div>
                                 )}
 
-                                <div className="grid grid-cols-2 md:flex md:flex-row gap-3 md:gap-4 mb-4">
+                                <div className="grid grid-cols-1 md:flex md:flex-row gap-3 md:gap-4 mb-4">
                                     <button 
-                                        onClick={() => handleGenerate('start')} 
+                                        onClick={handleGenerate} 
                                         disabled={isGenerating} 
-                                        className="col-span-1 px-4 md:px-10 py-4 md:py-6 bg-[#8B0000] border-2 md:border-4 border-[#C5A059]/40 rounded-2xl md:rounded-[2.5rem] text-[8px] md:text-[10px] font-black uppercase tracking-widest text-white hover:bg-white hover:text-black transition-all flex items-center justify-center gap-2 md:gap-6 shadow-2xl active:scale-95 group"
+                                        className="w-full md:px-10 py-4 md:py-6 bg-[#8B0000] border-2 md:border-4 border-[#C5A059]/40 rounded-2xl md:rounded-[2.5rem] text-[8px] md:text-[10px] font-black uppercase tracking-widest text-white hover:bg-white hover:text-black transition-all flex items-center justify-center gap-2 md:gap-6 shadow-2xl active:scale-95 group"
                                     >
-                                        <Layout className="w-4 h-4 md:w-6 md:h-6 group-hover:rotate-[360deg] transition-transform duration-1000" /> GERAR AULA INTEGRAL v103.0
-                                    </button>
-                                    
-                                    <button 
-                                        onClick={() => handleGenerate('continue')} 
-                                        disabled={isGenerating} 
-                                        className="col-span-1 px-4 md:px-10 py-4 md:py-6 bg-[#C5A059] text-black font-black rounded-2xl md:rounded-[2.5rem] text-[8px] md:text-[10px] uppercase tracking-widest hover:bg-white transition-all flex items-center justify-center gap-2 md:gap-6 shadow-2xl active:scale-95"
-                                    >
-                                        <Plus className="w-4 h-4 md:w-6 md:h-6"/> CONTINUAR ESTUDO v103
+                                        <Layout className="w-4 h-4 md:w-6 md:h-6 group-hover:rotate-[360deg] transition-transform duration-1000" /> GERAR AULA INTEGRAL v103.1 (3000 PALAVRAS)
                                     </button>
                                     
                                     {pages.length > 0 && (
                                         <button 
                                             onClick={async () => { if(window.confirm("Deseja apagar este manuscrito? Isso permitirá uma regeneração do zero.")) { if(content?.id) await db.entities.PanoramaBiblico.delete(content.id); await loadContent(); onShowToast('Manuscrito Resetado.', 'success'); } }} 
-                                            className="col-span-2 md:col-span-1 px-4 py-4 md:py-6 bg-red-900/60 text-red-300 border-2 md:border-4 border-red-500/30 rounded-2xl md:rounded-[2.5rem] hover:bg-red-600 hover:text-white transition-all shadow-2xl flex items-center justify-center gap-2"
+                                            className="w-full md:w-auto px-4 py-4 md:py-6 bg-red-900/60 text-red-300 border-2 md:border-4 border-red-500/30 rounded-2xl md:rounded-[2.5rem] hover:bg-red-600 hover:text-white transition-all shadow-2xl flex items-center justify-center gap-2"
                                         >
                                             <Trash2 className="w-4 h-4 md:w-6 md:h-6" /> <span className="md:hidden text-[10px] font-black uppercase tracking-widest">Apagar Manuscrito</span>
                                         </button>
@@ -878,7 +865,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             {/* Stats Flutuantes Admin */}
             {isAdmin && stats.wordCount > 0 && (
                 <div className="fixed top-40 left-6 z-50 bg-[#1a0f0f]/90 backdrop-blur-xl p-5 rounded-2xl border border-[#C5A059]/30 text-[#C5A059] shadow-2xl hidden lg:flex flex-col gap-2 animate-in slide-in-from-left-4">
-                    <div className="flex items-center gap-2 border-b border-[#C5A059]/15 pb-2 mb-1"><AlignLeft className="w-3 h-3"/> <span className="font-cinzel text-[9px] uppercase font-bold tracking-widest">Telemetria v103.0</span></div>
+                    <div className="flex items-center gap-2 border-b border-[#C5A059]/15 pb-2 mb-1"><AlignLeft className="w-3 h-3"/> <span className="font-cinzel text-[9px] uppercase font-bold tracking-widest">Telemetria v103.1</span></div>
                     <div className="flex justify-between gap-6 text-[8px] font-black uppercase tracking-widest"><span>Palavras:</span> <span className="text-white font-mono">{stats.wordCount}</span></div>
                     <div className="flex justify-between gap-6 text-[8px] font-black uppercase tracking-widest"><span>Densidade:</span> <span className="text-white font-mono">{stats.estimatedPages} pág.</span></div>
                     <div className="flex justify-between gap-6 text-[8px] font-black uppercase tracking-widest"><span>Caracteres:</span> <span className="text-white font-mono">{stats.charCount}</span></div>
@@ -889,14 +876,14 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                 <div className="text-center py-64 opacity-50 dark:text-white animate-in zoom-in duration-1000">
                     <ShieldAlert className="w-56 h-56 mx-auto text-[#8B0000] mb-12 drop-shadow-2xl animate-pulse" />
                     <h2 className="font-cinzel text-5xl font-black mb-8 tracking-widest uppercase leading-tight">Sanctum Sanctorum</h2>
-                    <p className="font-montserrat text-sm max-w-lg mx-auto uppercase tracking-widest leading-loose italic font-black text-[#8B0000] border-t-2 border-[#8B0000]/20 pt-8">Conteúdo docente restrito à ADMA v103.0.</p>
+                    <p className="font-montserrat text-sm max-w-lg mx-auto uppercase tracking-widest leading-loose italic font-black text-[#8B0000] border-t-2 border-[#8B0000]/20 pt-8">Conteúdo docente restrito à ADMA v103.1.</p>
                 </div>
             ) : isEditing ? (
                  <div className="bg-white dark:bg-dark-card shadow-2xl p-10 rounded-[4rem] border-8 border-[#C5A059]/30 relative animate-in slide-in-from-bottom-16 duration-700">
                      <div className="flex justify-between items-center mb-12 border-b-2 pb-8 dark:border-white/10">
                         <div className="flex items-center gap-8">
                             <div className="w-16 h-16 bg-blue-900/20 rounded-3xl flex items-center justify-center text-blue-900 shadow-xl"><PenTool className="w-10 h-10" /></div>
-                            <h3 className="font-cinzel font-black text-3xl text-[#8B0000] dark:text-[#ff6b6b]">Oficina do Manuscrito v103</h3>
+                            <h3 className="font-cinzel font-black text-3xl text-[#8B0000] dark:text-[#ff6b6b]">Oficina do Manuscrito v103.1</h3>
                         </div>
                         <div className="flex gap-6">
                             <button onClick={() => setIsEditing(false)} className="px-10 py-4 text-[10px] font-black border-2 border-red-500 text-red-500 rounded-full hover:bg-red-50 uppercase tracking-widest transition-all">Descartar</button>
@@ -905,7 +892,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                                 setIsSaving(true);
                                 const data = { ...content, student_content: activeTab === 'student' ? editValue : content.student_content, teacher_content: activeTab === 'teacher' ? editValue : content.teacher_content };
                                 if (content.id) await db.entities.PanoramaBiblico.update(content.id, data);
-                                await loadContent(); setIsEditing(false); onShowToast('Manuscrito Arquivado v103!', 'success');
+                                await loadContent(); setIsEditing(false); onShowToast('Manuscrito Arquivado v103.1!', 'success');
                                 setIsSaving(false);
                             }} className="px-10 py-4 text-[10px] font-black bg-green-600 text-white rounded-full shadow-xl uppercase tracking-widest transition-all">
                                 {isSaving ? <Loader2 className="animate-spin w-4 h-4"/> : 'Salvar Alterações'}
@@ -936,7 +923,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
                              <div className="max-w-3xl mx-auto mb-40">
                                 <Quote className="w-24 h-24 mx-auto text-[#C5A059] mb-12 opacity-20" />
-                                <h4 className="font-cinzel text-5xl font-black text-[#8B0000] mb-10 uppercase tracking-widest drop-shadow-2xl">Epílogo da Aula Magistral v103.0</h4>
+                                <h4 className="font-cinzel text-5xl font-black text-[#8B0000] mb-10 uppercase tracking-widest drop-shadow-2xl">Epílogo da Aula Magistral v103.1</h4>
                                 <p className="font-cormorant text-4xl text-gray-500 italic leading-loose px-12">"Guardei a tua palavra no meu coração, para não pecar contra ti." <br/><span className="text-[12px] font-black tracking-[1.4em] not-italic text-[#C5A059] block mt-10 uppercase opacity-80">(Salmos 119:11 - ACF)</span></p>
                              </div>
                              
@@ -945,10 +932,10 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                                  if (!userProgress || isRead) return;
                                  const updated = await db.entities.ReadingProgress.update(userProgress.id!, { ebd_read: [...(userProgress.ebd_read || []), studyKey], total_ebd_read: (userProgress.total_ebd_read || 0) + 1 });
                                  if (onProgressUpdate) onProgressUpdate(updated);
-                                 onShowToast('Concluído v103! Conhecimento arquivado no Ranking.', 'success');
+                                 onShowToast('Concluído v103.1! Conhecimento arquivado no Ranking.', 'success');
                              }} disabled={isRead} className={`group relative px-10 py-5 rounded-full font-cinzel font-black text-lg shadow-2xl flex items-center justify-center gap-5 mx-auto overflow-hidden transition-all transform hover:scale-105 active:scale-95 border-4 border-white/10 ${isRead ? 'bg-green-600 text-white' : 'bg-gradient-to-r from-[#8B0000] via-[#D00010] to-[#600018] text-white'}`}>
                                  {isRead ? <CheckCircle className="w-6 h-6" /> : <GraduationCap className="w-7 h-7 group-hover:rotate-[360deg] transition-transform duration-[3s]" />}
-                                 <span className="relative z-10 tracking-widest uppercase">{isRead ? 'ARQUIVADO v103' : 'CONCLUIR E PONTUAR'}</span>
+                                 <span className="relative z-10 tracking-widest uppercase">{isRead ? 'ARQUIVADO v103.1' : 'CONCLUIR E PONTUAR'}</span>
                                  {!isRead && <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 blur-2xl"></div>}
                              </button>
                          </footer>
@@ -960,12 +947,12 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                         <div className="absolute inset-0 bg-[#C5A059]/30 blur-[100px] rounded-full animate-pulse"></div>
                         <ScrollText className="w-56 h-56 mx-auto text-[#C5A059] opacity-20 relative z-10 drop-shadow-2xl"/>
                     </div>
-                    <p className="font-cinzel text-5xl font-black text-gray-400 mb-8 tracking-[0.4em] uppercase leading-tight">Manuscrito Silente v103</p>
-                    <p className="font-montserrat text-sm text-gray-500 uppercase tracking-[1.2em] mb-32 font-black">Aguardando transcrição Imperial Gold.</p>
+                    <p className="font-cinzel text-5xl font-black text-gray-400 mb-8 tracking-[0.4em] uppercase leading-tight">Manuscrito Silente v103.1</p>
+                    <p className="font-montserrat text-sm text-gray-500 uppercase tracking-[1.2em] mb-32 font-black">Aguardando transcrição Imperial Gold One-Shot.</p>
                     {isAdmin && (
                         <div className="max-w-2xl mx-auto p-16 bg-[#8B0000]/10 rounded-[4rem] border-4 border-dashed border-[#8B0000]/30 flex flex-col items-center shadow-lg transform group-hover:scale-105 transition-transform duration-500">
                             <Library className="w-20 h-20 text-[#8B0000] mb-10 opacity-80 animate-bounce" />
-                            <p className="text-sm font-black text-[#8B0000] uppercase tracking-[0.6em] text-center leading-loose font-montserrat">Administrador ADMA SUPREMO: <br/> Utilize o motor Magnum Opus v103.0 para gerar Pérolas de Ouro Imperial.</p>
+                            <p className="text-sm font-black text-[#8B0000] uppercase tracking-[0.6em] text-center leading-loose font-montserrat">Administrador ADMA SUPREMO: <br/> Utilize o motor Magnum Opus v103.1 para gerar Pérolas de Ouro Imperial (3000 Palavras).</p>
                         </div>
                     )}
                 </div>
@@ -1030,11 +1017,11 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             - PROTOCOLO ANTI-ÓRFÃO v103.5: Lógica de quebra de página automática para títulos solitários em rodapés.
             
             ESTRUTURA DE DADOS v103.0: {JSON.stringify({ 
-                version: "103.0", 
-                protocol: "PEROLA_DE_OURO_IMPERIAL_GOLD_V3", 
+                version: "103.1", 
+                protocol: "PEROLA_DE_OURO_IMPERIAL_GOLD_V3_ONESHOT", 
                 stability: "MAX_DENSITY_DOCUMENTAL_TEOLOGY", 
                 ui_optimization: "PANEL_COLLAPSE_INTEGRATED_V7",
-                integrity_check: "VERSE_BY_VERSE_PERICIAL",
+                integrity_check: "VERSE_BY_VERSE_PERICIAL_ONESHOT",
                 word_count_paging: "600_WORDS_STANDARD",
                 prompt_fidelidade: "100_PERCENT_ADMIN_PROMPT_FIXED_V4",
                 mobile_fix: "ENFORCED_VIEWPORT_ENCLOSURE",
@@ -1166,7 +1153,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             Each response generated passes through a security layer that prioritizes the sacred text.
             A tecnologia IA é apenas uma ferramenta sob a authority da Palavra de Deus.
             A exatidão da cronologia bíblica é verificada em tempo real para evitar confusões de nomes e datas.
-            A ADMA preza pela pureza exegética, rejeitando qualquer interpretação que favoreça o ocultismo.
+            A ADMA preza pela pureza exegética, rejecting any interpretation that favors spiritualism.
             O status dos mortos na sepultura (sheol/hades) é ensinado conforme a teologia pentecostal clássica.
             As barreiras espirituais impostas por Deus são reais e definitivas para o homem mortal.
             Este manuscrito digital é monitorado para garantir 100% de estabilidade e integridade.
