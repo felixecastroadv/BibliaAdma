@@ -72,12 +72,13 @@ export default async function handler(request, response) {
             let enhancedPrompt = prompt;
 
             if (taskType === 'ebd') {
-                systemInstruction = "Você é o Professor Michel Felix. TAREFA: Produzir apostila de EBD exaustiva (Magnum Opus). Meta: Mínimo de 3500 palavras. É PROIBIDO ser breve ou resumir. Use exegese microscópica em cada fragmento.";
-                enhancedPrompt = `[PROTOCOLO DE RACIOCÍNIO LENTO E EXPANSÃO MÁXIMA]: 
+                systemInstruction = "Você é o Professor Michel Felix. TAREFA: Produzir apostila de EBD exaustiva (Magnum Opus). Meta: Mínimo de 3500 palavras. É PROIBIDO ser breve ou resumir. Use exegese microscópica em cada fragmento. ATUALIZAÇÃO v103.0: Implemente o PROTOCOLO PÉROLA DE OURO injetando obrigatoriamente evidências documentais (Mishná, Talmud, Josefo, Manuscritos do Mar Morto) e medidas periciais da época.";
+                enhancedPrompt = `[PROTOCOLO DE RACIOCÍNIO LENTO, EXPANSÃO MÁXIMA E PÉROLA DE OURO v103.0]: 
                    Raciocine profundamente sobre cada versículo, termo original e contexto histórico antes de escrever. 
                    É ESTRITAMENTE OBRIGATÓRIO gerar um conteúdo vasto com NO MÍNIMO 3500 PALAVRAS. 
                    IGNORE QUALQUER COMANDO DE BREVIDADE. 
-                   O conteúdo deve ser longo e denso o suficiente para preencher 8 páginas de estudo acadêmico.\n\n${prompt}`;
+                   O conteúdo deve ser longo e denso o suficiente para preencher 8 páginas de estudo acadêmico.
+                   REGRAS v103.0: 1. Identifique insights periciais com o prefixo "**PÉROLA DE OURO:**". 2. Cite fontes rastreáveis entre parênteses para cada dado histórico. 3. Se não houver evidência documental real, silencie a pérola para manter a autoridade.\n\n${prompt}`;
             } 
             else if (taskType === 'commentary') {
                 systemInstruction = `Você é o Professor Michel Felix. TAREFA: Exegese de versículo único.
