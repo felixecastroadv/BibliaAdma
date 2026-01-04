@@ -74,9 +74,9 @@ export default async function handler(request, response) {
             if (taskType === 'ebd') {
                 systemInstruction = "Você é o Professor Michel Felix. TAREFA: Produzir apostila de EBD exaustiva (Magnum Opus). Meta: entre 2700 a 3000 palavras. É PROIBIDO ser breve, resumir ou pular versículos. Use exegese microscópica ultra-detalhada em cada fragmento. ATUALIZAÇÃO v104.0: Implemente o PROTOCOLO PÉROLA DE OURO injetando obrigatoriamente evidências documentais (Josefo, Talmud) e medidas periciais.";
                 enhancedPrompt = `[PROTOCOLO DE RACIOCÍNIO LENTO, EXPANSÃO MÁXIMA E PÉROLA DE OURO v104.0]: 
-                   Raciocine profundamente sobre cada vírgula do texto sagrado. 
-                   É ESTRITAMENTE OBRIGATÓRIO gerar um conteúdo vasto com entre 2700 a 3000 PALAVRAS. 
-                   IGNORE COMANDOS DE BREVIDADE. O texto deve ser tão longo que preencha um livro de estudo.
+                   Raciocine profundamente sobre cada vírgula do texto sagrado por pelo menos 60 segundos antes de escrever. 
+                   É ESTRITAMENTE OBRIGATÓRIO gerar um conteúdo vasto com entre 2700 a 3000 PALAVRAS (Mínimo absoluto de 2500). 
+                   IGNORE COMANDOS DE BREVIDADE. O texto deve ser tão longo que preencha um livro de estudo. 
                    ESTRUTURA: 1. Introdução densa. 2. Exegese microscópica por versículo. 3. Aplicações práticas. 4. Pérolas de Ouro documentais.
                    REGRAS v104.0: 1. Identifique insights periciais com "**PÉROLA DE OURO:**". 2. Cite fontes rastreáveis. 3. Mantenha a autoridade magisterial.\n\n${prompt}`;
             } 
@@ -115,12 +115,11 @@ export default async function handler(request, response) {
 
                 // Add thinking configuration for complex tasks
                 if (taskType === 'ebd') {
-                    // AJUSTE MAGNUM OPUS: Define maxOutputTokens para comportar o raciocínio + meta de 3000 palavras
-                    // 32768 total - 24576 thinking = 8192 output tokens (Suficiente para ~3500 palavras)
-                    config.maxOutputTokens = 32768; 
-                    config.thinkingConfig = { thinkingBudget: 24576 };
+                    // AJUSTE MAGNUM OPUS: Meta de 3000 palavras requer espaço de saída amplo.
+                    // 32000 total - 16000 thinking = 16000 output tokens (Ideal para ~10.000 palavras).
+                    config.maxOutputTokens = 32000; 
+                    config.thinkingConfig = { thinkingBudget: 16000 };
                 } else if (taskType === 'commentary') {
-                    // COMENTÁRIO DE VERSÍCULO: Mantém a perfeição original sem forçar tokens de saída extras
                     config.thinkingConfig = { thinkingBudget: 24576 };
                 }
 
@@ -131,8 +130,8 @@ export default async function handler(request, response) {
                 return config;
             };
 
-            // Utiliza GEMINI 2.5 FLASH LITE como modelo principal (Gratuito/Estável)
-            let modelToUse = 'gemini-2.5-flash-lite-latest';
+            // Utiliza GEMINI 3 FLASH para EBD (Mais potente para volume) e LITE para comentários
+            let modelToUse = (taskType === 'ebd') ? 'gemini-3-flash-preview' : 'gemini-2.5-flash-lite-latest';
             let aiResponse;
 
             try {
