@@ -120,6 +120,7 @@ export default async function handler(request, response) {
                     config.maxOutputTokens = 32768; 
                     config.thinkingConfig = { thinkingBudget: 24576 };
                 } else if (taskType === 'commentary') {
+                    // COMENTÁRIO DE VERSÍCULO: Mantém a perfeição original sem forçar tokens de saída extras
                     config.thinkingConfig = { thinkingBudget: 24576 };
                 }
 
