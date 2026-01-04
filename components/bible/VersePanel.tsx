@@ -455,7 +455,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
             --- PROTOCOLO DE SEGURANÇA HERMENÊUTICA (PRIORIDADE TOTAL - USO IMPLÍCITO) ---
             1. A BÍBLIA EXPLICA A BÍBLIA: Antes de formular o comentário, verifique MENTALMENTE e RIGOROSAMENTE o CONTEXTO IMEDIATO e o CONTEXTO REMOTO para garantir a coerência.
             2. PRECISÃO CRONOLÓGICA: Se o texto envolve reis, profecias ou genealogias, assegure-se de que a explicação não contenha anacronismos (Ex: Manassés nascendo antes da hora, Jefté em época errada). A resposta deve ser cronologicamente perfeita.
-            3. ZERO POLÊMICAS/ESPECULAÇÕES: Rejeite interpretações baseadas em livros apócrifos, mitologia (ex: anjos coabitando com humanos) ou cultura judaica extra-bíblica. 
+            3. ZERO POLÊMICAS/ESPECULAÇÕES: Rejeite interpretações baseadas em livros apócrifos, mythology (ex: anjos coabitando com humanos) ou cultura judaica extra-bíblica. 
             4. ORTODOXIA: Em textos difíceis (ex: Gn 6:2), opte SEMPRE pela linha teológica mais conservadora e segura (ex: Linhagem de Sete x Caim), evitando sensacionalismo.
             5. FOCO NA INTENÇÃO ORIGINAL: O que o autor sagrado quis ensinar sobre Deus e o homem? Fique nisso.
             6. IMPORTANTE: Não escreva "Segundo a hermenêutica" ou "Analisando o contexto". Apenas aplique essas regras para chegar à conclusão correta.
@@ -595,7 +595,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
                             <Volume2 className={isPlaying ? "w-6 h-6 animate-pulse" : "w-6 h-6"} />
                         </button>
                     )}
-                    <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full"><X className="w-6 h-6" /></button>
+                    <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full"><X className="w-8 h-8" /></button>
                 </div>
             </div>
 

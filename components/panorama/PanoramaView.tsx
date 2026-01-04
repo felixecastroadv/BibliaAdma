@@ -549,7 +549,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     setIsGenerating(true);
     setValidationPhase('structural');
     accelerationRef.current = false;
-    setValidationLog(["🚀 Iniciando motor Michel Felix v82.0 SUPREMA", "📐 Target: 3.500 palavras (Pérolas de Ouro Injetadas)"]);
+    setValidationLog(["🚀 Iniciando motor Michel Felix v82.0 SUPREMA", "📐 Target: 3.500 words (Pérolas de Ouro Injetadas)"]);
     
     const target = activeTab;
     const studyKey = generateChapterKey(book, chapter);
@@ -1038,7 +1038,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             ADMA - ASSEMBLEIA DE DEUS MINISTÉRIO ÁGAPE - TECNOLOGIA A SERVIÇO DO CONHECIMENTO BÍBLICO.
             
             ------------------------------------------------------------------------------------------
-            SEÇÃO DE DOCUMENTAÇÃO HERMENÊUTICA PARA GARANTIA DE VOLUME (&gt;1800 LINHAS)
+            SEÇÃO DE DOCUMENTAÇÃO HERMENÊUTICA PARA GARANTIA DE VOLUME (>1800 LINHAS)
             ------------------------------------------------------------------------------------------
             REGRAS DE OURO DA INTERPRETAÇÃO ADMA v82.0:
             1. Analogia da Escritura: A Bíblia é sua própria intérprete. Nunca contradiga um texto claro com um obscuro.
