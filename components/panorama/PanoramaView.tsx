@@ -485,10 +485,11 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             const inner = part.slice(2, -2);
             // v82.0: Destaque visual premium para a PÉROLA DE OURO injetada no texto
             // v103.0: Protocolo Imperial Gold - Box de Ouro Maciço com brilho pericial e profundidade proporcional ao mobile
+            // AJUSTE v103.2: Transformação em 'block' para evitar quebra de layout no meio do texto, mantendo a integridade do sentido.
             if (inner.toUpperCase().includes('PÉROLA DE OURO')) {
-                 return <strong key={i} className="text-[#000000] bg-gradient-to-br from-[#C5A059] to-[#9e8045] px-2 py-1 md:px-4 md:py-2 rounded-lg border-l-4 md:border-l-[12px] border-[#8B0000] shadow-[0_4px_15px_rgba(197,160,89,0.5)] font-black mx-1 inline-block animate-in fade-in zoom-in duration-700 ring-1 md:ring-2 ring-[#C5A059] relative overflow-hidden group max-w-full leading-tight text-xs md:text-base break-words">
-                    <span className="relative z-10">{inner}</span>
-                    <div className="absolute inset-0 bg-white/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
+                 return <strong key={i} className="text-[#000000] bg-gradient-to-br from-[#C5A059] to-[#9e8045] px-4 py-4 md:px-10 md:py-8 rounded-2xl border-l-[6px] md:border-l-[20px] border-[#8B0000] shadow-[0_15px_40px_rgba(0,0,0,0.2)] font-black my-8 md:my-12 block animate-in fade-in zoom-in duration-1000 ring-1 md:ring-2 ring-[#C5A059]/40 relative overflow-hidden group w-full leading-relaxed text-sm md:text-xl break-words whitespace-normal text-justify">
+                    <span className="relative z-10 block">{inner}</span>
+                    <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-2xl"></div>
                  </strong>;
             }
             return <strong key={i} className="text-[#8B0000] dark:text-[#ff6b6b] font-extrabold">{inner}</strong>;
@@ -656,7 +657,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
         --- INSTRUÇÕES DE PAGINAÇÃO ---
         1. Texto de TAMANHO MÉDIO (aprox. 600-700 palavras por geração).
-        2. Insira <hr class="page-break"> entre os tópicos principais para dividir as páginas.
+        2. Insira <hr class="page-break"> entre os tópicos principais para dividing as páginas.
         3. Se for CONTINUAÇÃO, não repita o título nem a introdução, siga para o próximo tópico numérico ou continue a explicação detalhada do versículo onde parou.
     `;
 
@@ -944,7 +945,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                                  onShowToast('Concluído v103.1! Conhecimento arquivado no Ranking.', 'success');
                              }} disabled={isRead} className={`group relative px-10 py-5 rounded-full font-cinzel font-black text-lg shadow-2xl flex items-center justify-center gap-5 mx-auto overflow-hidden transition-all transform hover:scale-105 active:scale-95 border-4 border-white/10 ${isRead ? 'bg-green-600 text-white' : 'bg-gradient-to-r from-[#8B0000] via-[#D00010] to-[#600018] text-white'}`}>
                                  {isRead ? <CheckCircle className="w-6 h-6" /> : <GraduationCap className="w-7 h-7 group-hover:rotate-[360deg] transition-transform duration-[3s]" />}
-                                 <span className="relative z-10 tracking-widest uppercase">{isRead ? 'ARQUIVADO v103.1' : 'CONCLUIR E PONTUAR'}</span>
+                                 <span className="relative z-10 trackingest uppercase">{isRead ? 'ARQUIVADO v103.1' : 'CONCLUIR E PONTUAR'}</span>
                                  {!isRead && <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 blur-2xl"></div>}
                              </button>
                          </footer>
