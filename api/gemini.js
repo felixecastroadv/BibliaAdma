@@ -213,20 +213,23 @@ export default async function handler(request, response) {
         } catch (error) {
             lastError = error;
             const msg = error.message || '';
-            if (msg.includes('400') || msg.includes('INVALID_ARGUMENT')) {
-                return response.status(400).json({ error: `Erro na requisição: ${msg}` });
+            // v110 FIX: Se a chave for inválida (400) ou houver erro de argumento, não retorne erro imediatamente. 
+            // Continue para a próxima chave do pool para garantir a resiliência do sistema conforme o print de erro.
+            if (msg.includes('400') || msg.includes('INVALID_ARGUMENT') || msg.includes('API key not valid')) {
+                continue; 
             }
-            // Tenta próxima chave no pool
+            // Tenta próxima chave no pool para qualquer outro erro recuperável
+            continue;
         }
     }
 
     if (successResponse) {
         return response.status(200).json({ text: successResponse });
     } else {
-        return response.status(500).json({ error: `Falha na geração v109.0: ${lastError?.message}` });
+        return response.status(500).json({ error: `Falha na geração v110.0: ${lastError?.message || 'Todas as chaves do pool falharam.'}` });
     }
   } catch (error) {
     console.error("Critical Server Error:", error);
-    return response.status(500).json({ error: 'Erro interno crítico no servidor de IA v109.0.' });
+    return response.status(500).json({ error: 'Erro interno crítico no servidor de IA v110.0.' });
   }
 }
