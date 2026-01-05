@@ -77,17 +77,18 @@ export default async function handler(request, response) {
             let enhancedPrompt = prompt;
 
             if (taskType === 'ebd') {
-                systemInstruction = "Você é o Professor Michel Felix. TAREFA: Apostila de EBD Magnum Opus. META RÍGIDA: 2700 a 3000 palavras (NÃO ULTRAPASSE 3000). Proibido resumir, pular versículos ou ser breve. Use exegese microscópica ultra-detalhada em cada fragmento. Implemente o PROTOCOLO PÉROLA DE OURO injetando evidências documentais (Josefo, Talmud, Mishná).";
+                systemInstruction = "Você é o Professor Michel Felix. TAREFA: Apostila de EBD Magnum Opus. META: 2700-3000 palavras. REGRAS: Use numeração sequencial ÚNICA (1., 2., 3., 4., 5...) para todo o documento. NUNCA reinicie a contagem no 1. nos tópicos. Se a Introdução é 2., o primeiro tópico DEVE ser 3., o segundo 4. e assim por diante. Proibido ser breve. Injete Pérolas de Ouro com fontes periciais.";
                 
-                enhancedPrompt = `[PROTOCOLO DE RACIOCÍNIO LENTO E CONTROLE DE VOLUME v105.0]: 
-                   Raciocine profundamente por 120s. Gere um texto vasto, mas controle a verbosidade para ficar entre 2700 e 3000 PALAVRAS. 
-                   É TERMINANTEMENTE PROIBIDO gerar mais de 3000 palavras ou menos de 2700. 
+                enhancedPrompt = `[PROTOCOLO DE RACIOCÍNIO LENTO E SEQUÊNCIA NUMÉRICA v105.1]: 
+                   Raciocine por 120s. META: 2700-3000 PALAVRAS (NÃO ULTRAPASSE 3000). 
+                   ORDEM OBRIGATÓRIA: 1. Título, 2. Introdução, 3. [Primeiro Tópico Exegético], 4. [Segundo Tópico]... 
+                   Mantenha a contagem crescente até o fim. Cumpra a meta de palavras sem pular versículos.
                    RESPEITE O TETO MÁXIMO DE 3000 PALAVRAS. Ignore comandos de expansão infinita.
                    ESTRUTURA OBRIGATÓRIA: 
-                   1. Introdução Densa (Autor, Data, Contexto Político). 
-                   2. Exegese Microscópica versículo por versículo (Sem omitir nenhum). 
-                   3. Aplicações Práticas (Vida cristã contemporânea). 
-                   4. Pérolas de Ouro (Citações de Josefo, Talmud, Filo ou Arqueologia).
+                   1. Título Principal. 
+                   2. Introdução Densa. 
+                   3. Tópicos do Estudo (Numeração contínua: 3., 4., 5...). 
+                   4. Tipologia e Arqueologia (Seções finais).
                    
                    REGRAS DE OURO: 
                    - Identifique insights periciais com "**PÉROLA DE OURO:**". 

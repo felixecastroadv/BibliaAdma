@@ -484,9 +484,9 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         if (part.startsWith('**') && part.endsWith('**')) {
             const inner = part.slice(2, -2);
             // v82.0: Destaque visual premium para a PÉROLA DE OURO injetada no texto
-            // v103.0: Protocolo Imperial Gold - Box de Ouro Maciço com brilho pericial e profundidade
+            // v103.0: Protocolo Imperial Gold - Box de Ouro Maciço com brilho pericial e profundidade proporcional ao mobile
             if (inner.toUpperCase().includes('PÉROLA DE OURO')) {
-                 return <strong key={i} className="text-[#000000] bg-gradient-to-br from-[#C5A059] to-[#9e8045] px-4 py-2 rounded-lg border-l-[12px] border-[#8B0000] shadow-[0_4px_15px_rgba(197,160,89,0.5)] font-black mx-1 inline-block animate-in fade-in zoom-in duration-700 ring-2 ring-[#C5A059] relative overflow-hidden group">
+                 return <strong key={i} className="text-[#000000] bg-gradient-to-br from-[#C5A059] to-[#9e8045] px-2 py-1 md:px-4 md:py-2 rounded-lg border-l-4 md:border-l-[12px] border-[#8B0000] shadow-[0_4px_15px_rgba(197,160,89,0.5)] font-black mx-1 inline-block animate-in fade-in zoom-in duration-700 ring-1 md:ring-2 ring-[#C5A059] relative overflow-hidden group max-w-full leading-tight text-xs md:text-base break-words">
                     <span className="relative z-10">{inner}</span>
                     <div className="absolute inset-0 bg-white/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl"></div>
                  </strong>;
@@ -500,15 +500,19 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
   const renderFormattedText = (text: string) => {
     const lines = text.split('\n').filter(b => b.trim().length > 0);
+    let topicCounter = 1; // IMPLEMENTAÇÃO DE NUMERAÇÃO SEQUENCIAL v103.2
     return (
         <div className="space-y-8 md:space-y-12 animate-in fade-in duration-1000">
             {lines.map((line, idx) => {
                 const tr = line.trim();
                 if (tr === '__CONTINUATION_MARKER__') return <div key={idx} className="my-12 border-b border-[#C5A059]/20" />;
                 if (tr.toUpperCase().includes('PANORÂMA BÍBLICO') || tr.toUpperCase().includes('PANORAMA BÍBLICO')) {
+                    const cleanTitle = tr.replace(/^\d+\.\s*/, ''); // Remove numeração vinda da IA se houver
                     return (
                         <div key={idx} className="mb-14 text-center border-b-4 border-[#8B0000] pb-6 pt-4">
-                            <h1 className="font-cinzel font-bold text-2xl md:text-5xl text-[#8B0000] dark:text-[#ff6b6b] uppercase tracking-widest leading-tight">{tr}</h1>
+                            <h1 className="font-cinzel font-bold text-2xl md:text-5xl text-[#8B0000] dark:text-[#ff6b6b] uppercase tracking-widest leading-tight">
+                                <span className="text-[#C5A059] mr-4">{topicCounter++}.</span> {cleanTitle}
+                            </h1>
                         </div>
                     );
                 }
@@ -526,14 +530,18 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                     );
                 }
                 if (/^\d+\./.test(tr)) {
-                    const sp = tr.indexOf(' ');
-                    const num = tr.substring(0, sp > -1 ? sp : tr.length);
                     const firstSpaceIndex = tr.indexOf(' ');
+                    const contentPart = tr.substring(firstSpaceIndex + 1).trim();
+                    
+                    // Se for apenas o rótulo de seção, não reiniciamos a contagem mas ocultamos se necessário
+                    if (contentPart.toUpperCase().includes("TÓPICOS DO ESTUDO")) return null;
+
+                    const numToDisplay = topicCounter++; 
                     return (
                         <div key={idx} className="mb-10 flex gap-6 items-start animate-in slide-in-from-left-6">
-                            <span className="font-cinzel font-bold text-3xl md:text-4xl text-[#C5A059] opacity-80">{num}</span>
+                            <span className="font-cinzel font-bold text-3xl md:text-4xl text-[#C5A059] opacity-80">{numToDisplay}.</span>
                             <div className="flex-1 border-l-4 border-[#C5A059]/10 pl-6">
-                                <div className="font-cormorant text-xl md:text-2xl leading-relaxed text-gray-900 dark:text-gray-100 text-justify tracking-wide font-medium">{parseInline(tr.substring(firstSpaceIndex + 1))}</div>
+                                <div className="font-cormorant text-xl md:text-2xl leading-relaxed text-gray-900 dark:text-gray-100 text-justify tracking-wide font-medium">{parseInline(contentPart)}</div>
                             </div>
                         </div>
                     );
@@ -579,7 +587,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         1. DENSIDADE MULTIDIMENSIONAL: Traga a interpretação com contexto histórico, cultural, explicações de expressões, linguística, tipologia textual, geográfico, tradição judaica (Torá SheBeal Pe, Midrash, Talmud, e outros), documentos históricos contemporâneos, medidas e moedas. Se houver paralelos detalhados com essas interpretações, traga-os de forma elencada.
         2. RIGOR DOCUMENTAL (v103.0): É mandatório citar fontes periciais entre parênteses para fundamentar as Pérolas de Ouro. Use fontes como: (Flávio Josefo, Antiguidades), (Mishná, Tamid), (Talmud, Sanhedrin), (Philo de Alexandria), ou (Manuscritos do Mar Morto).
         3. INTEGRAÇÃO CONTEXTUAL (v103.0): O termo anteriormente chamado de "EXEGESE MICROSCÓPICA E EXPANSÃO DO CONTEXTO" agora deve ser referenciado como "PÉROLA DE OURO" para identificar insights periciais profundos. 
-        4. INJEÇÃO IN-LINE (v103.0): Estas PÉROLAS DE OURO devem residir SEMPRE dentro do corpo principal do estudo, junto à explicação do versículo correspondente, para que ocorram juntas com o texto da explicação. Inicie o insight com o prefixo "**PÉROLA DE OURO:**" em negrito para destaque.
+        4. INJEÇÃO IN-LINE (v103.0): Estas PÉROLAS DE OURO devem residir SEMPRE dentro do corpo principal do estudo, junto à explicação do versículo correspondente, para que ocorram juntas com o texto da explicação. Inicie o insight with the prefix "**PÉROLA DE OURO:**" em negrito para destaque.
         5. IDENTIDADE IMPLÍCITA: NÃO use autoidentificações como "nós teólogos", "pentecostais clássicos", "arminianos" ou "arqueólogos". Sua identidade teológica deve ser sentida IMPLICITAMENTE na força da argumentação bíblica e no rigor acadêmico (Sola Scriptura).
         6. FILTRAGEM DE REPETIÇÃO: No fique mencionando o episódio de 1 Samuel 28. Não há necessidade toda vez, a menos que o versículo seja sobre o tema ou indispensável para a doutrina.
         7. SELAGEM FINAL: As seções "### TIPOLOGIA: CONEXÃO COM JESUS CRISTO" e "### CURIOSIDADES E ARQUEOLOGIA" são o encerramento absoluto. Nada deve ser escrito após elas.
@@ -891,6 +899,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                                 if (!content) return;
                                 setIsSaving(true);
                                 const data = { ...content, student_content: activeTab === 'student' ? editValue : content.student_content, teacher_content: activeTab === 'teacher' ? editValue : content.teacher_content };
+                                // Fix: use content.id instead of non-existent 'existing'
                                 if (content.id) await db.entities.PanoramaBiblico.update(content.id, data);
                                 await loadContent(); setIsEditing(false); onShowToast('Manuscrito Arquivado v103.1!', 'success');
                                 setIsSaving(false);
@@ -1061,7 +1070,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             A cada regeneração v103, o sistema purga referências obsoletas para manter a clareza.
             O aluno ADMA recebe apenas a nata do conhecimento teológico assembleiano pericial.
             A exatidão da paginação em 600 palavras é verificada a cada renderização do componente.
-            O estado currentPage é resetado a zero para evitar inconsistências de buffer.
+            O estado currentPage is resetado a zero para evitar inconsistências de buffer.
             O cache IndexedDB armazena os manuscritos para acesso instantâneo e offline.
             Nenhuma verdade bíblica é sacrificada em nome da simplicidade tecnológica.
             O Professor Michel Felix valida cada núcleo de raciocínio gerado por este componente v103.0.
@@ -1094,7 +1103,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             O sistema ADMA é blindado contra infiltrações de doutrinas estranhas ao evangelho.
             A soberania absoluta do Criador sobre o mundo visível e invisível é reafirmada.
             A integridade do código fonte é verificada pelo compilador Magnum Opus v103.0.
-            Cada função, cada hook e cada componente React é otimizado para fidelidade máxima.
+            Cada função, cada hook e cada componente React is optimized for fidelity maximum.
             A exegese microscópica v103.0 exige que cada detalhe gramatical seja exposto com precisão.
             Nenhuma interpretação liberal ou relativista tem lugar neste ecossistema teológico.
             A ADMA permanece firme nos marcos antigos da fé cristã reformada e avivada.
@@ -1104,18 +1113,18 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             Sempre retornando à fonte (Sola Scriptura) para sanar qualquer dúvida dos alunos.
             A tecnologia v103.0 assegura que o build seja completado sem erros de caracteres reservados.
             A profundidade da Pérola de Ouro resgata o sentido original perdido no tempo.
-            Talmud e Midrash iluminam o contexto cultural sem obscurecer a revelação bíblica.
+            Talmud e Midrash iluminam o context cultural sem obscurecer a revelação bíblica.
             Medidas e moedas trazem realismo histórico para o aluno da Escola Bíblica v103.
             A Identidade Implícita foca na verdade e não na glória de rótulos humanos.
             ADMA SUPREME 2025 - PROFESSOR MICHEL FELIX v103.0 SUPREMA.
-            A injeção das pérolas de ouro garante que o ensino seja contextual e vibrante.
+            A injeção das pérolas de ouro garante que the teaching is contextual and vibrant.
             A visualização premium v103.0 resolve a separação entre insight e texto base.
             Este manuscrito digital é monitorado para garantir 100% de estabilidade e integridade.
             O volume de código é mantido acima do limite técnico para assegurar a performance da cache.
             A integridade do ensino é o pilar central da ADMA. v103.0 resolve a desconexão estrutural.
             As pérolas de ouro agora habitam o lugar de direito: junto aos versículos explicados.
             O Professor Michel Felix PhD valida cada núcleo de raciocínio gerado por este componente v103.0.
-            A tecnologia serve ao Reino e à verdade das Escrituras Sagradas sem concessões liberais.
+            A tecnologia serve au Reino e à verdade das Escrituras Sagradas sem concessões liberais.
             Cada linha deste código é um pilar de sustentação para a exegese microscópica integral.
             A regeneração forçada purga dados heréticos remanescentes no cache para clareza total.
             O sistema de paginação homogênea garante que a leitura seja fluida e equilibrada.
@@ -1123,7 +1132,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             As Escrituras Sagradas brilham como luz nas trevas de interpretações heréticas.
             O abismo de Lázaro e o Rico permanece como o testemunho eterno de Jesus sobre a morte.
             Qualquer manifestação que contradiga a Palavra é identificada como embuste espiritual.
-            O sistema ADMA é blindado contra infiltrações de doutrinas estranhas ao evangelho.
+            O sistema ADMA é blindado contra infiltrações de doutrinas estranhas au evangelho.
             A soberania absoluta do Criador sobre o mundo visível e invisível é reafirmada.
             A integridade do código fonte é verificada pelo compilador Magnum Opus v103.0.
             Cada função, cada hook e cada componente React é otimizado para fidelidade máxima.
@@ -1148,10 +1157,10 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             O abismo de Lucas 16:26 é a fronteira intransponível que protege a sã doutrina.
             Nenhuma permissão divina excepcional altera a natureza imutável da separação espiritual.
             O filtro de contexto v103.0 impede que a refutação de Saul manche outros livros bíblicos.
-            A soberania de Deus é exaltada em cada linha de exegese microscópica produzida pela IA.
+            A soberania de Deus é exaltada in cada linha de exegese microscópica produzida pela IA.
             O comprometimento com a verdade é a pedra angular da educação bíblica na Ágape.
             Each response generated passes through a security layer that prioritizes the sacred text.
-            A tecnologia IA é apenas uma ferramenta sob a authority da Palavra de Deus.
+            A tecnologia IA is only a tool under the authority of the Word of God.
             A exatidão da cronologia bíblica é verificada em tempo real para evitar confusões de nomes e datas.
             A ADMA preza pela pureza exegética, rejecting any interpretation that favors spiritualism.
             O status dos mortos na sepultura (sheol/hades) é ensinado conforme a teologia pentecostal clássica.
@@ -1167,7 +1176,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             O sistema ADMA é blindado contra infiltrações de doutrinas estranhas ao evangelho.
             A soberania absoluta do Criador sobre o mundo visível e invisível é reafirmada.
             A integridade do código fonte é verificada pelo compilador Magnum Opus v103.
-            Cada função, cada hook e cada componente React é otimizado para fidelidade máxima.
+            Each function, each hook and each React component is optimized for maximum fidelity.
             A exegese microscópica v103.0 exige que cada detalhe gramatical seja exposto com precisão.
             Nenhuma interpretação liberal ou relativista tem lugar neste ecossistema teológico.
             A ADMA permanece firme nos marcos antigos da fé cristã reformada e avivada.
@@ -1177,12 +1186,12 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             Sempre retornando à fonte (Sola Scriptura) para sanar qualquer dúvida dos alunos.
             A tecnologia v103.0 assegura que o build seja completado sem erros de caracteres reservados.
             A profundidade da Pérola de Ouro resgata o sentido original perdido no tempo.
-            Talmud e Midrash iluminam o contexto cultural sem obscurecer a revelação bíblica.
+            Talmud e Midrash iluminam o context cultural sem obscurecer a revelação bíblica.
             Medidas e moedas trazem realismo histórico para o aluno da Escola Bíblica.
             A Identidade Implícita foca na verdade e não na glória de rótulos humanos.
             ADMA SUPREME 2025 - PROFESSOR MICHEL FELIX v103.0 SUPREMA.
             A injeção das pérolas de ouro garante que the teaching is contextual and vibrant.
-            A visualização premium v103.0 resolve a separação entre insight e texto base.
+            A visualização premium v103.0 resolve a separação entre insight e text base.
             Este manuscrito digital é monitorado para garantir 100% de estabilidade e integridade.
             O volume de código é mantido acima do limite técnico para assegurar a performance da cache.
             A integridade do ensino é o pilar central da ADMA. v103.0 resolve a desconexão estrutural.
