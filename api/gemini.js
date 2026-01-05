@@ -124,7 +124,7 @@ export default async function handler(request, response) {
         1. CHEGA DE RESUMOS: O aluno precisa entender o texto COMPLETAMENTE. Não faça explicações genéricas que cobrem 10 versículos de uma vez.
         2. DETALHES QUE FAZEM A DIFERENÇA: Traga costumes da época, geografia e contexto histórico para iluminar o texto e causar o efeito "Ah! Entendi!".
         3. DENSIDADE: Extraia todo o suco do texto. Si houver uma lista de nomes, explique a relevância. Si houver uma ação detalhada, explique o motivo.
-        4. O texto deve ser DENSO e EXEGÉTICO, mas respeitando o limite de tamanho (aprox. 3000 palavras no total).
+        4. O texto deve ser DENSO e EXEGÉTICO, respeitando o volume exaustivo de 3000 palavras.
         5. PROIBIDO TRANSCREVER O TEXTO BÍBLICO: O aluno já tem a Bíblia. NÃO escreva o versículo por extenso. Cite apenas a referência (Ex: "No versículo 1...", ou "Em Gn 47:1-6...") e vá direto para a EXPLICAÇÃO.
 
         --- IDIOMAS ORIGINAIS E ETIMOLOGIA (INDISPENSÁVEL) ---
@@ -151,20 +151,20 @@ export default async function handler(request, response) {
            (Liste de forma enumerada se houver múltiplos pontos, ou texto corrido. Mostre como o texto aponta para the Messiah).
 
            ### CURIOSIDADES E ARQUEOLOGIA
-           (Fatos históricos, culturais e arqueológicos relevantes).
+           (OBRIGATÓRIO: Liste todos os itens de forma numerada 1., 2., 3., etc. Não use apenas texto corrido).
 
         --- INSTRUÇÕES DE PAGINAÇÃO ---
-        1. Texto de TAMANHO EXAUSTIVO (aprox. 2700-3000 palavras).
+        1. Texto de TAMANHO EXAUSTIVO (Meta: 3000 palavras).
         2. Insira <hr class="page-break"> entre os tópicos principais para dividing as páginas.
         3. Se for CONTINUAÇÃO, não repita o título nem a introdução, siga para o próximo tópico numérico ou continue a explicação detalhada do versículo onde parou.
         `;
                 systemInstruction = WRITING_STYLE;
                 enhancedPrompt = `[PROTOCOLO CORAÇÃO DA IA v109.0]: 
                    Antes de emitir o texto, use seu orçamento de raciocínio para checar ITEM POR ITEM:
-                   1. Cobri 100% dos versículos do capítulo?
+                   1. Cobri 100% dos versículos do capítulo com exegese microscópica?
                    2. Injetou a Pérola de Ouro (Josefo, Talmud, etc) DENTRO de cada tópico?
-                   3. O volume final está próximo de 3000 palavras?
-                   4. As referências bíblicas conexas foram citadas?
+                   3. O volume final está entre 2700 e 3000 palavras? (Se for curto, aprofunde-se mais nos originais).
+                   4. As curiosidades estão numeradas?
                    5. A selagem final (Tipologia/Arqueologia) está presente no fim do texto?
                    
                    SOMENTE APÓS VALIDAR ESTA CHECKLIST MENTALMENTE, EMITA O CONTEÚDO MAGNUM OPUS.\n\n${prompt}`;

@@ -486,8 +486,9 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             // v82.0: Destaque visual premium para a PÉROLA DE OURO injetada no texto
             // v103.0: Protocolo Imperial Gold - Box de Ouro Maciço com brilho pericial e profundidade proporcional ao mobile
             // AJUSTE v103.2: Transformação em 'block' para evitar quebra de layout no meio do texto, mantendo a integridade do sentido.
+            // FIX PC SCALE: Reduzindo padding e borda no desktop para não ficar enorme.
             if (inner.toUpperCase().includes('PÉROLA DE OURO')) {
-                 return <strong key={i} className="text-[#000000] bg-gradient-to-br from-[#C5A059] to-[#9e8045] px-4 py-4 md:px-10 md:py-8 rounded-2xl border-l-[6px] md:border-l-[20px] border-[#8B0000] shadow-[0_15px_40px_rgba(0,0,0,0.2)] font-black my-8 md:my-12 block animate-in fade-in zoom-in duration-1000 ring-1 md:ring-2 ring-[#C5A059]/40 relative overflow-hidden group w-full leading-relaxed text-sm md:text-xl break-words whitespace-normal text-justify">
+                 return <strong key={i} className="text-[#000000] bg-gradient-to-br from-[#C5A059] to-[#9e8045] px-4 py-4 md:px-8 md:py-6 rounded-2xl border-l-[6px] md:border-l-[12px] border-[#8B0000] shadow-[0_15px_40px_rgba(0,0,0,0.2)] font-black my-8 md:my-8 block animate-in fade-in zoom-in duration-1000 ring-1 md:ring-2 ring-[#C5A059]/40 relative overflow-hidden group w-full leading-relaxed text-sm md:text-lg break-words whitespace-normal text-justify">
                     <span className="relative z-10 block">{inner}</span>
                     <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-2xl"></div>
                  </strong>;
@@ -620,13 +621,13 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
            - Em resumo: Apresente o leque de interpretações para conhecimento, mas feche a questão com a ortodoxia segura.
 
         5. ANGELOLOGIA E ANTROPOLOGIA: Respeite a natureza dos seres criados. No misture naturezas distintas (espíritos não possuem genética reprodutiva humana).
-        6. TOM: Magistral, Impessoal, Acadêmico, Vibrante e Ortodoxo.
+        6. TOM: Magistral, Imessoal, Acadêmico, Vibrante e Ortodoxo.
 
         --- METODOLOGIA DE ENSINO (MICROSCOPIA BÍBLICO) ---
         1. CHEGA DE RESUMOS: O aluno precisa entender o texto COMPLETAMENTE. Não faça explicações genéricas que cobrem 10 versículos de uma vez.
         2. DETALHES QUE FAZEM A DIFERENÇA: Traga costumes da época, geografia e contexto histórico para iluminar o texto e causar o efeito "Ah! Entendi!".
         3. DENSIDADE: Extraia todo o suco do texto. Si houver uma lista de nomes, explique a relevância. Si houver uma ação detalhada, explique o motivo.
-        4. O texto deve ser DENSO e EXEGÉTICO, mas respeitando o limite de tamanho (aprox. 700 palavras por geração).
+        4. O texto deve ser DENSO e EXEGÉTICO, respeitando o volume exaustivo de 3000 palavras.
         5. PROIBIDO TRANSCREVER O TEXTO BÍBLICO: O aluno já tem a Bíblia. NÃO escreva o versículo por extenso. Cite apenas a referência (Ex: "No versículo 1...", ou "Em Gn 47:1-6...") e vá direto para a EXPLICAÇÃO.
 
         --- IDIOMAS ORIGINAIS E ETIMOLOGIA (INDISPENSÁVEL) ---
@@ -653,16 +654,16 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
            (Liste de forma enumerada se houver múltiplos pontos, ou texto corrido. Mostre como o texto aponta para the Messiah).
 
            ### CURIOSIDADES E ARQUEOLOGIA
-           (Fatos históricos, culturais e arqueológicos relevantes).
+           (OBRIGATÓRIO: Liste todos os itens de forma numerada 1., 2., 3., etc. Não use apenas texto corrido).
 
         --- INSTRUÇÕES DE PAGINAÇÃO ---
-        1. Texto de TAMANHO MÉDIO (aprox. 600-700 palavras por geração).
+        1. Texto de TAMANHO EXAUSTIVO (Meta: 3000 palavras).
         2. Insira <hr class="page-break"> entre os tópicos principais para dividing as páginas.
         3. Se for CONTINUAÇÃO, não repita o título nem a introdução, siga para o próximo tópico numérico ou continue a explicação detalhada do versículo onde parou.
     `;
 
     const instructions = customInstructions ? `\nINSTRUÇÕES EXTRAS: ${customInstructions}` : "";
-    const oneShotCmd = `[PROTOCOLO ONE-SHOT 3000 PALAVRAS]: Gere o estudo COMPLETO do capítulo, do primeiro ao último versículo, em uma única resposta exaustiva. Meta: 3000 palavras. Não resuma o final. Cubra 100% dos versículos com microscopia bíblica e injeção Imperial Gold de Pérolas de Ouro com fontes periciais (Josefo, Mishná).`;
+    const oneShotCmd = `[PROTOCOLO ONE-SHOT 3000 PALAVRAS]: Gere o estudo COMPLETO do capítulo, do primeiro ao último versículo, em uma única resposta exaustiva. Meta: 3000 palavras. Não resuma o final. Cubra 100% dos versículos com microscopia bíblica e injeção Imperial Gold de Pérolas de Ouro com fontes periciais (Josefo, Mishná) e curiosidades numeradas.`;
 
     try {
         setValidationLog(prev => [...prev, "📡 Enviando requisição One-Shot v103.1...", "🧠 IA processando aula integral (Meta: 3000 palavras)..."]);
@@ -1079,7 +1080,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             As Escrituras Sagradas brilham como luz nas trevas de interpretações heréticas.
             O abismo de Lucas 16:26 permanece como o testemunho eterno de Jesus sobre a morte.
             Qualquer manifestação que contradiga a Palavra é identificada como embuste espiritual.
-            O sistema ADMA é blindado contra infiltrações de doutrinas estranhas ao evangelho.
+            O sistema ADMA é blindado against infiltrações de doutrinas estranhas au evangelho.
             A soberania absoluta do Criador sobre o mundo visível e invisível é reafirmada.
             A integridade do código fonte é verificada pelo compilador Magnum Opus v103.0.
             A ADMA permanece firme nos marcos antigos da fé cristã reformada e avivada.
