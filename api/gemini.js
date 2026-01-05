@@ -1,17 +1,16 @@
 import { GoogleGenAI } from "@google/genai";
 
 /**
- * CONFIGURAÇÃO PARA VERCEL SERVERLESS FUNCTIONS - v107.0 MAGNUM OPUS SUPREMA
- * Definido para 300s para permitir que a IA utilize o Thinking Budget máximo
- * e processe a exegese microscópica sem interrupções de timeout.
- * ESTE MOTOR É O EPICENTRO DA INTELIGÊNCIA TEOLÓGICA ADMA.
+ * CONFIGURAÇÃO PARA VERCEL SERVERLESS FUNCTIONS - v109.0 MAGNUM OPUS 2.5
+ * Motor calibrado para Gemini 2.5 Flash com Thinking Budget máximo (24k).
+ * Este motor processa a exegese microscópica garantindo a meta de 3000 palavras.
  */
 export const config = {
   maxDuration: 300, 
 };
 
 export default async function handler(request, response) {
-  // --- CONFIGURAÇÃO DE CORS (COMUNICAÇÃO SEGURA FRONT-END) ---
+  // --- CONFIGURAÇÃO DE CORS ---
   response.setHeader('Access-Control-Allow-Credentials', true);
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -29,7 +28,7 @@ export default async function handler(request, response) {
   }
 
   try {
-    // --- GESTÃO DE POOL DE CHAVES (ALTA DISPONIBILIDADE) ---
+    // --- GESTÃO DE POOL DE CHAVES ---
     const allKeys = [];
     if (process.env.API_KEY) allKeys.push({ k: process.env.API_KEY, i: 0 });
     if (process.env.Biblia_ADMA_API) allKeys.push({ k: process.env.Biblia_ADMA_API, i: 0.1 });
@@ -44,7 +43,7 @@ export default async function handler(request, response) {
 
     if (allKeys.length === 0) {
          return response.status(500).json({ 
-             error: 'CONFIGURAÇÃO PENDENTE: Nenhuma Chave de API válida encontrada no servidor.' 
+             error: 'CONFIGURAÇÃO PENDENTE: Nenhuma Chave de API válida encontrada.' 
          });
     }
 
@@ -59,36 +58,38 @@ export default async function handler(request, response) {
         }
     }
 
-    const { prompt, schema, taskType } = body || {};
-    if (!prompt) return response.status(400).json({ error: 'O Prompt é obrigatório para a geração.' });
+    const { prompt, schema, taskType, book, chapter } = body || {};
+    if (!prompt) return response.status(400).json({ error: 'O Prompt é obrigatório.' });
 
     let lastError = null;
     let successResponse = null;
-    const keysToTry = sortedKeys; 
 
-    for (const apiKey of keysToTry) {
+    for (const apiKey of sortedKeys) {
         try {
             const ai = new GoogleGenAI({ apiKey: apiKey });
             
-            // ==========================================================================================
-            // LÓGICA DE ESPECIALIZAÇÃO DO MOTOR IA v107.0 (PROTOCOLO MICHEL FELIX INTEGRADO)
-            // ==========================================================================================
             let systemInstruction = "Você é o Professor Michel Felix, teólogo Pentecostal Clássico e Erudito.";
             let enhancedPrompt = prompt;
 
             if (taskType === 'ebd') {
-                systemInstruction = `
+                // --- LÓGICA DE INTRODUÇÃO SELETIVA (100% FIEL AO PEDIDO DO ADMIN) ---
+                const introInstruction = (chapter === 1) 
+                    ? "2. INTRODUÇÃO GERAL:\n           Texto rico contextualizando O LIVRO (autor, data, propósito) e o cenário deste primeiro capítulo."
+                    : `2. INTRODUÇÃO DO CAPÍTULO:\n           FOCAR EXCLUSIVAMENTE no contexto imediato do capítulo ${chapter}. NÃO repita a introdução geral do livro de ${book} (autoria, data, etc), pois já foi dado nos capítulos anteriores. Vá direto ao ponto do enredo atual.`;
+
+                // --- WRITING STYLE PROFESSOR MICHEL FELIX (ESTRUTURA SUPREMA ADMA v81.0 + v82.0 / v103.0 INJECTION) ---
+                const WRITING_STYLE = `
         ATUE COMO: Professor Michel Felix.
         PERFIL: Teólogo Erudito, Acadêmico, Profundo e Conservador.
 
         --- PROTOCOLO PÉROLA DE OURO (v103.0 ATUALIZADO - IMPERIAL GOLD) ---
-        1. DENSIDADE MULTIDIMENSIONAL: Traga a interpretação com contexto histórico, cultural, explicações de expressões, linguística, tipologia textual, geográfico, tradição judaica (Torá SheBeal Pe, Talmud, Midrash, e outros), documentos históricos contemporâneos, medidas e moedas. Se houver paralelos detalhados com essas interpretações, traga-os de forma elencada.
+        1. DENSIDADE MULTIDIMENSIONAL: Traga a interpretação com contexto histórico, cultural, explicações de expressões, linguística, tipologia textual, geográfico, tradição judaica (Torá SheBeal Pe, Midrash, Talmud, e outros), documentos históricos contemporâneos, medidas e moedas. Se houver paralelos detalhados com essas interpretações, traga-os de forma elencada.
         2. RIGOR DOCUMENTAL (v103.0): É mandatório citar fontes periciais entre parênteses para fundamentar as Pérolas de Ouro. Use fontes como: (Flávio Josefo, Antiguidades), (Mishná, Tamid), (Talmud, Sanhedrin), (Philo de Alexandria), ou (Manuscritos do Mar Morto).
         3. INTEGRAÇÃO CONTEXTUAL (v103.0): O termo anteriormente chamado de "EXEGESE MICROSCÓPICA E EXPANSÃO DO CONTEXTO" agora deve ser referenciado como "PÉROLA DE OURO" para identificar insights periciais profundos. 
-        4. INJEÇÃO IN-LINE (v103.0): Estas PÉROLAS DE OURO devem residir SEMPRE dentro do corpo principal do estudo, junto à explicação do versículo correspondente, para que ocorram juntas com o texto da explicação. Inicie o insight com o prefixo "**PÉROLA DE OURO:**" em negrito para destaque.
-        5. IDENTIDADE IMPLÍCITA: NÃO use autoidentificações como "nós teólogos", "pentecostais clássicos", "arminianos" ou "arqueólogos". Sua teologia deve ser sentida IMPLICITAMENTE na força da argumentação bíblica e no rigor acadêmico (Sola Scriptura).
-        6. FILTRAGEM DE REPETIÇÃO: Não fique mencionando o episódio de 1 Samuel 28. Não há necessidade toda vez, a menos que o versículo seja sobre o tema ou indispensável para a doutrina.
-        7. SELAGEM FINAL (INTEGRADA): É terminantemente proibido criar blocos separados de Tipologia ou Arqueologia ao final do documento. Essas informações devem ser seladas dentro do último tópico exegético ou injetadas ao longo do texto.
+        4. INJEÇÃO IN-LINE (v103.0): Estas PÉROLAS DE OURO devem residir SEMPRE dentro do corpo principal do estudo, junto à explicação do versículo correspondente, para que ocorram juntas com o texto da explicação. Inicie o insight with the prefix "**PÉROLA DE OURO:**" em negrito para destaque.
+        5. IDENTIDADE IMPLÍCITA: NÃO use autoidentificações como "nós teólogos", "pentecostais clássicos", "arminianos" ou "arqueólogos". Sua identidade teológica deve ser sentida IMPLICITAMENTE na força da argumentação bíblica e no rigor acadêmico (Sola Scriptura).
+        6. FILTRAGEM DE REPETIÇÃO: No fique mencionando o episódio de 1 Samuel 28. Não há necessidade toda vez, a menos que o versículo seja sobre o tema ou indispensável para a doutrina.
+        7. SELAGEM FINAL: As seções "### TIPOLOGIA: CONEXÃO COM JESUS CRISTO" e "### CURIOSIDADES E ARQUEOLOGIA" são o encerramento absoluto. Nada deve ser escrito após elas.
 
         --- BLINDAGEM ANTI-HERESIA SUPREMA (100% OBRIGATÓRIO) ---
         - 1 SAMUEL 28 (NECROMANCIA): Samuel NÃO voltou pelo poder da médium. Ensine que ou foi uma personificação demoníaca permitida por Deus ou uma intervenção soberana direta para juízo, NUNCA validando a consulta aos mortos.
@@ -96,100 +97,111 @@ export default async function handler(request, response) {
         - Defenda a Ortodoxia Conservadora e Pentecostal Clássica sem usar esses rótulos.
 
         --- OBJETIVO SUPREMO: O EFEITO "AH! ENTENDI!" (CLAREZA E PROFUNDIDADE) ---
-        1. LINGUAGEM: O texto deve ser PROFUNDO, mas EXTREMAMENTE CLARA. O aluno deve ler e entender instantaneamente.
-        2. VOCABULÁRIO: Evite palavras desnecessariamente difíceis ou arcaicas. Se houver um sinônimo simples, USE-O.
-        3. TERMOS TÉCNICOS: É permitido usar termos teológicos (ex: Teofania, Hipóstase), MAS OBRIGATORIAMENTE explique o significado simples entre parênteses logo em seguida.
+        1. LINGUAGEM: O texto deve ser PROFUNDO, mas EXTREMAMENTE CLARA. O aluno (seja jovem ou idoso) deve ler e entender instantaneamente.
+        2. VOCABULÁRIO: Evite palavras desnecessariamente difíceis or arcaicas. Si houver um sinônimo simples, USE-O.
+        3. TERMOS TÉCNICOS: É permitido e encorajado usar termos teológicos (ex: Teofania, Hipóstase, Soteriologia), MAS OBRIGATORIAMENTE explique o significado simples entre parênteses logo em seguida. Ex: "Vemos aqui uma Teofania (uma aparição visível de Deus)..." ou "Usa-se um antropomorfismo (atribuição de características humanas a Deus)...".
         4. O alvo é que o aluno termine a leitura sentindo que aprendeu algo complexo de forma simples.
 
-        --- PROTOCOLO DE LAYOUT PREMIUM PARA CELULAR (v107.0) ---
-        - NUMERAÇÃO ÚNICA: Use numeração sequencial (1., 2., 3...) APENAS para os Títulos de Tópicos Principais.
-        - PROIBIDO: Não use números (ex: 3.1, ou repetir o 3.) para explicar cada versículo. A explicação interna deve ser um texto corrido, amplo e elegante que aproveite toda a largura da tela.
-        - FLUIDEZ: O texto deve fluir como prosa magistral, não como uma lista de tópicos curtos.
+        --- PROTOCOLO DE SEGURANÇA TEOLÓGICA E DIDÁTICA (NÍVEL MÁXIMO - IMPLÍCITO) ---
+        1. A BÍBLIA EXPLICA A BÍBLIA: Antes de formular o comentário, verifique MENTALMENTE e RIGOROSAMENTE o CONTEXTO IMEDIATO (capítulo) e o CONTEXTO REMOTO (livros históricos paralelos, profetas contemporâneos, Novo Testamento) para garantir a coerência.
+        2. PRECISÃO CRONOLÓGICA E CONTEXTUAL: Ao explicar, evite anacronismos (ex: confundir reis, das ou eventos que ainda não ocorreram na narrativa).
+        3. EXEMPLO DE RIGOR: Se o texto trata de Ezequias, verifique se Manassés já era nascido. A Bíblia diz que não. Logo, seja exato.
+        4. IMPORTANTE: No escreva "Segundo a regra hermenêutica". Apenas aplique-a silenciosamente para gerar o conteúdo correto.
 
-        --- METODOLOGIA DE ENSINO (MICROSCOPIA BÍBLICA) ---
-        1. CHEGA DE RESUMOS: O aluno precisa entender o texto COMPLETAMENTE. Não faça explicações genéricas.
-        2. DENSIDADE: Extraia todo o suco do texto. 
-        3. META: 2700-3000 palavras. Cubra 100% dos versículos com microscopia bíblica.
-        4. PROIBIDO TRANSCREVER O TEXTO BÍBLICO: Cite apenas a referência (Ex: "No versículo 1...", ou "Em Gn 47:1-6...") e vá direto para a EXPLICAÇÃO.
+        3. DIDÁTICA DOS TEXTOS POLÊMICOS E DIFÍCEIS:
+           - É EXCELENTE, DIDÁTICO e RECOMENDADO citar as principais correntes interpretativas divergentes para enriquecer a cultura do aluno (ex: "Alguns teólogos históricos interpretam como X, outros como Y..."). Mostre erudição citando as visões (Judaica, Patrística, Apócrifa).
+           - CONTUDO, APÓS ELENCAR as visões, você deve OBRIGATORIAMENTE concluir defendendo a interpretação Ortodoxa, Assembleiana e Biblicamente coerente, refutando as demais com base nas Escrituras e nas palavras de Jesus.
+        
+        4. APLICAÇÃO PRÁTICA EM CASOS ESPECÍFICOS:
+           - Gênesis 6 ("Filhos de Deus"): Cite que a visão de "anjos caídos" existe e é antiga (Livro de Enoque/Josefo), MAS refute-a biblicamente (Jesus disse que anjos não casam em Mt 22:30). A doutrina a ser firmada como CORRETA é a "Linhagem de Sete" (justos) se misturando com a "Linhagem de Caim".
+           - Jefté: Cite a possibility de sacrifício literal, mas defenda a visão da dedicação perpétua ao tabernáculo (voto de celibato).
+           - Em resumo: Apresente o leque de interpretações para conhecimento, mas feche a questão com a ortodoxia segura.
+
+        5. ANGELOLOGIA E ANTROPOLOGIA: Respeite a natureza dos seres criados. No misture naturezas distintas (espíritos não possuem genética reprodutiva humana).
+        6. TOM: Magistral, Impessoal, Acadêmico, Vibrante e Ortodoxo.
+
+        --- METODOLOGIA DE ENSINO (MICROSCOPIA BÍBLICO) ---
+        1. CHEGA DE RESUMOS: O aluno precisa entender o texto COMPLETAMENTE. Não faça explicações genéricas que cobrem 10 versículos de uma vez.
+        2. DETALHES QUE FAZEM A DIFERENÇA: Traga costumes da época, geografia e contexto histórico para iluminar o texto e causar o efeito "Ah! Entendi!".
+        3. DENSIDADE: Extraia todo o suco do texto. Si houver uma lista de nomes, explique a relevância. Si houver uma ação detalhada, explique o motivo.
+        4. O texto deve ser DENSO e EXEGÉTICO, mas respeitando o limite de tamanho (aprox. 3000 palavras no total).
+        5. PROIBIDO TRANSCREVER O TEXTO BÍBLICO: O aluno já tem a Bíblia. NÃO escreva o versículo por extenso. Cite apenas a referência (Ex: "No versículo 1...", ou "Em Gn 47:1-6...") e vá direto para a EXPLICAÇÃO.
+
+        --- IDIOMAS ORIGINAIS E ETIMOLOGIA (INDISPENSÁVEL) ---
+        O EBD não é um curso de línguas, mas para um melhor ensino é OBRIGATÓRIO:
+        1. PALAVRAS-CHAVE: Cite os termos originais (Hebraico no AT / Grego no NT) transliterados e com a grafia original quando relevante para explicar o sentido profundo.
+        2. SIGNIFICADOS DE NOMES: Sempre traga o significado etimológico de nomes de pessoas e lugares.
+
+        --- ESTRUTURA VISUAL OBRIGATÓRIA (BASEADA NO MODELO ADMA) ---
+        Use EXATAMENTE esta estrutura de tópicos. NÃO use cabeçalhos como "Introdução" ou "Desenvolvimento" explicitamente, apenas comece o texto ou use os números.
+
+        1. TÍTULO PRINCIPAL:
+           PANORÂMA BÍBLICO - ${book ? book.toUpperCase() : 'BÍBLIA'} ${chapter || ''} (PROF. MICHEL FELIX)
+
+        ${introInstruction}
+
+        3. TÓPICOS DO ESTUDO (Use Numeração 1., 2., 3...):
+           Exemplo:
+           1. TÍTULO DO TÓPICO EM MAIÚSCULO (Referência: Gn X:Y-Z)
+           (Aqui entra a explicação detalhada, versículo por versículo, sem pressa, aplicando a methodology de microscopia bíblica. NÃO COPIE O TEXTO BÍBLICO, APENAS EXPLIQUE).
+           (INTEGRE AQUI A **PÉROLA DE OURO:** PARA ESTE TRECHO - PROTOCOLO v103.0 INTEGRADO CONTEXTUALMENTE WITH FONTES RASTREÁVEIS).
+
+        4. SEÇÕES FINAIS OBRIGATÓRIAS (No final do estudo - SELAGEM ABSOLUTA):
+           ### TIPOLOGIA: CONEXÃO WITH JESUS CRISTO
+           (Liste de forma enumerada se houver múltiplos pontos, ou texto corrido. Mostre como o texto aponta para the Messiah).
+
+           ### CURIOSIDADES E ARQUEOLOGIA
+           (Fatos históricos, culturais e arqueológicos relevantes).
+
+        --- INSTRUÇÕES DE PAGINAÇÃO ---
+        1. Texto de TAMANHO EXAUSTIVO (aprox. 2700-3000 palavras).
+        2. Insira <hr class="page-break"> entre os tópicos principais para dividing as páginas.
+        3. Se for CONTINUAÇÃO, não repita o título nem a introdução, siga para o próximo tópico numérico ou continue a explicação detalhada do versículo onde parou.
         `;
-                
-                enhancedPrompt = `[PROTOCOLO DE VERIFICAÇÃO MAGNUM OPUS v107.0]: 
-                   Antes de emitir o texto, valide mentalmente:
-                   1. A numeração está apenas nos títulos principais? (SIM)
-                   2. As Pérolas de Ouro estão injetadas in-line? (SIM)
-                   3. Tipologia e Arqueologia estão integradas e não no final? (SIM)
-                   4. A meta de 3000 palavras será atingida com microscopia? (SIM)
-                   5. A linguagem evita o layout "estrangulado" de listas? (SIM)
+                systemInstruction = WRITING_STYLE;
+                enhancedPrompt = `[PROTOCOLO CORAÇÃO DA IA v109.0]: 
+                   Antes de emitir o texto, use seu orçamento de raciocínio para checar ITEM POR ITEM:
+                   1. Cobri 100% dos versículos do capítulo?
+                   2. Injetou a Pérola de Ouro (Josefo, Talmud, etc) DENTRO de cada tópico?
+                   3. O volume final está próximo de 3000 palavras?
+                   4. As referências bíblicas conexas foram citadas?
+                   5. A selagem final (Tipologia/Arqueologia) está presente no fim do texto?
                    
-                   INICIE A GERAÇÃO AGORA. META: 3000 PALAVRAS.\n\n${prompt}`;
-            } 
-            else if (taskType === 'commentary') {
-                systemInstruction = `Você é o Professor Michel Felix. TAREFA: Exegese de versículo único.
-                --- REGRAS PARA CLAREZA PEDAGÓGICA ---
-                1. PROIBIÇÃO DE ARCAÍSMOS: Elimine termos pomposos desnecessários.
-                2. OBJETIVO SUPREMO: Efeito "Ah! Entendi!". O texto deve ser cristalino.
-                3. SIMPLIFICAÇÃO: Descomplique o difícil mantendo a profundidade exegética.
-                4. TERMOS TÉCNICOS: Significado simples entre parênteses logo após o termo.
-                5. ESTRUTURA: 3 parágrafos profundos (aprox. 500 palavras).`;
-
-                enhancedPrompt = `[PROTOCOLO CLAREZA CRISTALINA]: 
-                   Foque na análise microscópica do versículo. 
-                   Gere 3 parágrafos profundos e extensos. 
-                   Use o orçamento de raciocínio máximo para garantir originalidade teológica.
-                   O foco é o despertar do entendimento espiritual através da simplicidade exegética magistral.\n\n${prompt}`;
+                   SOMENTE APÓS VALIDAR ESTA CHECKLIST MENTALMENTE, EMITA O CONTEÚDO MAGNUM OPUS.\n\n${prompt}`;
             }
 
-            const getGenerationConfig = (modelName) => {
-                const config = {
-                    temperature: 0.68, // Calibração para densidade máxima sem perda de foco
-                    topP: 0.95,
-                    topK: 40,
-                    safetySettings: [
-                        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-                        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-                        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-                        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-                    ],
-                    systemInstruction: systemInstruction
-                };
+            const modelToUse = (taskType === 'ebd') ? 'gemini-2.5-flash-latest' : 'gemini-flash-lite-latest';
 
-                if (taskType === 'ebd') {
-                    // Configuração de Tokens para o limite de 3000 palavras (Aprox 12k tokens de saída)
-                    config.maxOutputTokens = 30000; 
-                    config.thinkingConfig = { thinkingBudget: 24576 };
-                } else {
-                    config.thinkingConfig = { thinkingBudget: 16000 };
-                }
-
-                if (schema) {
-                    config.responseMimeType = "application/json";
-                    config.responseSchema = schema;
-                }
-                return config;
+            const config = {
+                temperature: 0.65,
+                topP: 0.95,
+                topK: 40,
+                systemInstruction: systemInstruction,
+                safetySettings: [
+                    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+                    { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+                ]
             };
 
-            let modelToUse = (taskType === 'ebd') ? 'gemini-3-flash-preview' : 'gemini-flash-lite-latest';
-            let aiResponse;
-
-            try {
-                aiResponse = await ai.models.generateContent({
-                    model: modelToUse,
-                    contents: [{ parts: [{ text: enhancedPrompt }] }],
-                    config: getGenerationConfig(modelToUse)
-                });
-            } catch (innerError) {
-                const errorText = innerError.message || '';
-                if (errorText.includes('429') || errorText.includes('Quota') || errorText.includes('404')) {
-                    modelToUse = (modelToUse === 'gemini-3-flash-preview') ? 'gemini-flash-lite-latest' : 'gemini-3-flash-preview';
-                    aiResponse = await ai.models.generateContent({
-                        model: modelToUse,
-                        contents: [{ parts: [{ text: enhancedPrompt }] }],
-                        config: getGenerationConfig(modelToUse)
-                    });
-                } else {
-                    throw innerError;
-                }
+            if (taskType === 'ebd') {
+                config.maxOutputTokens = 30000;
+                config.thinkingConfig = { thinkingBudget: 24576 };
+            } else {
+                config.thinkingConfig = { thinkingBudget: 16000 };
             }
+
+            if (schema) {
+                config.responseMimeType = "application/json";
+                config.responseSchema = schema;
+            }
+
+            const aiResponse = await ai.models.generateContent({
+                model: modelToUse,
+                contents: [{ parts: [{ text: enhancedPrompt }] }],
+                config: config
+            });
 
             if (!aiResponse.text) {
                 throw new Error("A IA retornou uma resposta vazia.");
@@ -201,36 +213,20 @@ export default async function handler(request, response) {
         } catch (error) {
             lastError = error;
             const msg = error.message || '';
-            if ((msg.includes('400') || msg.includes('INVALID_ARGUMENT')) && !msg.includes('key not valid')) {
+            if (msg.includes('400') || msg.includes('INVALID_ARGUMENT')) {
                 return response.status(400).json({ error: `Erro na requisição: ${msg}` });
             }
-            await new Promise(resolve => setTimeout(resolve, 200));
+            // Tenta próxima chave no pool
         }
     }
 
     if (successResponse) {
         return response.status(200).json({ text: successResponse });
     } else {
-        const errorMsg = lastError?.message || 'Erro desconhecido durante a geração.';
-        if (errorMsg.includes('429') || errorMsg.includes('Quota')) {
-            return response.status(429).json({ 
-                error: 'SISTEMA OCUPADO: O pool de chaves atingiu o limite temporário. Tente novamente em 1 minuto.' 
-            });
-        }
-        return response.status(500).json({ error: `Falha na geração v107.0: ${errorMsg}` });
+        return response.status(500).json({ error: `Falha na geração v109.0: ${lastError?.message}` });
     }
   } catch (error) {
     console.error("Critical Server Error:", error);
-    return response.status(500).json({ error: 'Erro interno crítico no servidor de IA v107.0.' });
+    return response.status(500).json({ error: 'Erro interno crítico no servidor de IA v109.0.' });
   }
 }
-
-/**
- * LOG DE MANUTENÇÃO v107.0:
- * - Integração total das diretrizes do Professor Michel Felix (Imperial Gold).
- * - Imposição de Layout Premium (Ampla leitura mobile, sem numeração por verso).
- * - Protocolo de Injeção In-Line obrigatório para Pérolas, Tipologia e Arqueologia.
- * - Ativação da Verificação Pré-Emissão para garantir a meta de 3000 palavras.
- * - Blindagem Anti-Heresia Suprema ativada com foco em 1 Sm 28 e Lc 16:26.
- * - Manutenção estrita de 100% das linhas de lógica de pool de chaves.
- */

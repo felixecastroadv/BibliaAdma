@@ -962,7 +962,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                     {isAdmin && (
                         <div className="max-w-2xl mx-auto p-8 md:p-16 bg-[#8B0000]/10 rounded-[3rem] md:rounded-[4rem] border-4 border-dashed border-[#8B0000]/30 flex flex-col items-center shadow-lg transform group-hover:scale-105 transition-transform duration-500">
                             <Library className="w-20 h-20 text-[#8B0000] mb-10 opacity-80 animate-bounce" />
-                            <p className="text-sm font-black text-[#8B0000] uppercase tracking-[0.6em] text-center leading-loose font-montserrat">Administrador ADMA SUPREMO: <br/> Utilize o motor Magnum Opus v103.1 para gerar Pérolas de Ouro Imperial (3000 Palavras).</p>
+                            <p className="text-sm font-black text-[#8B0000] uppercase tracking-[0.6em] text-center leading-loose font-montserrat">Administrador ADMA SUPREREMO: <br/> Utilize o motor Magnum Opus v103.1 para gerar Pérolas de Ouro Imperial (3000 Palavras).</p>
                         </div>
                     )}
                 </div>
@@ -1170,7 +1170,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             O volume de código é mantido acima do limite técnico para assegurar a performance da cache.
             Nenhuma verdade bíblica é sacrificada em nome da simplicidade tecnológica.
             O Professor Michel Felix valida cada núcleo de raciocínio gerado por este componente v103.0.
-            O Reino de Deus é o objetivo final de todo o conhecimento acumulado nesta plataforma.
+            O Reino de Deus é o objetivo final of todo o conhecimento acumulado nesta plataforma.
             As Escrituras Sagradas brilham como luz nas trevas de interpretações heréticas.
             O abismo de Lázaro e o Rico permanece como o testemunho eterno de Jesus sobre a morte.
             Qualquer manifestação que contradiga a Palavra é identificada como embuste espiritual.
