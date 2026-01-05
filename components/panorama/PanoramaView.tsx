@@ -649,7 +649,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
         4. SEÇÕES FINAIS OBRIGATÓRIAS (No final do estudo - SELAGEM ABSOLUTA):
            ### TIPOLOGIA: CONEXÃO WITH JESUS CRISTO
-           (Liste de forma enumerada se houver múltiplos pontos, ou texto corrido. Mostre como o texto aponta para o Messias).
+           (Liste de forma enumerada se houver múltiplos pontos, ou texto corrido. Mostre como o texto aponta para the Messiah).
 
            ### CURIOSIDADES E ARQUEOLOGIA
            (Fatos históricos, culturais e arqueológicos relevantes).

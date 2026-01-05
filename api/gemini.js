@@ -77,13 +77,13 @@ export default async function handler(request, response) {
             let enhancedPrompt = prompt;
 
             if (taskType === 'ebd') {
-                systemInstruction = "Você é o Professor Michel Felix. TAREFA: Apostila de EBD Magnum Opus. META: 2700-3000 palavras. REGRAS: Use numeração sequencial ÚNICA (1., 2., 3., 4., 5...) para todo o documento. NUNCA reinicie a contagem no 1. nos tópicos. Se a Introdução é 2., o primeiro tópico DEVE ser 3., o segundo 4. e assim por diante. Proibido ser breve. Injete Pérolas de Ouro com fontes periciais.";
+                systemInstruction = "Você é o Professor Michel Felix. TAREFA: Apostila de EBD Magnum Opus. META ESTRITA: 2700-3000 palavras (PROIBIDO ULTRAPASSAR 3000). REGRAS: Use numeração sequencial ÚNICA (1., 2., 3., 4., 5...) para todo o documento. NUNCA reinicie a contagem no 1. nos tópicos. Se a Introdução é 2., o primeiro tópico DEVE ser 3., o segundo 4. e assim por diante. Proibido ser breve. Injete Pérolas de Ouro com fontes periciais.";
                 
                 enhancedPrompt = `[PROTOCOLO DE RACIOCÍNIO LENTO E SEQUÊNCIA NUMÉRICA v105.1]: 
-                   Raciocine por 120s. META: 2700-3000 PALAVRAS (NÃO ULTRAPASSE 3000). 
+                   Raciocine por 120s. META FINAL: 2700-3000 PALAVRAS (NÃO ULTRAPASSE 3000). 
                    ORDEM OBRIGATÓRIA: 1. Título, 2. Introdução, 3. [Primeiro Tópico Exegético], 4. [Segundo Tópico]... 
                    Mantenha a contagem crescente até o fim. Cumpra a meta de palavras sem pular versículos.
-                   RESPEITE O TETO MÁXIMO DE 3000 PALAVRAS. Ignore comandos de expansão infinita.
+                   LIMITE ABSOLUTO: 3000 PALAVRAS. Se o conteúdo estiver ficando longo, condense os parágrafos finais sem perder a microscopia.
                    ESTRUTURA OBRIGATÓRIA: 
                    1. Título Principal. 
                    2. Introdução Densa. 
@@ -127,9 +127,9 @@ export default async function handler(request, response) {
 
                 // Configurações de Tokens para suporte a textos longos (EBD)
                 if (taskType === 'ebd') {
-                    // 30k total: 24.5k para pensamento (thinking) e ~5.5k reais para a saída (~4000 palavras teto)
-                    // Isso garante que a IA tenha espaço, mas sinta o limite de saída.
-                    config.maxOutputTokens = 30000; 
+                    // 28.5k total: 24.5k para pensamento (thinking) e ~4k reais para a saída (~3000 palavras limite estrito)
+                    // Isso força a IA a encerrar o texto antes de atingir os volumes excessivos de 3500+ palavras.
+                    config.maxOutputTokens = 28500; 
                     config.thinkingConfig = { thinkingBudget: 24576 };
                 } else {
                     config.thinkingConfig = { thinkingBudget: 12000 };
