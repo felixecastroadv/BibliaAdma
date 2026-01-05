@@ -170,7 +170,7 @@ export default async function handler(request, response) {
                    SOMENTE APÓS VALIDAR ESTA CHECKLIST MENTALMENTE, EMITA O CONTEÚDO MAGNUM OPUS.\n\n${prompt}`;
             }
 
-            const modelToUse = (taskType === 'ebd') ? 'gemini-2.5-flash-latest' : 'gemini-flash-lite-latest';
+            const modelToUse = (taskType === 'ebd') ? 'gemini-3-flash-preview' : 'gemini-flash-lite-latest';
 
             const config = {
                 temperature: 0.65,
