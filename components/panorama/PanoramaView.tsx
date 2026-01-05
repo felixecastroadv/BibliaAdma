@@ -12,7 +12,7 @@ import { useState, useEffect, useRef } from 'react';
  * 3. INTEGRAÇÃO DE PÉROLAS (v82.0): As "PÉROLAS DE OURO" devem vir DENTRO dos tópicos numéricos, não ao final.
  * 4. SEÇÕES DE TIPOLOGIA E ARQUEOLOGIA SÃO OBRIGATÓRIAS E ESTRITAMENTE FINAIS (SELAGEM DO ESTUDO).
  * 5. NUNCA, SOB QUALQUER HIPÓTESE, ADICIONE CONTEÚDO EXEGÉTICO APÓS OS TÓPICOS DE ARQUEOLOGIA.
- * 6. UI: NAVEGAÇÃO PC OTIMIZADA COM BOTÕES REDUZIDOS (md:scale-75) PARA NÃO ATRAPALHAR A LEITURA.
+ * 6. UI: NAVEGAÇÃO PC OTIMIZADA WITH BOTÕES REDUZIDOS (md:scale-75) PARA NÃO ATRAPALHAR A LEITURA.
  * 7. BOTÃO DE CONCLUSÃO: ESCALA PREMIUM REDUZIDA PARA ESTÉTICA CLEAN E REFINADA.
  * 8. PROTOCOLO DE RETENÇÃO 200S: GARANTE QUE A IA TENHA TEMPO DE PROCESSAR A DENSIDADE MÁXIMA.
  * 9. ANTI-TRUNCAMENTO: ORIENTAÇÃO REFORÇADA PARA COBERTURA DE 100% DOS VERSÍCULOS DO CAPÍTULO.
@@ -539,16 +539,16 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
                     const numToDisplay = topicCounter++; 
                     return (
-                        <div key={idx} className="mb-10 flex gap-6 items-start animate-in slide-in-from-left-6">
-                            <span className="font-cinzel font-bold text-3xl md:text-4xl text-[#C5A059] opacity-80">{numToDisplay}.</span>
-                            <div className="flex-1 border-l-4 border-[#C5A059]/10 pl-6">
+                        <div key={idx} className="mb-10 flex gap-3 md:gap-6 items-start animate-in slide-in-from-left-6">
+                            <span className="font-cinzel font-bold text-3xl md:text-4xl text-[#C5A059] opacity-80 shrink-0">{numToDisplay}.</span>
+                            <div className="flex-1 border-l-2 md:border-l-4 border-[#C5A059]/10 pl-3 md:pl-6">
                                 <div className="font-cormorant text-xl md:text-2xl leading-relaxed text-gray-900 dark:text-gray-100 text-justify tracking-wide font-medium">{parseInline(contentPart)}</div>
                             </div>
                         </div>
                     );
                 }
                 return (
-                    <p key={idx} className="font-cormorant text-xl md:text-2xl leading-loose text-gray-950 dark:text-gray-50 text-justify indent-12 md:indent-20 mb-8 tracking-wide font-medium">
+                    <p key={idx} className="font-cormorant text-xl md:text-2xl leading-loose text-gray-950 dark:text-gray-50 text-justify indent-5 md:indent-20 mb-8 tracking-wide font-medium">
                         {parseInline(tr)}
                     </p>
                 );
@@ -869,7 +869,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         )}
 
         {/* MANUSCRITO PRINCIPAL (ESTÉTICA PRIORITÁRIA V103.0) */}
-        <main ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6 md:p-16 max-w-[1400px] mx-auto pb-[250px] w-full scroll-smooth">
+        <main ref={scrollContainerRef} className="flex-1 overflow-y-auto p-3 md:p-16 max-w-[1400px] mx-auto pb-[250px] w-full scroll-smooth">
             
             {/* Stats Flutuantes Admin */}
             {isAdmin && stats.wordCount > 0 && (
@@ -912,7 +912,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                      <textarea value={editValue} onChange={e => setEditValue(e.target.value)} className="w-full h-[65vh] p-10 font-mono text-xl border-none rounded-[3rem] bg-gray-50 dark:bg-black dark:text-gray-300 resize-none shadow-inner leading-relaxed focus:ring-8 focus:ring-[#C5A059]/20 transition-all" />
                  </div>
             ) : content && pages.length > 0 ? (
-                <article className="bg-white dark:bg-dark-card shadow-2xl p-10 md:p-24 min-h-[90vh] border border-[#C5A059]/20 relative rounded-[5rem] animate-in fade-in duration-1000 select-text overflow-hidden">
+                <article className="bg-white dark:bg-dark-card shadow-2xl px-4 py-10 md:p-24 min-h-[90vh] border border-[#C5A059]/20 relative rounded-[3rem] md:rounded-[5rem] animate-in fade-in duration-1000 select-text overflow-hidden">
                      {/* Watermark Monumental */}
                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.04] pointer-events-none rotate-[-45deg] scale-[2]">
                         <BookOpen className="w-[1000px] h-[1000px] text-[#8B0000]" />
@@ -920,8 +920,8 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
                      {renderFormattedText(pages[currentPage])}
                      
-                     <div className="absolute bottom-12 right-16 flex items-center gap-8 select-none opacity-40 hover:opacity-100 transition-all cursor-help group">
-                        <div className="h-[2px] w-20 bg-[#C5A059] group-hover:w-40 transition-all"></div>
+                     <div className="absolute bottom-12 right-6 md:right-16 flex items-center gap-8 select-none opacity-40 hover:opacity-100 transition-all cursor-help group">
+                        <div className="h-[2px] w-12 md:w-20 bg-[#C5A059] group-hover:w-40 transition-all"></div>
                         <span className="text-[#C5A059] font-cinzel text-xl font-black tracking-widest">{currentPage + 1} / {pages.length}</span>
                      </div>
 
@@ -933,8 +933,8 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
                              <div className="max-w-3xl mx-auto mb-40">
                                 <Quote className="w-24 h-24 mx-auto text-[#C5A059] mb-12 opacity-20" />
-                                <h4 className="font-cinzel text-5xl font-black text-[#8B0000] mb-10 uppercase tracking-widest drop-shadow-2xl">Epílogo da Aula Magistral v103.1</h4>
-                                <p className="font-cormorant text-4xl text-gray-500 italic leading-loose px-12">"Guardei a tua palavra no meu coração, para não pecar contra ti." <br/><span className="text-[12px] font-black tracking-[1.4em] not-italic text-[#C5A059] block mt-10 uppercase opacity-80">(Salmos 119:11 - ACF)</span></p>
+                                <h4 className="font-cinzel text-3xl md:text-5xl font-black text-[#8B0000] mb-10 uppercase tracking-widest drop-shadow-2xl">Epílogo da Aula Magistral v103.1</h4>
+                                <p className="font-cormorant text-2xl md:text-4xl text-gray-500 italic leading-loose px-4 md:px-12">"Guardei a tua palavra no meu coração, para não pecar contra ti." <br/><span className="text-[12px] font-black tracking-[1.4em] not-italic text-[#C5A059] block mt-10 uppercase opacity-80">(Salmos 119:11 - ACF)</span></p>
                              </div>
                              
                              {/* OTIMIZAÇÃO: BOTÃO DE CONCLUSÃO REDUZIDO v77 (Premium Scale) */}
@@ -945,22 +945,22 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                                  onShowToast('Concluído v103.1! Conhecimento arquivado no Ranking.', 'success');
                              }} disabled={isRead} className={`group relative px-10 py-5 rounded-full font-cinzel font-black text-lg shadow-2xl flex items-center justify-center gap-5 mx-auto overflow-hidden transition-all transform hover:scale-105 active:scale-95 border-4 border-white/10 ${isRead ? 'bg-green-600 text-white' : 'bg-gradient-to-r from-[#8B0000] via-[#D00010] to-[#600018] text-white'}`}>
                                  {isRead ? <CheckCircle className="w-6 h-6" /> : <GraduationCap className="w-7 h-7 group-hover:rotate-[360deg] transition-transform duration-[3s]" />}
-                                 <span className="relative z-10 trackingest uppercase">{isRead ? 'ARQUIVADO v103.1' : 'CONCLUIR E PONTUAR'}</span>
+                                 <span className="relative z-10 tracking-widest uppercase">{isRead ? 'ARQUIVADO v103.1' : 'CONCLUIR E PONTUAR'}</span>
                                  {!isRead && <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 blur-2xl"></div>}
                              </button>
                          </footer>
                      )}
                 </article>
             ) : (
-                <div className="text-center py-64 bg-white dark:bg-dark-card rounded-[5rem] border-8 border-dashed border-[#C5A059]/30 animate-in fade-in duration-[1.5s] shadow-2xl relative overflow-hidden group">
-                    <div className="relative inline-block mb-24 scale-[1.8]">
+                <div className="text-center py-64 bg-white dark:bg-dark-card rounded-[3rem] md:rounded-[5rem] border-8 border-dashed border-[#C5A059]/30 animate-in fade-in duration-[1.5s] shadow-2xl relative overflow-hidden group">
+                    <div className="relative inline-block mb-24 scale-[1.2] md:scale-[1.8]">
                         <div className="absolute inset-0 bg-[#C5A059]/30 blur-[100px] rounded-full animate-pulse"></div>
                         <ScrollText className="w-56 h-56 mx-auto text-[#C5A059] opacity-20 relative z-10 drop-shadow-2xl"/>
                     </div>
-                    <p className="font-cinzel text-5xl font-black text-gray-400 mb-8 tracking-[0.4em] uppercase leading-tight">Manuscrito Silente v103.1</p>
+                    <p className="font-cinzel text-3xl md:text-5xl font-black text-gray-400 mb-8 tracking-[0.4em] uppercase leading-tight">Manuscrito Silente v103.1</p>
                     <p className="font-montserrat text-sm text-gray-500 uppercase tracking-[1.2em] mb-32 font-black">Aguardando transcrição Imperial Gold One-Shot.</p>
                     {isAdmin && (
-                        <div className="max-w-2xl mx-auto p-16 bg-[#8B0000]/10 rounded-[4rem] border-4 border-dashed border-[#8B0000]/30 flex flex-col items-center shadow-lg transform group-hover:scale-105 transition-transform duration-500">
+                        <div className="max-w-2xl mx-auto p-8 md:p-16 bg-[#8B0000]/10 rounded-[3rem] md:rounded-[4rem] border-4 border-dashed border-[#8B0000]/30 flex flex-col items-center shadow-lg transform group-hover:scale-105 transition-transform duration-500">
                             <Library className="w-20 h-20 text-[#8B0000] mb-10 opacity-80 animate-bounce" />
                             <p className="text-sm font-black text-[#8B0000] uppercase tracking-[0.6em] text-center leading-loose font-montserrat">Administrador ADMA SUPREMO: <br/> Utilize o motor Magnum Opus v103.1 para gerar Pérolas de Ouro Imperial (3000 Palavras).</p>
                         </div>
@@ -972,7 +972,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         {/* NAVEGAÇÃO FLUTUANTE ELEVADA (UI OTIMIZADA v82.0 / v103.0 - SEM SOBREPOSIÇÃO) */}
         <AnimatePresence>
             {pages.length > 1 && hasAccess && !isEditing && (
-                <motion.nav initial={{ y: 200, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 200, opacity: 0 }} className="fixed bottom-32 left-6 right-6 z-50 max-w-4xl mx-auto pointer-events-none pb-safe">
+                <motion.nav initial={{ y: 200, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 200, opacity: 0 }} className="fixed bottom-32 left-4 right-4 md:left-6 md:right-6 z-50 max-w-4xl mx-auto pointer-events-none pb-safe">
                     <div className="bg-[#050505]/95 dark:bg-dark-card/95 backdrop-blur-xl border border-[#C5A059]/50 p-2 md:p-3 rounded-3xl flex justify-between items-center shadow-[0_30px_100px_-15px_rgba(0,0,0,1)] ring-4 ring-white/5 group pointer-events-auto overflow-hidden">
                         
                         {/* Botão Anterior Otimizado (Compacto no Desktop) */}
