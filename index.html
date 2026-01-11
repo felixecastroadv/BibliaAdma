@@ -9,15 +9,15 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Bíblia ADMA">
-    <link rel="apple-touch-icon" href="icon.svg?v=2">
+    <link rel="apple-touch-icon" href="icon.svg?v=3">
     
     <title>Bíblia ADMA - Prof. Michel Felix</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     
-    <link rel="icon" type="image/svg+xml" href="icon.svg?v=2" />
-    <link rel="manifest" href="manifest.json?v=2" />
+    <link rel="icon" type="image/svg+xml" href="icon.svg?v=3" />
+    <link rel="manifest" href="manifest.json?v=3" />
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -64,14 +64,11 @@
       // Força a conversão do SVG para PNG para garantir que Windows e iOS não mostrem a letra "B" genérica
       (function() {
         function updateAllIcons(pngUrl) {
-            // Atualiza Favicon
             var favicons = document.querySelectorAll("link[rel*='icon']");
             favicons.forEach(function(el) {
                 el.href = pngUrl;
                 el.type = "image/png";
             });
-            
-            // Atualiza Apple Touch Icon (Crítico para iPhone)
             var appleIcon = document.querySelector("link[rel='apple-touch-icon']");
             if (appleIcon) {
                 appleIcon.href = pngUrl;
@@ -82,19 +79,16 @@
                 document.head.appendChild(link);
             }
         }
-        
         var img = new Image();
-        img.src = 'icon.svg?v=2';
+        img.src = 'icon.svg?v=3';
         img.onload = function() {
             var canvas = document.createElement('canvas');
-            canvas.width = 512;
-            canvas.height = 512;
+            canvas.width = 512; canvas.height = 512;
             var ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, 512, 512);
             var pngData = canvas.toDataURL('image/png');
             updateAllIcons(pngData);
-            // Salva no localStorage para que em recargas futuras o navegador possa tentar ler mais rápido
-            localStorage.setItem('adma_icon_png', pngData);
+            localStorage.setItem('adma_icon_png_v3', pngData);
         };
       })();
     </script>

@@ -1,8 +1,8 @@
 {
-  "id": "adma-bible-app-v2",
+  "id": "adma-bible-app-v3",
   "name": "Bíblia ADMA - Prof. Michel Felix",
   "short_name": "Bíblia ADMA",
-  "start_url": "./",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#8B0000",
@@ -11,25 +11,25 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "icon.svg?v=2",
+      "src": "icon.svg?v=3",
       "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "icon.svg?v=2",
+      "src": "icon.svg?v=3",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "icon.svg?v=2",
+      "src": "icon.svg?v=3",
       "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "maskable"
     },
     {
-      "src": "icon.svg?v=2",
+      "src": "icon.svg?v=3",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "maskable"
