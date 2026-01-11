@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from 'react';
-// Added Instagram to lucide-react imports
 import { BookOpen, GraduationCap, ShieldCheck, Trophy, Calendar, ListChecks, Mail, Moon, Sun, X, Share, MoreVertical, LogOut, Sparkles, Brain, FileText, Link as LinkIcon, Star, MapPin, Monitor, Smartphone, PlusSquare, Instagram } from 'lucide-react';
 import { CHURCH_NAME, TOTAL_CHAPTERS, PASTOR_PRESIDENT } from '../../constants';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -23,7 +22,7 @@ interface DashboardProps {
 export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user, userProgress, darkMode, toggleDarkMode, onShowToast, onLogout, appConfig }: DashboardProps) {
   const [clicks, setClicks] = useState(0);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [isStandalone, setIsStandalone] = useState(true);
+  const [isStandalone, setIsStandalone] = useState(false);
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [platform, setPlatform] = useState<'ios' | 'android' | 'desktop'>('desktop');
   const [dynamicModules, setDynamicModules] = useState<DynamicModule[]>([]);
@@ -39,6 +38,7 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
   }, []);
 
   useEffect(() => {
+    // Verifica se já está instalado
     const checkStandalone = () => {
         const isStand = window.matchMedia('(display-mode: standalone)').matches || 
                         (window.navigator as any).standalone === true;
@@ -46,15 +46,16 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
     };
     checkStandalone();
 
+    // Captura o evento de instalação para PC e Android
     const handleBeforeInstall = (e: any) => {
-      console.log('Capturado evento de instalação PWA');
       e.preventDefault(); 
       setDeferredPrompt(e);
-      setIsStandalone(false);
+      console.log('Evento beforeinstallprompt capturado com sucesso.');
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
     
+    // Detecta plataforma
     const ua = navigator.userAgent.toLowerCase();
     if (/iphone|ipad|ipod/.test(ua)) setPlatform('ios');
     else if (/android/.test(ua)) setPlatform('android');
@@ -66,22 +67,24 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
   }, []);
 
   const handleInstallClick = async () => {
+    // Se for iOS, não existe API automática, mostramos o guia obrigatoriamente
     if (platform === 'ios') {
         setShowInstallModal(true);
         return;
     }
 
+    // Se temos o prompt capturado (PC/Android), disparamos a janela nativa
     if (deferredPrompt) {
-        // DISPARA A INSTALAÇÃO REAL NO PC/ANDROID
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
-        console.log('Resultado da instalação:', outcome);
         if (outcome === 'accepted') {
             setDeferredPrompt(null);
             setIsStandalone(true);
+            onShowToast('Instalação iniciada!', 'success');
         }
     } else {
-        // Se já instalou ou o navegador não disparou o evento, mostra o guia
+        // Fallback: se o navegador já instalou ou não suporta o prompt, mas o usuário clicou,
+        // mostramos o modal informativo para não deixá-lo sem resposta.
         setShowInstallModal(true);
     }
   };
@@ -144,17 +147,17 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                                 </div>
                             </div>
                             <h3 className="font-cinzel font-bold text-2xl text-[#1a0f0f] dark:text-white">Instalação Bíblia ADMA</h3>
-                            <p className="text-xs text-gray-500 mt-2 uppercase tracking-widest font-bold">App instalado para uso Offline</p>
                         </div>
 
                         <div className="space-y-6">
                             {platform === 'ios' ? (
                                 <div className="space-y-5">
+                                    <p className="text-sm text-center text-gray-500 mb-4 uppercase tracking-widest font-bold">Instrução para iPhone</p>
                                     <div className="flex items-center gap-4 bg-gray-50 dark:bg-black/20 p-4 rounded-2xl">
                                         <div className="w-10 h-10 bg-white dark:bg-gray-800 rounded-xl flex items-center justify-center shadow-sm">
                                             <Share className="w-5 h-5 text-blue-500" />
                                         </div>
-                                        <p className="text-sm font-medium dark:text-gray-200">1. Toque no botão <span className="font-bold">Compartilhar</span> no Safari.</p>
+                                        <p className="text-sm font-medium dark:text-gray-200">1. Toque em <span className="font-bold">Compartilhar</span> no Safari.</p>
                                     </div>
                                     <div className="flex items-center gap-4 bg-gray-50 dark:bg-black/20 p-4 rounded-2xl">
                                         <div className="w-10 h-10 bg-white dark:bg-gray-800 rounded-xl flex items-center justify-center shadow-sm">
@@ -166,7 +169,7 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                             ) : (
                                 <div className="text-center p-4 bg-gray-50 dark:bg-black/20 rounded-2xl">
                                     <Monitor className="w-8 h-8 mx-auto mb-3 text-[#C5A059]" />
-                                    <p className="text-sm font-medium dark:text-gray-200">O App já pode ser instalado pela barra de endereços do Chrome ou clicando no botão "Instalar" no topo.</p>
+                                    <p className="text-sm font-medium dark:text-gray-200">Clique no ícone de instalação na barra de endereços do seu navegador ou recarregue a página para ativar o botão.</p>
                                 </div>
                             )}
                         </div>
@@ -180,7 +183,7 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
         <div className="relative bg-[#0F0505] text-white pb-28 rounded-b-[40px] shadow-2xl overflow-hidden isolate">
              <div className="absolute inset-0 z-0" style={{ background: `linear-gradient(to bottom, ${primaryColor}, #150505)` }}></div>
              <div className="relative z-20 px-6 pt-10 flex justify-between items-center">
-                {(!isStandalone || deferredPrompt) && (
+                {(!isStandalone) && (
                     <motion.button 
                         initial={{ x: -20, opacity: 0 }} 
                         animate={{ x: 0, opacity: 1 }}
