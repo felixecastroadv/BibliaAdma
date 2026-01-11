@@ -9,15 +9,17 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Bíblia ADMA">
-    <link rel="apple-touch-icon" href="icon.svg?v=3">
+    
+    <!-- Este link será preenchido pelo script abaixo com um PNG real -->
+    <link rel="apple-touch-icon" id="apple-icon">
     
     <title>Bíblia ADMA - Prof. Michel Felix</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     
-    <link rel="icon" type="image/svg+xml" href="icon.svg?v=3" />
-    <link rel="manifest" href="manifest.json?v=3" />
+    <link rel="icon" type="image/svg+xml" href="icon.svg?v=4" />
+    <link rel="manifest" href="manifest.json?v=4" />
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -61,34 +63,39 @@
     </style>
     
     <script>
-      // Força a conversão do SVG para PNG para garantir que Windows e iOS não mostrem a letra "B" genérica
+      // SCRIPT DE COMPATIBILIDADE SUPREMA v4
+      // Resolve o problema do "B" no Windows e a falta de ícone no iPhone
       (function() {
-        function updateAllIcons(pngUrl) {
-            var favicons = document.querySelectorAll("link[rel*='icon']");
-            favicons.forEach(function(el) {
-                el.href = pngUrl;
-                el.type = "image/png";
-            });
-            var appleIcon = document.querySelector("link[rel='apple-touch-icon']");
-            if (appleIcon) {
-                appleIcon.href = pngUrl;
-            } else {
-                var link = document.createElement('link');
-                link.rel = 'apple-touch-icon';
-                link.href = pngUrl;
-                document.head.appendChild(link);
-            }
+        const iconVersion = 'v4';
+        const iconUrl = 'icon.svg?v=' + iconVersion;
+        
+        function applyPngIcon(pngData) {
+            // Favicon padrão
+            let fav = document.querySelector("link[rel='icon']");
+            if (fav) fav.href = pngData;
+            
+            // Apple Touch Icon (O que o iPhone exige)
+            let apple = document.getElementById('apple-icon');
+            if (apple) apple.href = pngData;
         }
-        var img = new Image();
-        img.src = 'icon.svg?v=3';
+
+        // Tenta carregar o ícone convertido do cache para ser instantâneo
+        const cached = localStorage.getItem('adma_icon_v4');
+        if (cached) applyPngIcon(cached);
+
+        const img = new Image();
+        img.src = iconUrl;
         img.onload = function() {
-            var canvas = document.createElement('canvas');
-            canvas.width = 512; canvas.height = 512;
-            var ctx = canvas.getContext('2d');
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, 512, 512);
-            var pngData = canvas.toDataURL('image/png');
-            updateAllIcons(pngData);
-            localStorage.setItem('adma_icon_png_v3', pngData);
+            const pngData = canvas.toDataURL('image/png');
+            
+            applyPngIcon(pngData);
+            localStorage.setItem('adma_icon_v4', pngData);
+            console.log('Ícone convertido para PNG com sucesso (v4).');
         };
       })();
     </script>
