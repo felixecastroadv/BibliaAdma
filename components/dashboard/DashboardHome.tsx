@@ -38,7 +38,7 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
   }, []);
 
   useEffect(() => {
-    // Verifica se já está instalado
+    // 1. Verifica se já está rodando como App instalado
     const checkStandalone = () => {
         const isStand = window.matchMedia('(display-mode: standalone)').matches || 
                         (window.navigator as any).standalone === true;
@@ -46,16 +46,18 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
     };
     checkStandalone();
 
-    // Captura o evento de instalação para PC e Android
+    // 2. CAPTURA O EVENTO NATIVO DE INSTALAÇÃO (CRÍTICO PARA PC/ANDROID)
     const handleBeforeInstall = (e: any) => {
+      console.log('Evento beforeinstallprompt detectado!');
       e.preventDefault(); 
       setDeferredPrompt(e);
-      console.log('Evento beforeinstallprompt capturado com sucesso.');
+      // Quando o evento é disparado, sabemos que NÃO está instalado standalone ainda
+      setIsStandalone(false);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
     
-    // Detecta plataforma
+    // 3. Detecta a plataforma para saber se deve mostrar o guia do iOS
     const ua = navigator.userAgent.toLowerCase();
     if (/iphone|ipad|ipod/.test(ua)) setPlatform('ios');
     else if (/android/.test(ua)) setPlatform('android');
@@ -67,25 +69,30 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
   }, []);
 
   const handleInstallClick = async () => {
-    // Se for iOS, não existe API automática, mostramos o guia obrigatoriamente
+    // No iOS, não existe API nativa para botão de instalar, mostramos o tutorial
     if (platform === 'ios') {
         setShowInstallModal(true);
         return;
     }
 
-    // Se temos o prompt capturado (PC/Android), disparamos a janela nativa
+    // No PC e Android, se capturamos o prompt, disparamos a janela oficial IMEDIATAMENTE
     if (deferredPrompt) {
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
+        console.log('Usuário escolheu:', outcome);
         if (outcome === 'accepted') {
             setDeferredPrompt(null);
             setIsStandalone(true);
-            onShowToast('Instalação iniciada!', 'success');
+            onShowToast('Instalação aceita!', 'success');
         }
     } else {
-        // Fallback: se o navegador já instalou ou não suporta o prompt, mas o usuário clicou,
-        // mostramos o modal informativo para não deixá-lo sem resposta.
-        setShowInstallModal(true);
+        // Se o evento não foi disparado (app já instalado ou navegador incompatível),
+        // mostramos o modal de ajuda para o usuário não ficar sem resposta.
+        if (isStandalone) {
+            onShowToast('O App já está instalado!', 'info');
+        } else {
+            setShowInstallModal(true);
+        }
     }
   };
 
@@ -146,30 +153,30 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                                     <BookOpen className="w-10 h-10 text-[#F5F5DC]" />
                                 </div>
                             </div>
-                            <h3 className="font-cinzel font-bold text-2xl text-[#1a0f0f] dark:text-white">Instalação Bíblia ADMA</h3>
+                            <h3 className="font-cinzel font-bold text-2xl text-[#1a0f0f] dark:text-white">Instalar Bíblia ADMA</h3>
+                            <p className="text-xs text-gray-500 mt-2 uppercase tracking-widest font-bold">App Offline de Estudos</p>
                         </div>
 
                         <div className="space-y-6">
                             {platform === 'ios' ? (
                                 <div className="space-y-5">
-                                    <p className="text-sm text-center text-gray-500 mb-4 uppercase tracking-widest font-bold">Instrução para iPhone</p>
                                     <div className="flex items-center gap-4 bg-gray-50 dark:bg-black/20 p-4 rounded-2xl">
                                         <div className="w-10 h-10 bg-white dark:bg-gray-800 rounded-xl flex items-center justify-center shadow-sm">
                                             <Share className="w-5 h-5 text-blue-500" />
                                         </div>
-                                        <p className="text-sm font-medium dark:text-gray-200">1. Toque em <span className="font-bold">Compartilhar</span> no Safari.</p>
+                                        <p className="text-sm font-medium dark:text-gray-200">1. Toque no botão <span className="font-bold">Compartilhar</span> (ícone quadrado com seta).</p>
                                     </div>
                                     <div className="flex items-center gap-4 bg-gray-50 dark:bg-black/20 p-4 rounded-2xl">
                                         <div className="w-10 h-10 bg-white dark:bg-gray-800 rounded-xl flex items-center justify-center shadow-sm">
                                             <PlusSquare className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                                         </div>
-                                        <p className="text-sm font-medium dark:text-gray-200">2. Escolha <span className="font-bold">"Adicionar à Tela de Início"</span>.</p>
+                                        <p className="text-sm font-medium dark:text-gray-200">2. Role para baixo e escolha <span className="font-bold">"Adicionar à Tela de Início"</span>.</p>
                                     </div>
                                 </div>
                             ) : (
                                 <div className="text-center p-4 bg-gray-50 dark:bg-black/20 rounded-2xl">
                                     <Monitor className="w-8 h-8 mx-auto mb-3 text-[#C5A059]" />
-                                    <p className="text-sm font-medium dark:text-gray-200">Clique no ícone de instalação na barra de endereços do seu navegador ou recarregue a página para ativar o botão.</p>
+                                    <p className="text-sm font-medium dark:text-gray-200">O seu navegador não disparou a janela automática. Tente clicar no ícone de instalar na barra de endereços (superior).</p>
                                 </div>
                             )}
                         </div>

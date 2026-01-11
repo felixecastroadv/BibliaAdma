@@ -4,22 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#8B0000" />
-    
-    <!-- Configurações específicas para iOS (iPhone/iPad) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Bíblia ADMA">
-    
-    <!-- O Ícone Base64 resolve o problema do Safari não mostrar o ícone -->
-    <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIABAMAAAAGv98ZAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAMFBMVEUAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAA90L5AAAAEHRSTlMAA/f78/f79/f39/f39/f3E0u79AAAAlVJREFUeF7t00EBAAAAg6D5b25vD2AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPgaA8AAAb7XwB4AAAAASUVORK5CYII=">
+    <meta name="description" content="Bíblia de Estudo ADMA - Prof. Michel Felix. App cristão com recursos offline.">
     
     <title>Bíblia ADMA - Prof. Michel Felix</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    
-    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIABAMAAAAGv98ZAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAMFBMVEUAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAA90L5AAAAEHRSTlMAA/f78/f79/f39/f39/f3E0u79AAAAlVJREFUeF7t00EBAAAAg6D5b25vD2AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPgaA8AAAb7XwB4AAAAASUVORK5CYII=" />
-    <link rel="manifest" href="manifest.json?v=6" />
+    <link rel="preconnect" href="https://bible-api.com">
+
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="manifest" href="/manifest.json?v=8" />
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -39,13 +36,16 @@
               cinzel: ['Cinzel', 'serif'],
               cormorant: ['Cormorant Garamond', 'serif'],
               montserrat: ['Montserrat', 'sans-serif'],
+            },
+            padding: {
+                'safe': 'env(safe-area-inset-bottom)'
             }
           }
         }
       }
     </script>
 
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
       html { scroll-behavior: smooth; -webkit-tap-highlight-color: transparent; }
@@ -55,8 +55,33 @@
       .dark .paper-texture { background-image: none; }
       .scrollbar-hide::-webkit-scrollbar { display: none; }
       .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+      ::selection { background: rgba(197, 160, 89, 0.3); color: #8B0000; }
+      .dark ::selection { background: rgba(197, 160, 89, 0.3); color: #ff6b6b; }
+      input:focus, textarea:focus, select:focus { outline: none; }
     </style>
     
+    <script>
+      (function() {
+        function setIcon(url) {
+            var links = document.querySelectorAll("link[rel*='icon']");
+            links.forEach(l => l.parentNode.removeChild(l));
+            var link = document.createElement('link');
+            link.type = 'image/png'; link.rel = 'icon'; link.href = url;
+            document.head.appendChild(link);
+        }
+        var iconCanvas = document.createElement('canvas');
+        iconCanvas.width = 512; iconCanvas.height = 512;
+        var ctx = iconCanvas.getContext('2d');
+        var img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = '/icon.svg'; 
+        img.onload = function() {
+            ctx.fillStyle = '#8B0000'; ctx.fillRect(0, 0, 512, 512);
+            ctx.drawImage(img, 0, 0, 512, 512);
+            setIcon(iconCanvas.toDataURL('image/png'));
+        };
+      })();
+    </script>
     <script type="importmap">
 {
   "imports": {
@@ -83,7 +108,7 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW failed', err));
+          navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW failed', err));
         });
       }
     </script>
