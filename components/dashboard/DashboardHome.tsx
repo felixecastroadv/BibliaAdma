@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { BookOpen, GraduationCap, ShieldCheck, Trophy, Calendar, ListChecks, Mail, Moon, Sun, Download, Instagram, X, Share, MoreVertical, LogOut, Sparkles, Brain, FileText, Link as LinkIcon, Star, MapPin } from 'lucide-react';
+import { BookOpen, GraduationCap, ShieldCheck, Trophy, Calendar, ListChecks, Mail, Moon, Sun, Download, Instagram, X, Share, MoreVertical, LogOut, Sparkles, Brain, FileText, Link as LinkIcon, Star, MapPin, Monitor, Smartphone, PlusSquare } from 'lucide-react';
 import { CHURCH_NAME, TOTAL_CHAPTERS, PASTOR_PRESIDENT } from '../../constants';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppConfig, DynamicModule } from '../../types';
@@ -24,7 +24,7 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isStandalone, setIsStandalone] = useState(true);
   const [showInstallModal, setShowInstallModal] = useState(false);
-  const [installPlatform, setInstallPlatform] = useState<'ios' | 'android' | 'desktop'>('android');
+  const [platform, setPlatform] = useState<'ios' | 'android' | 'desktop'>('android');
   const [dynamicModules, setDynamicModules] = useState<DynamicModule[]>([]);
 
   useEffect(() => {
@@ -48,15 +48,19 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
     const handleBeforeInstall = (e: any) => {
       e.preventDefault(); 
       setDeferredPrompt(e);
-      setIsStandalone(false);
+      // Se o evento disparou, sabemos que não é iOS (pois iOS não dispara)
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
     
     const ua = navigator.userAgent.toLowerCase();
-    if (/iphone|ipad|ipod/.test(ua)) setInstallPlatform('ios');
-    else if (/android/.test(ua)) setInstallPlatform('android');
-    else setInstallPlatform('desktop');
+    if (/iphone|ipad|ipod/.test(ua)) {
+        setPlatform('ios');
+    } else if (/android/.test(ua)) {
+        setPlatform('android');
+    } else {
+        setPlatform('desktop');
+    }
 
     return () => {
         window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
@@ -64,11 +68,14 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
   }, []);
 
   const handleInstallClick = async () => {
-    if (deferredPrompt) {
+    if (platform === 'ios') {
+        setShowInstallModal(true);
+    } else if (deferredPrompt) {
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
         if (outcome === 'accepted') setDeferredPrompt(null);
     } else {
+        // Fallback para PC ou Android onde o prompt ainda não carregou
         setShowInstallModal(true);
     }
   };
@@ -119,22 +126,51 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
         <AnimatePresence>
             {showInstallModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowInstallModal(false)} />
-                    <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white dark:bg-[#1E1E1E] w-full max-w-sm rounded-3xl p-6 relative z-10 shadow-2xl border border-[#C5A059]/30" >
-                        <button onClick={() => setShowInstallModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-red-500"><X /></button>
-                        <div className="text-center mb-6">
-                            <div className="w-16 h-16 bg-[#F5F5DC] dark:bg-gray-800 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-inner">
-                                {installPlatform === 'ios' ? <Share className="w-8 h-8 text-[#C5A059]" /> : <MoreVertical className="w-8 h-8 text-[#C5A059]" />}
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowInstallModal(false)} />
+                    <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="bg-white dark:bg-[#1E1E1E] w-full max-w-sm rounded-[40px] p-8 relative z-10 shadow-2xl border border-[#C5A059]/30" >
+                        <button onClick={() => setShowInstallModal(false)} className="absolute top-6 right-6 text-gray-400 hover:text-red-500 transition-colors"><X /></button>
+                        
+                        <div className="text-center mb-8">
+                            <div className="relative inline-block mb-4">
+                                <div className="absolute inset-0 bg-[#C5A059] blur-2xl opacity-20 animate-pulse"></div>
+                                <div className="relative w-20 h-20 bg-gradient-to-br from-[#8B0000] to-[#500000] rounded-3xl mx-auto flex items-center justify-center shadow-xl border border-[#C5A059]/30">
+                                    <BookOpen className="w-10 h-10 text-[#F5F5DC]" />
+                                </div>
                             </div>
-                            <h3 className="font-cinzel font-bold text-xl text-[#1a0f0f] dark:text-white">Instalar App</h3>
+                            <h3 className="font-cinzel font-bold text-2xl text-[#1a0f0f] dark:text-white">Instalar Bíblia ADMA</h3>
+                            <p className="text-xs text-gray-500 mt-2 uppercase tracking-widest font-bold">Acesso rápido e offline</p>
                         </div>
-                        <div className="space-y-4 bg-gray-50 dark:bg-black/20 p-4 rounded-xl">
-                            {installPlatform === 'ios' ? (
-                                <p className="text-sm dark:text-gray-300">Toque em <span className="font-bold">Compartilhar</span> e selecione <span className="font-bold">"Adicionar à Tela de Início"</span>.</p>
+
+                        <div className="space-y-6">
+                            {platform === 'ios' ? (
+                                <div className="space-y-5">
+                                    <div className="flex items-center gap-4 bg-gray-50 dark:bg-black/20 p-4 rounded-2xl">
+                                        <div className="w-10 h-10 bg-white dark:bg-gray-800 rounded-xl flex items-center justify-center shadow-sm">
+                                            <Share className="w-5 h-5 text-blue-500" />
+                                        </div>
+                                        <p className="text-sm font-medium dark:text-gray-200">1. Toque no botão <span className="font-bold">Compartilhar</span> na barra do Safari.</p>
+                                    </div>
+                                    <div className="flex items-center gap-4 bg-gray-50 dark:bg-black/20 p-4 rounded-2xl">
+                                        <div className="w-10 h-10 bg-white dark:bg-gray-800 rounded-xl flex items-center justify-center shadow-sm">
+                                            <PlusSquare className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                                        </div>
+                                        <p className="text-sm font-medium dark:text-gray-200">2. Role para baixo e selecione <span className="font-bold">"Adicionar à Tela de Início"</span>.</p>
+                                    </div>
+                                </div>
+                            ) : platform === 'desktop' ? (
+                                <div className="text-center p-4 bg-gray-50 dark:bg-black/20 rounded-2xl">
+                                    <Monitor className="w-8 h-8 mx-auto mb-3 text-[#C5A059]" />
+                                    <p className="text-sm font-medium dark:text-gray-200">Clique no ícone de instalação <span className="font-bold">(computador com seta)</span> na barra de endereços do seu navegador.</p>
+                                </div>
                             ) : (
-                                <p className="text-sm dark:text-gray-300">Toque no menu do navegador e selecione <span className="font-bold">"Instalar aplicativo"</span>.</p>
+                                <div className="text-center p-4 bg-gray-50 dark:bg-black/20 rounded-2xl">
+                                    <Smartphone className="w-8 h-8 mx-auto mb-3 text-[#C5A059]" />
+                                    <p className="text-sm font-medium dark:text-gray-200">Toque nos <span className="font-bold">três pontinhos</span> do Chrome e selecione <span className="font-bold">"Instalar aplicativo"</span>.</p>
+                                </div>
                             )}
                         </div>
+                        
+                        <button onClick={() => setShowInstallModal(false)} className="w-full mt-8 bg-[#1a0f0f] dark:bg-white dark:text-black text-white font-cinzel font-bold py-4 rounded-2xl text-sm tracking-widest shadow-lg">ENTENDI</button>
                     </motion.div>
                 </div>
             )}
@@ -142,15 +178,26 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
         
         <div className="relative bg-[#0F0505] text-white pb-28 rounded-b-[40px] shadow-2xl overflow-hidden isolate">
              <div className="absolute inset-0 z-0" style={{ background: `linear-gradient(to bottom, ${primaryColor}, #150505)` }}></div>
-             <div className="relative z-20 px-6 pt-6 flex justify-between items-center">
+             <div className="relative z-20 px-6 pt-10 flex justify-between items-center">
                 {!isStandalone && (
-                    <button onClick={handleInstallClick} className="bg-white/5 backdrop-blur-md border border-white/10 text-white/90 px-4 py-2 rounded-full flex items-center gap-2">
-                        <Download className="w-3 h-3" /> <span className="text-[10px] font-bold uppercase">Instalar App</span>
-                    </button>
+                    <motion.button 
+                        initial={{ x: -20, opacity: 0 }} 
+                        animate={{ x: 0, opacity: 1 }}
+                        onClick={handleInstallClick} 
+                        className="group flex items-center gap-3 bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/20 pl-1.5 pr-5 py-1.5 rounded-full transition-all active:scale-95"
+                    >
+                        <div className="w-8 h-8 bg-gradient-to-br from-[#C5A059] to-[#9e8045] rounded-full flex items-center justify-center shadow-lg">
+                            <BookOpen className="w-4 h-4 text-white" />
+                        </div>
+                        <div className="flex flex-col items-start">
+                            <span className="text-[10px] font-black uppercase tracking-tighter leading-none">Instalar</span>
+                            <span className="text-[8px] opacity-60 uppercase font-bold tracking-widest">App ADMA</span>
+                        </div>
+                    </motion.button>
                 )}
                 <div className={`flex gap-3 ${isStandalone ? 'ml-auto' : ''}`}>
-                    <button onClick={toggleDarkMode} className="p-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10">{darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}</button>
-                    <button onClick={onLogout} className="p-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 hover:bg-red-500/20"><LogOut className="w-4 h-4" /></button>
+                    <button onClick={toggleDarkMode} className="p-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 hover:bg-white/10 transition-colors">{darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}</button>
+                    <button onClick={onLogout} className="p-2.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 hover:bg-red-500/20 transition-colors"><LogOut className="w-4 h-4" /></button>
                 </div>
             </div>
 
@@ -173,10 +220,10 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                 </motion.div>
 
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-6 flex flex-wrap justify-center gap-3 px-4">
-                    <a href="https://www.instagram.com/adma.vilardosteles/" target="_blank" rel="noopener noreferrer" className="px-6 py-2.5 rounded-full border border-[#C5A059]/50 text-[#C5A059] font-cinzel text-[10px] font-bold flex items-center gap-2 hover:bg-[#C5A059]/10">
+                    <a href="https://www.instagram.com/adma.vilardosteles/" target="_blank" rel="noopener noreferrer" className="px-6 py-2.5 rounded-full border border-[#C5A059]/50 text-[#C5A059] font-cinzel text-[10px] font-bold flex items-center gap-2 hover:bg-[#C5A059]/10 transition-colors">
                         <Instagram className="w-3.5 h-3.5" /> <span>Instagram</span>
                     </a>
-                    <a href="https://maps.app.goo.gl/cyZBbWNGFaAjEm2aA" target="_blank" rel="noopener noreferrer" className="px-6 py-2.5 rounded-full bg-[#8B0000]/20 border border-[#8B0000]/40 text-white font-cinzel text-[10px] font-bold flex items-center gap-2">
+                    <a href="https://maps.app.goo.gl/cyZBbWNGFaAjEm2aA" target="_blank" rel="noopener noreferrer" className="px-6 py-2.5 rounded-full bg-[#8B0000]/20 border border-[#8B0000]/40 text-white font-cinzel text-[10px] font-bold flex items-center gap-2 hover:bg-[#8B0000]/40 transition-colors">
                         <MapPin className="w-3.5 h-3.5 text-[#C5A059]" /> <span>Localização</span>
                     </a>
                 </motion.div>
@@ -204,8 +251,8 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
 
         <div className="px-6 pb-32 grid grid-cols-2 gap-4">
             {allMenuItems.map((item, idx) => (
-                <motion.button key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * idx }} onClick={() => onNavigate(item.id, { module: (item as any).module })} className="bg-white dark:bg-[#1E1E1E] p-6 rounded-[24px] text-left h-40 flex flex-col justify-between border border-gray-200 dark:border-white/15 shadow-lg">
-                    <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center text-white mb-2 shadow-md`}>
+                <motion.button key={item.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * idx }} onClick={() => onNavigate(item.id, { module: (item as any).module })} className="bg-white dark:bg-[#1E1E1E] p-6 rounded-[24px] text-left h-40 flex flex-col justify-between border border-gray-200 dark:border-white/15 shadow-lg hover:shadow-xl transition-all active:scale-95 group">
+                    <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center text-white mb-2 shadow-md group-hover:scale-110 transition-transform`}>
                         <item.icon className="w-6 h-6" />
                     </div>
                     <div>
@@ -215,7 +262,7 @@ export default function DashboardHome({ onNavigate, isAdmin, onEnableAdmin, user
                 </motion.button>
             ))}
             {isAdmin && (
-                <button onClick={() => onNavigate('admin')} className="col-span-2 bg-[#1a0f0f] dark:bg-black text-[#C5A059] p-5 rounded-3xl flex items-center justify-center gap-4 border border-[#C5A059]/30">
+                <button onClick={() => onNavigate('admin')} className="col-span-2 bg-[#1a0f0f] dark:bg-black text-[#C5A059] p-5 rounded-3xl flex items-center justify-center gap-4 border border-[#C5A059]/30 hover:bg-black transition-colors shadow-lg active:scale-95">
                     <ShieldCheck className="w-6 h-6" />
                     <div className="text-left">
                         <span className="font-cinzel font-bold block text-sm">Painel Editor Chefe</span>

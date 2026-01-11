@@ -1,13 +1,13 @@
 {
-  "id": "/",
+  "id": "adma-bible-app",
   "name": "Bíblia ADMA - Prof. Michel Felix",
   "short_name": "Bíblia ADMA",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#F5F5DC",
+  "background_color": "#8B0000",
   "theme_color": "#8B0000",
-  "description": "App de Estudos Bíblicos Avançados",
+  "description": "App de Estudos Bíblicos Avançados - Assembleia de Deus Ministério Ágape",
   "orientation": "portrait-primary",
   "icons": [
     {

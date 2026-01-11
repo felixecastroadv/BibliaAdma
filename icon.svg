@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Fundo: Quadrado Arredondado Vermelho Escuro (Cor da Marca) -->
-  <rect width="512" height="512" rx="120" ry="120" fill="#8B0000"/>
+  <!-- Fundo: Quadrado Arredondado Vermelho Escuro (ADMA Deep Red) -->
+  <rect width="512" height="512" rx="110" ry="110" fill="#8B0000"/>
   
-  <!-- Ícone do Livro: Traço Branco, Centralizado e Espesso -->
-  <g fill="none" stroke="#FFFFFF" stroke-width="36" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Página Esquerda -->
-    <path d="M256 140c-50 0-110 20-130 40v200c20-20 80-40 130-40"/>
-    <!-- Página Direita -->
-    <path d="M256 140c50 0 110 20 130 40v200c-20-20-80-40-130-40"/>
-    <!-- Lombada Central -->
-    <path d="M256 140v200"/>
+  <!-- Borda Interna Dourada (Estilo Premium do Print) -->
+  <rect x="20" y="20" width="472" height="472" rx="100" ry="100" fill="none" stroke="#C5A059" stroke-width="12" opacity="0.6"/>
+  
+  <!-- Ícone do Livro: Centralizado e Refinado -->
+  <g transform="translate(106, 136) scale(0.6)">
+    <path d="M256 140c-50 0-110 20-130 40v200c20-20 80-40 130-40" fill="none" stroke="#F5F5DC" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M256 140c50 0 110 20 130 40v200c-20-20-80-40-130-40" fill="none" stroke="#F5F5DC" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M256 140v200" fill="none" stroke="#F5F5DC" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
 </svg>

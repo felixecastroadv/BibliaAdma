@@ -4,19 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#8B0000" />
+    
+    <!-- Configurações para iOS (iPhone/iPad) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Bíblia ADMA">
-    <meta name="description" content="Bíblia de Estudo ADMA - Prof. Michel Felix. App cristão com recursos offline.">
+    <link rel="apple-touch-icon" href="/icon.svg">
     
     <title>Bíblia ADMA - Prof. Michel Felix</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://bible-api.com">
-
+    
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-    <link rel="manifest" href="/manifest.json?v=8" />
+    <link rel="manifest" href="/manifest.json" />
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -57,28 +58,32 @@
       .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
       ::selection { background: rgba(197, 160, 89, 0.3); color: #8B0000; }
       .dark ::selection { background: rgba(197, 160, 89, 0.3); color: #ff6b6b; }
-      input:focus, textarea:focus, select:focus { outline: none; }
     </style>
     
     <script>
+      // Este script garante que o ícone seja convertido em PNG em tempo real para compatibilidade total
       (function() {
-        function setIcon(url) {
+        function updateIcons(url) {
+            // Favicon
             var links = document.querySelectorAll("link[rel*='icon']");
             links.forEach(l => l.parentNode.removeChild(l));
             var link = document.createElement('link');
             link.type = 'image/png'; link.rel = 'icon'; link.href = url;
             document.head.appendChild(link);
+            
+            // Apple Touch Icon
+            var appleLink = document.querySelector("link[rel='apple-touch-icon']");
+            if (appleLink) appleLink.href = url;
         }
-        var iconCanvas = document.createElement('canvas');
-        iconCanvas.width = 512; iconCanvas.height = 512;
-        var ctx = iconCanvas.getContext('2d');
+        
         var img = new Image();
-        img.crossOrigin = "Anonymous";
-        img.src = '/icon.svg'; 
+        img.src = '/icon.svg';
         img.onload = function() {
-            ctx.fillStyle = '#8B0000'; ctx.fillRect(0, 0, 512, 512);
+            var canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 512;
+            var ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, 512, 512);
-            setIcon(iconCanvas.toDataURL('image/png'));
+            updateIcons(canvas.toDataURL('image/png'));
         };
       })();
     </script>
