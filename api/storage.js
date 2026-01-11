@@ -5,6 +5,7 @@ const MANUAL_SUPABASE_URL = "https://nnhatyvrtlbkyfadumqo.supabase.co";
 const MANUAL_SUPABASE_KEY = "sb_publishable_0uZeWa8FXTH-u-ki_NRHsQ_nYALzy9j";
 
 export default async function handler(request, response) {
+  // CONFIGURAÇÃO DE SEGURANÇA E CACHE
   response.setHeader('Access-Control-Allow-Credentials', true);
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
@@ -12,6 +13,11 @@ export default async function handler(request, response) {
     'Access-Control-Allow-Headers',
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
   );
+
+  // O PULO DO GATO: Cache de Borda (Vercel Edge Cache)
+  // s-maxage=3600: Cache no servidor da Vercel por 1 hora
+  // stale-while-revalidate=86400: Serve o cache antigo enquanto atualiza em background por até 1 dia
+  response.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
 
   if (request.method === 'OPTIONS') {
     return response.status(200).end();
@@ -40,13 +46,8 @@ export default async function handler(request, response) {
     // Health Check
     if (method === 'POST' && body.action === 'ping') {
         const { error } = await supabase.from('adma_content').select('id').limit(1);
-        if (error) {
-             if (error.message.includes('relation "adma_content" does not exist') || error.code === '42P01') {
-                 return response.status(500).json({ error: 'TABELA INEXISTENTE: A conexão funcionou, mas a tabela "adma_content" não existe. Crie-a no SQL Editor do Supabase.' });
-             }
-             return response.status(500).json({ error: `Erro de Conexão: ${error.message}` });
-        }
-        return response.status(200).json({ status: 'ok', message: 'Conectado ao Supabase com sucesso.' });
+        if (error) return response.status(500).json({ error: error.message });
+        return response.status(200).json({ status: 'ok' });
     }
 
     // LIST
@@ -108,6 +109,6 @@ export default async function handler(request, response) {
     return response.status(400).json({ error: 'Ação desconhecida' });
 
   } catch (error) {
-    return response.status(500).json({ error: error.message || "Erro interno no servidor de banco de dados" });
+    return response.status(500).json({ error: error.message || "Erro interno no servidor" });
   }
 }
