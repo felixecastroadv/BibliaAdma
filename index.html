@@ -5,21 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#8B0000" />
     
-    <!-- Configurações para iOS (iPhone/iPad) -->
+    <!-- Configurações específicas para iOS (iPhone/iPad) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Bíblia ADMA">
     
-    <!-- Este link será preenchido pelo script abaixo com um PNG real -->
-    <link rel="apple-touch-icon" id="apple-icon">
+    <!-- O Ícone Base64 resolve o problema do Safari não mostrar o ícone -->
+    <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIABAMAAAAGv98ZAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAMFBMVEUAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAA90L5AAAAEHRSTlMAA/f78/f79/f39/f39/f3E0u79AAAAlVJREFUeF7t00EBAAAAg6D5b25vD2AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPgaA8AAAb7XwB4AAAAASUVORK5CYII=">
     
     <title>Bíblia ADMA - Prof. Michel Felix</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     
-    <link rel="icon" type="image/svg+xml" href="icon.svg?v=4" />
-    <link rel="manifest" href="manifest.json?v=4" />
+    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIABAMAAAAGv98ZAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAMFBMVEUAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAA90L5AAAAEHRSTlMAA/f78/f79/f39/f39/f3E0u79AAAAlVJREFUeF7t00EBAAAAg6D5b25vD2AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPgaA8AAAb7XwB4AAAAASUVORK5CYII=" />
+    <link rel="manifest" href="manifest.json?v=6" />
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -39,16 +39,13 @@
               cinzel: ['Cinzel', 'serif'],
               cormorant: ['Cormorant Garamond', 'serif'],
               montserrat: ['Montserrat', 'sans-serif'],
-            },
-            padding: {
-                'safe': 'env(safe-area-inset-bottom)'
             }
           }
         }
       }
     </script>
 
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
       html { scroll-behavior: smooth; -webkit-tap-highlight-color: transparent; }
@@ -58,47 +55,8 @@
       .dark .paper-texture { background-image: none; }
       .scrollbar-hide::-webkit-scrollbar { display: none; }
       .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-      ::selection { background: rgba(197, 160, 89, 0.3); color: #8B0000; }
-      .dark ::selection { background: rgba(197, 160, 89, 0.3); color: #ff6b6b; }
     </style>
     
-    <script>
-      // SCRIPT DE COMPATIBILIDADE SUPREMA v4
-      // Resolve o problema do "B" no Windows e a falta de ícone no iPhone
-      (function() {
-        const iconVersion = 'v4';
-        const iconUrl = 'icon.svg?v=' + iconVersion;
-        
-        function applyPngIcon(pngData) {
-            // Favicon padrão
-            let fav = document.querySelector("link[rel='icon']");
-            if (fav) fav.href = pngData;
-            
-            // Apple Touch Icon (O que o iPhone exige)
-            let apple = document.getElementById('apple-icon');
-            if (apple) apple.href = pngData;
-        }
-
-        // Tenta carregar o ícone convertido do cache para ser instantâneo
-        const cached = localStorage.getItem('adma_icon_v4');
-        if (cached) applyPngIcon(cached);
-
-        const img = new Image();
-        img.src = iconUrl;
-        img.onload = function() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 512;
-            canvas.height = 512;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, 512, 512);
-            const pngData = canvas.toDataURL('image/png');
-            
-            applyPngIcon(pngData);
-            localStorage.setItem('adma_icon_v4', pngData);
-            console.log('Ícone convertido para PNG com sucesso (v4).');
-        };
-      })();
-    </script>
     <script type="importmap">
 {
   "imports": {

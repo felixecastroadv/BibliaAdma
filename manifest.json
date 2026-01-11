@@ -1,5 +1,5 @@
 {
-  "id": "adma-bible-app-v4",
+  "id": "adma-bible-supreme-v6",
   "name": "Bíblia ADMA - Prof. Michel Felix",
   "short_name": "Bíblia ADMA",
   "start_url": "./index.html",
@@ -7,24 +7,18 @@
   "display": "standalone",
   "background_color": "#8B0000",
   "theme_color": "#8B0000",
-  "description": "App de Estudos Bíblicos Avançados - Assembleia de Deus Ministério Ágape",
+  "description": "App de Estudos Bíblicos Avançados com IA e Dicionário Exegético",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "icon.svg?v=4",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIABAMAAAAGv98ZAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAMFBMVEUAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAAiAAA90L5AAAAEHRSTlMAA/f78/f79/f39/f39/f3E0u79AAAAlVJREFUeF7t00EBAAAAg6D5b25vD2AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPgaA8AAAb7XwB4AAAAASUVORK5CYII=",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icon.svg?v=4",
-      "sizes": "192x192",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
-    },
-    {
-      "src": "icon.svg?v=4",
-      "sizes": "512x512",
+      "src": "icon.svg?v=6",
+      "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "maskable"
     }
