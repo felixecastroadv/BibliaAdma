@@ -71,7 +71,14 @@ export default async function handler(request, response) {
             let systemInstruction = "Você é o Professor Michel Felix, teólogo Pentecostal Clássico e Erudito.";
             let enhancedPrompt = prompt;
 
-            if (taskType === 'ebd') {
+            // --- LÓGICA ESPECÍFICA PARA MANUAL DO PROFESSOR (NOVO v104) ---
+            if (taskType === 'teacher_ebd') {
+                systemInstruction = "ATUE COMO: Professor Michel Felix (Assistente Pedagógico). Você é um especialista em Didática Bíblica e Andragogia Cristã. SEU OBJETIVO É CRIAR UM MANUAL DE AULA PARA O PROFESSOR, E NÃO UM ESTUDO PARA O ALUNO.";
+                // Não injetamos a estrutura do aluno aqui. Deixamos o prompt do frontend guiar a estrutura do Manual.
+                enhancedPrompt = `[MODO ASSISTENTE PEDAGÓGICO ATIVO]: Gere um guia de aula prático e profundo conforme solicitado. Use formatação rica (Markdown). \n\n${prompt}`;
+            }
+            // --- LÓGICA PARA CONTEÚDO DO ALUNO (PADRÃO) ---
+            else if (taskType === 'ebd') {
                 // --- LÓGICA DE INTRODUÇÃO SELETIVA (100% FIEL AO PEDIDO DO ADMIN) ---
                 const introInstruction = (chapter === 1) 
                     ? "2. INTRODUÇÃO GERAL:\n           Texto rico contextualizando O LIVRO (autor, data, propósito) e o cenário deste primeiro capítulo."
@@ -165,7 +172,8 @@ export default async function handler(request, response) {
                    NÃO ACEITO RESPOSTAS CURTAS. SEJA EXAUSTIVO, MAGISTRAL E DENSO.\n\n${prompt}`;
             }
 
-            const modelToUse = (taskType === 'ebd') ? 'gemini-3-flash-preview' : 'gemini-flash-lite-latest';
+            // Seleção de Modelo: Tanto o EBD (Aluno) quanto o Manual (Professor) usam o modelo inteligente.
+            const modelToUse = (taskType === 'ebd' || taskType === 'teacher_ebd') ? 'gemini-3-flash-preview' : 'gemini-flash-lite-latest';
 
             const config = {
                 temperature: 0.65,
@@ -180,7 +188,8 @@ export default async function handler(request, response) {
                 ]
             };
 
-            if (taskType === 'ebd') {
+            // thinkingConfig para ambos os tipos de EBD
+            if (taskType === 'ebd' || taskType === 'teacher_ebd') {
                 config.maxOutputTokens = 30000;
                 config.thinkingConfig = { thinkingBudget: 24576 };
             } else {
