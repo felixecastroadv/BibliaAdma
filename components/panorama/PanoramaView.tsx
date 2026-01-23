@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 // ==========================================================================================
-// COMPONENTE: PANORAMA BÍBLICO EBD - EDIÇÃO MAGNUM OPUS SUPREMA (v82.0 / ATUALIZAÇÃO v103.0)
+// COMPONENTE: PANORAMA BÍBLICO EBD - EDIÇÃO MAGNUM OPUS SUPREMA (v82.0 / ATUALIZAÇÃO v104.0)
 // DESENVOLVEDOR: Arquiteto Teológico Sênior & Senior Frontend Engineer ADMA
 // FOCO: ESTÉTICA LUXUOSA, INJEÇÃO DE "PÉROLAS DE OURO" E INTEGRAÇÃO CONTEXTUAL TOTAL
 // ATUALIZAÇÃO v103.0: PROTOCOLO IMPERIAL GOLD - RIGOR DOCUMENTAL E VISUAL DE OURO MACIÇO
+// ATUALIZAÇÃO v104.0: MODO ASSISTENTE PEDAGÓGICO PARA PROFESSORES (MANUAL DE ENSINO)
 // ==========================================================================================
 /**
- * DIRETRIZES DE ENGENHARIA E CONTEÚDO (PROF. MICHEL FELIX - PROTOCOLO v82.0 / v103.0):
+ * DIRETRIZES DE ENGENHARIA E CONTEÚDO (PROF. MICHEL FELIX - PROTOCOLO v82.0 / v104.0):
  * 1. PROIBIDO TRANSCREVER O TEXTO BÍBLICO INTEGRAL NO CORPO DA APOSTILA.
  * 2. FRACIONAMENTO OBRIGATÓRIO EM PORÇÕES DE 2 A 3 VERSÍCULOS (MICROSCOPIA TOTAL).
  * 3. INTEGRAÇÃO DE PÉROLAS (v82.0): As "PÉROLAS DE OURO" devem vir DENTRO dos tópicos numéricos, não ao final.
@@ -21,6 +22,7 @@ import { useState, useEffect, useRef } from 'react';
  * 12. PROTOCOLO PÉROLA DE OURO (v82.0): Inclusão de Torá SheBeal Pe, Talmud, Midrash e medidas exatas INJETADAS NO TEXTO.
  * 13. ATUALIZAÇÃO v103.0 (IMPERIAL GOLD): Injeção de Fontes Rastreáveis (Josefo, Mishná, Philo) e Design Ouro Maciço.
  * 14. PROTOCOLO ONE-SHOT v103.1: Geração integral (3000 palavras) em comando único para evitar falhas de continuação.
+ * 15. MODO PROFESSOR v104.0: Geração de Manual Pedagógico baseado no texto do aluno (Input do Admin).
  * 
  * LOG DE OTIMIZAÇÃO v82.0 (SINCRO PÉROLA DE OURO E INJEÇÃO):
  * - Substituição definitiva do termo "Exegese Microscópica" por "Pérola de Ouro".
@@ -31,9 +33,7 @@ import { useState, useEffect, useRef } from 'react';
  */
 // ==========================================================================================
 
-// Add React import to fix 'Cannot find namespace React' errors
 import React from 'react';
-// Fix: Added ChevronDown to the import list from lucide-react.
 import { 
   ChevronLeft, ChevronDown, GraduationCap, Lock, BookOpen, ChevronRight, Volume2, 
   Sparkles, Loader2, Book, Trash2, Edit, Save, X, CheckCircle, 
@@ -75,14 +75,9 @@ import { generateContent } from '../../services/geminiService';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // --- INTERFACES DE CONFIGURAÇÃO ACADÊMICA ---
-/**
- * Propriedades para o PanoramaView.
- * Gerencia o estado de administrador, toasts e progresso do usuário logado na plataforma.
- */
 interface PanoramaProps {
     isAdmin: boolean;
     onShowToast: (msg: string, type: 'success' | 'error' | 'info') => void;
-    // Fix: onBack should be a function, not void
     onBack: () => void;
     userProgress: UserProgress | null;
     onProgressUpdate: (updated: UserProgress) => void;
@@ -95,20 +90,17 @@ interface PanoramaProps {
 export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgress, onProgressUpdate }: PanoramaProps) {
   
   // ==========================================================================================
-  // BLOCO DE ESTADOS (STATE ARCHITECTURE) - ARQUITETURA DE ALTA FIDELIDADE
+  // BLOCO DE ESTADOS (STATE ARCHITECTURE)
   // ==========================================================================================
   
-  // 1. Estados de Contexto Bíblico e Navegação Primária
   const [book, setBook] = useState('Gênesis');
   const [chapter, setChapter] = useState(1);
   const [content, setContent] = useState<EBDContent | null>(null);
   const [activeTab, setActiveTab] = useState<'student' | 'teacher'>('student');
   
-  // 2. Estados de Paginação e Fragmentação de Manuscrito
   const [currentPage, setCurrentPage] = useState(0);
   const [pages, setPages] = useState<string[]>([]);
   
-  // 3. Estados de Geração Magnum Opus (IA Motor Michel Felix v82 / v103.0)
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationTime, setGenerationTime] = useState(0);
   const [currentStatusIndex, setCurrentStatusIndex] = useState(0);
@@ -119,22 +111,18 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   const [validationPhase, setValidationPhase] = useState<'none' | 'structural' | 'theological' | 'final' | 'retention' | 'releasing'>('none');
   const [stats, setStats] = useState({ wordCount: 0, charCount: 0, estimatedPages: 0 });
   
-  // v77.3+: Estado para colapsar o painel do Construtor para não poluir a leitura
   const [adminPanelExpanded, setAdminPanelExpanded] = useState(false);
 
-  // 4. Refs de Controle de Fluxo e Segurança (Prevenção de Race Conditions e Loops)
   const pendingContentBuffer = useRef<EBDContent | null>(null);
   const generationActiveRef = useRef<boolean>(false);
   const accelerationRef = useRef<boolean>(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const commitLockRef = useRef<boolean>(false); 
 
-  // 5. Estados de Edição Manual (Exclusivo Administrador Supremo)
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
   const [isSaving, setIsSaving] = useState(false); 
 
-  // 6. Estados de Áudio e Sintetização Teológica Neural (TTS)
   const [isPlaying, setIsPlaying] = useState(false);
   const [showAudioSettings, setShowAudioSettings] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -142,7 +130,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   const [playbackRate, setPlaybackRate] = useState(1);
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  // 7. Estados de UX, Gestos e Responsividade Mobile/Desktop
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [scrolled, setScrolled] = useState(false);
@@ -150,7 +137,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   const minSwipeDistance = 60;
 
   // ==========================================================================================
-  // DICIONÁRIO DE STATUS DE CARREGAMENTO (FEEDBACK MAGISTRAL v82.0 / v103.0)
+  // DICIONÁRIO DE STATUS
   // ==========================================================================================
   const loadingStatusMessages = [
     "Iniciando Protocolo Magnum Opus One-Shot v103.1...",
@@ -188,12 +175,9 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   ];
 
   // ==========================================================================================
-  // CICLO DE VIDA E MONITORAMENTO TÉCNICO (EFFECT HOOKS)
+  // CICLO DE VIDA E MONITORAMENTO TÉCNICO
   // ==========================================================================================
   
-  /**
-   * Monitoramento de Viewport: Detecta dispositivos móveis para escala de fontes e botões.
-   */
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
@@ -201,14 +185,8 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  /**
-   * Gatilho de Sincronização: Carrega o manuscrito ao alterar a referência bíblica.
-   */
   useEffect(() => { loadContent(); }, [book, chapter]);
 
-  /**
-   * Gestão de UI Glassmorphism: Altera o header conforme o scroll do usuário.
-   */
   useEffect(() => {
     const handleScroll = () => {
         setScrolled(window.scrollY > 35);
@@ -217,10 +195,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  /**
-   * MOTOR DE PIPELINE DE GERAÇÃO v82 / v103.0: Gerencia o tempo e o progresso.
-   * OTIMIZAÇÃO: Progressão linear de 200 segundos para garantir densidade máxima sem pressa.
-   */
   useEffect(() => {
     let interval: any;
     if (isGenerating) {
@@ -230,9 +204,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             setGenerationTime(prev => prev + 1);
             
             setTheologicalDensity(prev => {
-                // Se o conteúdo já chegou da IA, acelera para o commit final.
                 if (accelerationRef.current) return Math.min(100, prev + 25); 
-                // Senão, atinge 99% em aproximadamente 200 segundos. (100 / 200 = 0.5 per sec)
                 if (prev < 99) return prev + 0.5; 
                 return 99;
             });
@@ -253,9 +225,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     return () => clearInterval(interval);
   }, [isGenerating, generationTime]);
 
-  /**
-   * OBSERVADOR DE CONCLUSÃO v82 / v103.0: Resolve o loop infinito detectando 100% + buffer presente.
-   */
   useEffect(() => {
       const finalize = async () => {
           if (theologicalDensity >= 100 && pendingContentBuffer.current && !commitLockRef.current) {
@@ -280,9 +249,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
       if (isGenerating) finalize();
   }, [theologicalDensity, isGenerating]);
 
-  /**
-   * Motor Neural de Voz: Carrega e organiza vozes para narração da aula.
-   */
   useEffect(() => {
     const loadVoices = () => {
         let ptVoices = window.speechSynthesis.getVoices().filter(v => v.lang.includes('pt'));
@@ -295,16 +261,13 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     return () => window.speechSynthesis.cancel();
   }, []);
 
-  /**
-   * Limpeza de Cache de Áudio: Evita sobreposição de vozes ao navegar.
-   */
   useEffect(() => {
     window.speechSynthesis.cancel();
     setIsPlaying(false);
   }, [currentPage, book, chapter, activeTab]);
 
   // ==========================================================================================
-  // NAVEGAÇÃO TÁTIL E SWIPE (UX REFINEMENT)
+  // NAVEGAÇÃO TÁTIL
   // ==========================================================================================
   const onTouchStart = (e: React.TouchEvent) => { 
     setTouchEnd(null); 
@@ -328,16 +291,13 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   };
 
   // ==========================================================================================
-  // GESTÃO DE DADOS E TELEMETRIA (DATABASE SYNC)
+  // GESTÃO DE DADOS
   // ==========================================================================================
   
   const studyKey = generateChapterKey(book, chapter);
   const isRead = userProgress?.ebd_read?.includes(studyKey);
   const hasAccess = activeTab === 'student' || isAdmin;
 
-  /**
-   * Carrega o manuscrito e gera as estatísticas de densidade quantitativa.
-   */
   const loadContent = async () => {
     const key = generateChapterKey(book, chapter);
     try {
@@ -352,20 +312,14 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     } catch (err) { onShowToast("Erro ao conectar com o acervo teológico.", "error"); }
   };
 
-  /**
-   * Calcula as métricas quantitativas do texto para auditoria do Administrador.
-   */
   const calculateStats = (text: string) => {
       if (!text) return;
       const cleanText = text.replace(/<[^>]*>/g, '').replace(/__CONTINUATION_MARKER__/g, '');
       const words = cleanText.trim().split(/\s+/).length;
-      const estPages = Math.ceil(words / 600); // Baseado na nova meta de 600 palavras/pág
+      const estPages = Math.ceil(words / 600); 
       setStats({ wordCount: words, charCount: cleanText.length, estimatedPages: estPages });
   };
 
-  /**
-   * Sincroniza a paginação sempre que o manuscrito é alterado.
-   */
   useEffect(() => {
     if (content) {
         const text = activeTab === 'student' ? content.student_content : content.teacher_content;
@@ -376,19 +330,12 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   }, [activeTab, content]);
 
   // ==========================================================================================
-  // ALGORITMO DE PAGINAÇÃO PADRONIZADO (FRAGMENTAÇÃO ACADÊMICA POR PALAVRAS)
+  // ALGORITMO DE PAGINAÇÃO
   // ==========================================================================================
-  /**
-   * v77.4: Algoritmo de contagem de palavras com lógica ANTI-ÓRFÃO.
-   * Detecta cabeçalhos e impede que fiquem sozinhos no final da página.
-   */
   const processAndPaginate = (html: string) => {
     if (!html || html === 'undefined') { setPages([]); return; }
     
-    // 1. Limpa separadores manuais para repaginar no padrão 600 palavras
     const unifiedText = html.replace(/<hr[^>]*>|__CONTINUATION_MARKER__/gi, '\n\n');
-    
-    // 2. Divide em blocos lógicos (parágrafos ou tópicos)
     const blocks = unifiedText.split(/\n\s*\n/).filter(b => b.trim().length > 0);
     
     const finalPages: string[] = [];
@@ -396,7 +343,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
     let currentWordCount = 0;
     const TARGET_WORDS_PER_PAGE = 600;
 
-    // Função interna para identificar Cabeçalhos de Tópicos
     const isHeaderBlock = (b: string) => {
         const tr = b.trim();
         return tr.startsWith('###') || /^[IVX]+\./.test(tr) || (/^\d+\./.test(tr) && tr.length < 100);
@@ -406,9 +352,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         const block = blocks[i];
         const wordsInBlock = block.split(/\s+/).filter(w => w.length > 0).length;
 
-        // --- PROTOCOLO ANTI-ÓRFÃO (v77.4) ---
-        // Se este bloco for um cabeçalho e a página atual já tiver conteúdo substancial,
-        // quebramos a página IMEDIATAMENTE para evitar o título no rodapé.
         if (isHeaderBlock(block) && currentWordCount > (TARGET_WORDS_PER_PAGE * 0.7) && currentBuffer.length > 0) {
             finalPages.push(currentBuffer.join('\n\n'));
             currentBuffer = [block];
@@ -416,7 +359,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             continue;
         }
 
-        // Lógica de estouro padrão
         if (currentWordCount + wordsInBlock > (TARGET_WORDS_PER_PAGE * 1.15) && currentBuffer.length > 0) {
             finalPages.push(currentBuffer.join('\n\n'));
             currentBuffer = [block];
@@ -426,7 +368,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             currentWordCount += wordsInBlock;
         }
 
-        // Se atingir o alvo exato ou aproximado, fecha
         if (currentWordCount >= TARGET_WORDS_PER_PAGE) {
             finalPages.push(currentBuffer.join('\n\n'));
             currentBuffer = [];
@@ -434,7 +375,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         }
     }
 
-    // Adiciona o restante
     if (currentBuffer.length > 0) {
         finalPages.push(currentBuffer.join('\n\n'));
     }
@@ -476,17 +416,13 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   const togglePlay = () => isPlaying ? (window.speechSynthesis.cancel(), setIsPlaying(false)) : speakText();
 
   // ==========================================================================================
-  // RENDERIZAÇÃO ESTÉTICA (THEOLOGICAL RENDERING v82.0 / v103.0)
+  // RENDERIZAÇÃO ESTÉTICA
   // ==========================================================================================
   const parseInline = (t: string) => {
     const parts = t.split(/(\*\*.*?\*\*|\*.*?\*)/g);
     return parts.map((part, i) => {
         if (part.startsWith('**') && part.endsWith('**')) {
             const inner = part.slice(2, -2);
-            // v82.0: Destaque visual premium para a PÉROLA DE OURO injetada no texto
-            // v103.0: Protocolo Imperial Gold - Box de Ouro Maciço com brilho pericial e profundidade proporcional ao mobile
-            // AJUSTE v103.2: Transformação em 'block' para evitar quebra de layout no meio do texto, mantendo a integridade do sentido.
-            // FIX PC SCALE: Reduzindo padding e borda no desktop para não ficar enorme.
             if (inner.toUpperCase().includes('PÉROLA DE OURO')) {
                  return <strong key={i} className="text-[#000000] bg-gradient-to-br from-[#C5A059] to-[#9e8045] px-4 py-4 md:px-8 md:py-6 rounded-2xl border-l-[6px] md:border-l-[12px] border-[#8B0000] shadow-[0_15px_40px_rgba(0,0,0,0.2)] font-black my-8 md:my-8 block animate-in fade-in zoom-in duration-1000 ring-1 md:ring-2 ring-[#C5A059]/40 relative overflow-hidden group w-full leading-relaxed text-sm md:text-lg break-words whitespace-normal text-justify">
                     <span className="relative z-10 block">{inner}</span>
@@ -502,14 +438,14 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
 
   const renderFormattedText = (text: string) => {
     const lines = text.split('\n').filter(b => b.trim().length > 0);
-    let topicCounter = 1; // IMPLEMENTAÇÃO DE NUMERAÇÃO SEQUENCIAL v103.2
+    let topicCounter = 1;
     return (
         <div className="space-y-8 md:space-y-12 animate-in fade-in duration-1000">
             {lines.map((line, idx) => {
                 const tr = line.trim();
                 if (tr === '__CONTINUATION_MARKER__') return <div key={idx} className="my-12 border-b border-[#C5A059]/20" />;
-                if (tr.toUpperCase().includes('PANORÂMA BÍBLICO') || tr.toUpperCase().includes('PANORAMA BÍBLICO')) {
-                    const cleanTitle = tr.replace(/^\d+\.\s*/, ''); // Remove numeração vinda da IA se houver
+                if (tr.toUpperCase().includes('PANORÂMA BÍBLICO') || tr.toUpperCase().includes('PANORAMA BÍBLICO') || tr.toUpperCase().includes('MANUAL DO PROFESSOR')) {
+                    const cleanTitle = tr.replace(/^\d+\.\s*/, '');
                     return (
                         <div key={idx} className="mb-14 text-center border-b-4 border-[#8B0000] pb-6 pt-4">
                             <h1 className="font-cinzel font-bold text-2xl md:text-5xl text-[#8B0000] dark:text-[#ff6b6b] uppercase tracking-widest leading-tight">
@@ -535,7 +471,6 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                     const firstSpaceIndex = tr.indexOf(' ');
                     const contentPart = tr.substring(firstSpaceIndex + 1).trim();
                     
-                    // Se for apenas o rótulo de seção, não reiniciamos a contagem mas ocultamos se necessário
                     if (contentPart.toUpperCase().includes("TÓPICOS DO ESTUDO")) return null;
 
                     const numToDisplay = topicCounter++; 
@@ -559,28 +494,106 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   };
 
   // ==========================================================================================
-  // GERAÇÃO MAGNUM OPUS SUPREMA - PROTOCOLO PROF. MICHEL FELIX v82.0 / v103.0 (PÉROLAS INJETADAS)
+  // GERAÇÃO MAGNUM OPUS SUPREMA (COM MODO PROFESSOR)
   // ==========================================================================================
-  /**
-   * Orquestra a geração de conteúdo acadêmico exegético exaustivo em Tiro Único (One-Shot).
-   * v82.0: Implementação de INJEÇÃO DE PÉROLAS DE OURO diretamente no corpo do texto explicativo.
-   * v103.0: Adição de refino documental e fontes rastreáveis (Josefo, Talmud, etc).
-   */
   const handleGenerate = async () => {
     setIsGenerating(true);
     setValidationPhase('structural');
     accelerationRef.current = false;
     setValidationLog(["🚀 Iniciando motor Michel Felix v103.1 SUPREMA ONE-SHOT", "📐 Target: 3.000 words (Protocolo de Geração Única)"]);
     
+    // --- LÓGICA DE CONDICIONAL DE ABA (ALUNO VS PROFESSOR) v104.0 ---
+    // Se estiver na aba PROFESSOR, ativamos o MODO ASSISTENTE PEDAGÓGICO.
+    if (activeTab === 'teacher') {
+        setValidationLog(["🎓 Ativando Modo Assistente Pedagógico...", "📄 Analisando Conteúdo do Aluno (Input)...", "🧠 Gerando Manual de Ensino Prof. Michel Felix..."]);
+        
+        // Validação: O admin deve ter colado o texto do aluno na caixa.
+        if (!customInstructions || customInstructions.length < 10) {
+            onShowToast("Para gerar o Manual do Professor, cole o conteúdo do Aluno na caixa de instruções extras!", "error");
+            setIsGenerating(false);
+            return;
+        }
+
+        const studyKey = generateChapterKey(book, chapter);
+        const existing = (await db.entities.PanoramaBiblico.filter({ study_key: studyKey }))[0] || {};
+
+        const TEACHER_PROMPT = `
+            ATUE COMO: Professor Michel Felix.
+            PERFIL: Teólogo Pentecostal Clássico, Arminiano, Pré-Tribulacionista e Assembleiano.
+            
+            TAREFA: Você é um ASSISTENTE PEDAGÓGICO DE ELITE.
+            OBJETIVO: Criar um MANUAL DO PROFESSOR (Guia de Aula) baseado EXCLUSIVAMENTE no conteúdo do aluno fornecido abaixo.
+            NÃO GERE UM NOVO ESTUDO BÍBLICO DO ZERO. ANALISE O TEXTO ABAIXO E CRIAR O GUIA DE COMO ENSINÁ-LO.
+            
+            CONTEÚDO BASE (DO ALUNO):
+            "${customInstructions}"
+            
+            --- ESTRUTURA DO MANUAL DO PROFESSOR (Obrigatoriamente nesta ordem) ---
+            
+            1. TÍTULO: "MANUAL DO PROFESSOR - [Título do Estudo]"
+            
+            2. OBJETIVOS DA AULA:
+               - Liste 3 objetivos claros que o professor deve alcançar com a classe baseados no texto lido.
+            
+            3. ILUSTRAÇÕES PRÁTICAS & DIDÁTICA:
+               - Para cada tópico principal identificado no texto base do aluno, forneça uma ILUSTRAÇÃO DO DIA A DIA ou uma ANALOGIA PODEROSA para facilitar o entendimento.
+               - Linguagem simples e impactante.
+            
+            4. RAIO-X DAS PÉROLAS DE OURO:
+               - Identifique as seções de "PÉROLA DE OURO" no texto do aluno.
+               - Forneça MUNIÇÃO EXTRA (detalhes históricos, grego/hebraico avançado ou curiosidades da época de Josefo/Mishná) para que o professor demonstre autoridade extra sobre o assunto.
+            
+            5. DÚVIDAS PREVISTAS & RESPOSTAS ORTODOXAS:
+               - Liste 3 perguntas difíceis que os alunos provavelmente farão sobre este tema específico.
+               - Forneça a RESPOSTA CORRETA, BASEADA NA ORTODOXIA PENTECOSTAL (Arminiana/Pré-Trib).
+               - Se houver tema de 1 Samuel 28, reforce que Samuel NÃO voltou (fraude/demônio).
+               - Se houver tema de Lucas 16, reforce o abismo intransponível.
+            
+            6. QUIZ DE FIXAÇÃO (GABARITADO):
+               - Crie 5 perguntas de múltipla escolha baseadas estritamente no texto fornecido.
+               - Destaque a resposta correta em negrito.
+            
+            --- DIRETRIZES FINAIS ---
+            - Mantenha o tom encorajador e magistral do Prof. Michel Felix.
+            - O foco é equipar o professor para brilhar na aula usando o material do aluno.
+            - Volume esperado: Denso e completo (aprox 2000 palavras).
+        `;
+
+        try {
+            // FIX CRÍTICO: Usando 'teacher_ebd' para que o backend não force a estrutura de aluno.
+            const res = await generateContent(TEACHER_PROMPT, null, true, 'teacher_ebd');
+            if (!res || res.length < 500) throw new Error("Conteúdo insuficiente retornado pelo motor pedagógico.");
+
+            setValidationPhase('theological');
+            let clean = res.trim();
+            if (clean.startsWith('{"text":')) { try { clean = JSON.parse(clean).text; } catch(e){} }
+            if (clean.startsWith('```')) clean = clean.replace(/```[a-z]*\n|```/g, '');
+
+            const data = { 
+                book, chapter, study_key: studyKey, title: existing.title || `Estudo de ${book} ${chapter}`, outline: existing.outline || [], 
+                student_content: existing.student_content || '', 
+                teacher_content: clean 
+            };
+
+            pendingContentBuffer.current = data;
+            setValidationPhase('retention');
+            accelerationRef.current = true;
+        } catch (e: any) {
+            onShowToast(`Erro no Motor Pedagógico: ${e.message}`, 'error'); 
+            setIsGenerating(false); 
+        }
+        return;
+    }
+
+    // --- FIM DA LÓGICA DE PROFESSOR --- 
+    
     const studyKey = generateChapterKey(book, chapter);
     const existing = (await db.entities.PanoramaBiblico.filter({ study_key: studyKey }))[0] || {};
 
-    // --- LÓGICA DE INTRODUÇÃO SELETIVA (100% FIEL AO PEDIDO DO ADMIN) ---
     const introInstruction = chapter === 1 
         ? "2. INTRODUÇÃO GERAL:\n           Texto rico contextualizando O LIVRO (autor, data, propósito) e o cenário deste primeiro capítulo."
         : `2. INTRODUÇÃO DO CAPÍTULO:\n           FOCAR EXCLUSIVAMENTE no contexto imediato do capítulo ${chapter}. NÃO repita a introdução geral do livro de ${book} (autoria, data, etc), pois já foi dado nos capítulos anteriores. Vá direto ao ponto do enredo atual.`;
 
-    // --- WRITING STYLE PROFESSOR MICHEL FELIX (ESTRUTURA SUPREMA ADMA v81.0 + v82.0 / v103.0 INJECTION) ---
     const WRITING_STYLE = `
         ATUE COMO: Professor Michel Felix.
         PERFIL: Teólogo Erudito, Acadêmico, Profundo e Conservador.
@@ -678,8 +691,8 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         
         const data = { 
             book, chapter, study_key: studyKey, title: existing.title || `Estudo de ${book} ${chapter}`, outline: existing.outline || [], 
-            student_content: activeTab === 'student' ? clean : (existing.student_content || ''), 
-            teacher_content: activeTab === 'teacher' ? clean : (existing.teacher_content || '') 
+            student_content: clean, 
+            teacher_content: existing.teacher_content || '' 
         };
 
         pendingContentBuffer.current = data;
@@ -837,9 +850,12 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                                         <textarea 
                                             value={customInstructions} 
                                             onChange={(e) => setCustomInstructions(e.target.value)} 
-                                            placeholder="Dê orientações para a Pérola de Ouro v103.1 (ex: Josefo, Mishná, medidas periciais)..." 
+                                            placeholder={activeTab === 'teacher' 
+                                                ? "COLE AQUI O CONTEÚDO DO ALUNO PARA GERAR O MANUAL DO PROFESSOR (Assistente Pedagógico)..." 
+                                                : "Dê orientações para a Pérola de Ouro v103.1 (ex: Josefo, Mishná, medidas periciais)..."
+                                            } 
                                             className="w-full p-4 md:p-6 text-sm md:text-lg text-black rounded-2xl md:rounded-[2.5rem] border-none focus:ring-8 focus:ring-[#C5A059]/20 font-montserrat shadow-inner bg-[#FDFBF7] font-bold leading-snug" 
-                                            rows={2} 
+                                            rows={activeTab === 'teacher' ? 6 : 2} 
                                         />
                                     </motion.div>
                                 )}
@@ -1038,7 +1054,8 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                 mobile_fix: "ENFORCED_VIEWPORT_ENCLOSURE",
                 orphan_prevention: "ACTIVE_HEADER_DETECTION_V4",
                 integrated_expansion_fix: "SUCCESS",
-                pearl_status: "INJECTED_INLINE_GOLD"
+                pearl_status: "INJECTED_INLINE_GOLD",
+                teacher_mode: "PEDAGOGICAL_ASSISTANT_ACTIVE_V104"
             })}
             
             FINALIZAÇÃO DE PROTOCOLO v103.0: O conteúdo gerado é revisado pela camada de validação documental antes do commit.
@@ -1147,7 +1164,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             Sempre retornando à fonte (Sola Scriptura) para sanar qualquer dúvida dos alunos.
             A tecnologia v103.0 assegura que o build seja completado sem erros de caracteres reservados.
             ADMA SUPREME 2025 - PROFESSOR MICHEL FELIX v103.0 SUPREMA.
-            QUE A GLÓRIA SEJA DADA AO SENHOR JESUS CRISTO PARA TODO O SEMPRE, AMÉM.
+            QUE A GLÓRIA SEJA DADA AU SENHOR JESUS CRISTO PARA TODO O SEMPRE, AMÉM.
             
             A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z.
             Integridade de Dados Teológicos Processados conforme o Protocolo Magnum Opus v103.
