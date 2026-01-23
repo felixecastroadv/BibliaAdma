@@ -4,7 +4,7 @@
  */
 
 // Tipos de tarefas para seleção inteligente de modelo no servidor
-export type TaskType = 'commentary' | 'dictionary' | 'devotional' | 'ebd' | 'metadata' | 'general';
+export type TaskType = 'commentary' | 'dictionary' | 'devotional' | 'ebd' | 'metadata' | 'general' | 'teacher_ebd';
 
 export const generateContent = async (
   prompt: string, 
