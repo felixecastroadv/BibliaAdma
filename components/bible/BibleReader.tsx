@@ -179,7 +179,7 @@ const PremiumNavigator = ({ isOpen, onClose, currentBook, onSelect }: any) => {
                              </div>
 
                              {/* Grid de Capítulos */}
-                             <div className="flex-1 overflow-y-auto p-6 md:p-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed">
+                             <div className="flex-1 overflow-y-auto p-6 md:p-10 pb-32 md:pb-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed">
                                 <motion.div 
                                     key={selectedBook + "_grid"}
                                     initial={{ opacity: 0 }}
