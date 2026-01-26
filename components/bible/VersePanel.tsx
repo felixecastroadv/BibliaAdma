@@ -584,7 +584,7 @@ export default function VersePanel({ isOpen, onClose, verse, verseNumber, book, 
             </div>
 
             {/* Header */}
-            <div className="sticky top-0 bg-[#8B0000] text-white p-4 z-10 flex justify-between items-start shadow-md shrink-0">
+            <div className="sticky top-0 bg-[#8B0000] text-white pt-12 pb-4 px-4 md:p-4 z-20 flex justify-between items-start shadow-md shrink-0">
                 <div>
                     <h3 className="font-cinzel text-xl font-bold">{book} {chapter}:{verseNumber}</h3>
                     <p className="font-cormorant text-sm opacity-90 mt-1 line-clamp-2">{verse}</p>
