@@ -5,6 +5,13 @@ const BIBLE_STORE = 'bible_verses';
 const CONTENT_STORE = 'adma_content_store'; 
 const DB_VERSION = 3;
 
+// --- UTILS ---
+export const generateUserId = (email: string) => {
+    if (!email) return 'user_unknown';
+    // Remove caracteres especiais e cria um ID seguro e único baseado no email
+    return 'user_' + email.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+};
+
 const openDB = (): Promise<IDBDatabase> => {
     if (typeof window === 'undefined') return Promise.reject("No window context");
     return new Promise((resolve, reject) => {
@@ -125,7 +132,9 @@ const createHelpers = (col: string) => ({
         const cloudData = await apiCall('list', col);
         if (cloudData && Array.isArray(cloudData)) {
             for(const item of cloudData) {
-                await idbManager.save(CONTENT_STORE, `${col}_${item.id}`, { ...item, __adma_col: col });
+                // Se tiver ID, salva com ID. Se não, tenta gerar algo único.
+                const itemId = item.id || `item_${Date.now()}`;
+                await idbManager.save(CONTENT_STORE, `${col}_${itemId}`, { ...item, __adma_col: col });
             }
             return cloudData;
         }
@@ -164,10 +173,24 @@ const createHelpers = (col: string) => ({
     },
     get: async (id?: string) => {
         if (!id) return null;
-        // OTIMIZAÇÃO: Tenta local primeiro para leitura rápida de conteúdo estático
+        
+        // 1. TENTA LOCAL PRIMEIRO (Stale-While-Revalidate)
+        // Isso garante que a UI carregue INSTANTANEAMENTE se o usuário já logou antes.
         const local = await idbManager.get(CONTENT_STORE, `${col}_${id}`);
+        
+        // Se estiver online, busca atualização silenciosa no background (Cloud)
+        if (typeof navigator !== 'undefined' && navigator.onLine) {
+            apiCall('get', col, { id }).then(async (cloudItem) => {
+                if (cloudItem) {
+                    // Se encontrou na nuvem, atualiza o local para a próxima vez
+                    await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...cloudItem, __adma_col: col });
+                }
+            }).catch(err => console.warn("Background sync failed", err));
+        }
+
         if (local) return local;
 
+        // Se não tinha local, espera a nuvem (primeiro acesso)
         const cloudItem = await apiCall('get', col, { id });
         if (cloudItem) {
             await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...cloudItem, __adma_col: col });
@@ -176,6 +199,7 @@ const createHelpers = (col: string) => ({
         return null;
     },
     create: async (data: any) => {
+        // Se o dado já vier com ID (ex: generateUserId), usa ele.
         const id = (data.id || data.study_key || data.chapter_key || Date.now().toString()).toString();
         const newItem = { ...data, id };
         await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...newItem, __adma_col: col });
@@ -190,9 +214,6 @@ const createHelpers = (col: string) => ({
         // 3. Salva Local (Instantâneo)
         await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...merged, __adma_col: col });
         // 4. Salva Nuvem (Assíncrono com KeepAlive)
-        // Não usamos 'await' aqui se quisermos liberar a UI rápido, mas para segurança de dados,
-        // é bom que o chamador saiba quando terminou. 
-        // O keepalive no fetch garante que o browser termine isso em background.
         return await apiCall('save', col, { item: merged });
     },
     delete: async (id: string) => {
