@@ -186,7 +186,7 @@ export default function App() {
         case 'plans':
             return <PlansView onBack={() => setView('dashboard')} onNavigate={handleNavigate} userProgress={userProgress} />;
         case 'ranking':
-            return <RankingView onBack={() => setView('dashboard')} />;
+            return <RankingView onBack={() => setView('dashboard')} userProgress={userProgress} />;
         case 'messages':
             return <MessagesView onBack={() => setView('dashboard')} isAdmin={isAdmin} user={user} />;
         case 'dynamic_module':
