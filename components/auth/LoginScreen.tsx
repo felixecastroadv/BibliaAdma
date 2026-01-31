@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { BookOpen, User, ArrowRight, Loader2, Lock, ShieldAlert, KeyRound, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -32,11 +31,19 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
     setIsProcessing(true);
     setErrorMsg('');
     const email = generateEmail(firstName, lastName);
-    const userId = generateUserId(email); // Gera o ID determinístico
+    const userId = generateUserId(email); // Gera o ID determinístico seguro
 
     try {
-        // Busca direta pelo ID fixo (mais rápido e seguro)
-        const user = await db.entities.ReadingProgress.get(userId);
+        // 1. Tenta buscar pelo ID fixo (Padrão Novo)
+        let user = await db.entities.ReadingProgress.get(userId);
+        
+        // 2. Se não achar pelo ID, tenta buscar pelo e-mail (Padrão Antigo/Legado)
+        if (!user) {
+            const usersByEmail = await db.entities.ReadingProgress.filter({ user_email: email });
+            if (usersByEmail.length > 0) {
+                user = usersByEmail[0];
+            }
+        }
         
         if (user) {
             setUserData(user);
@@ -51,7 +58,7 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
                 setStep('ENTER_PIN');
             }
         } else {
-            // Novo usuário (ID não existe no banco) -> Cria senha
+            // Novo usuário (nem ID nem Email existem) -> Cria senha
             setStep('CREATE_PIN');
         }
     } catch (err) {
@@ -88,7 +95,7 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
               const userId = generateUserId(email);
 
               await db.entities.ReadingProgress.create({
-                  id: userId, // ID Fixo Determinístico
+                  id: userId, // Força o ID Fixo
                   user_email: email,
                   user_name: fullName,
                   password_pin: pin,
