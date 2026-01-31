@@ -6,10 +6,10 @@ const CONTENT_STORE = 'adma_content_store';
 const DB_VERSION = 3;
 
 // --- UTILS ---
+// Gera um ID único e consistente baseado no email. 
+// Ex: michel.felix@adma.local -> user_michel_felix_adma_local
 export const generateUserId = (email: string) => {
     if (!email) return 'user_unknown';
-    // Remove caracteres especiais e cria um ID seguro e único baseado no email
-    // Ex: michel.felix@adma.local -> user_michel_felix_adma_local
     return 'user_' + email.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
 };
 
@@ -176,14 +176,12 @@ const createHelpers = (col: string) => ({
         if (!id) return null;
         
         // 1. TENTA LOCAL PRIMEIRO (Stale-While-Revalidate)
-        // Isso garante que a UI carregue INSTANTANEAMENTE se o usuário já logou antes.
         const local = await idbManager.get(CONTENT_STORE, `${col}_${id}`);
         
         // Se estiver online, busca atualização silenciosa no background (Cloud)
         if (typeof navigator !== 'undefined' && navigator.onLine) {
             apiCall('get', col, { id }).then(async (cloudItem) => {
                 if (cloudItem) {
-                    // Se encontrou na nuvem, atualiza o local para a próxima vez
                     await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...cloudItem, __adma_col: col });
                 }
             }).catch(err => console.warn("Background sync failed", err));
