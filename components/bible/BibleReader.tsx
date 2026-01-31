@@ -471,27 +471,48 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
     };
 
     const toggleRead = async () => {
-        if (!userProgress) return;
+        if (!userProgress || !userProgress.id) {
+            onShowToast("Erro: Perfil de usuário inválido. Tente relogar.", "error");
+            return;
+        }
         
         if (isLocked) {
             onShowToast(`Leia o capítulo por mais ${readingTimer} segundos para confirmar.`, "info");
             return;
         }
 
-        let newRead = isRead ? userProgress.chapters_read.filter((k: string) => k !== chapterKey) : [...(userProgress.chapters_read || []), chapterKey];
-        let newTotal = isRead ? Math.max(0, (userProgress.total_chapters || 0) - 1) : (userProgress.total_chapters || 0) + 1;
+        // Calculation of new state
+        let newRead = [];
+        if (isRead) {
+            newRead = userProgress.chapters_read.filter((k: string) => k !== chapterKey);
+        } else {
+            newRead = [...(userProgress.chapters_read || []), chapterKey];
+        }
+        
+        // Ensure uniqueness just in case
+        newRead = [...new Set(newRead)];
+        
+        // Recalculate total directly from array length for absolute correctness
+        const newTotal = newRead.length;
         
         onShowToast(isRead ? "Marcado como não lido" : "Capítulo concluído!", isRead ? "info" : "success");
         
-        // PERSISTÊNCIA ROBUSTA: Atualiza no servidor e localmente via db wrapper
-        const updated = await db.entities.ReadingProgress.update(userProgress.id, { 
-            chapters_read: newRead, 
-            total_chapters: newTotal, 
-            last_book: book, 
-            last_chapter: chapter 
-        });
-        
-        if (onProgressUpdate) onProgressUpdate(updated);
+        try {
+            // PERSISTÊNCIA ROBUSTA: Atualiza no servidor e localmente via db wrapper
+            // Envia o user_email também para garantir consistência em operações de upsert/filter
+            const updated = await db.entities.ReadingProgress.update(userProgress.id, { 
+                chapters_read: newRead, 
+                total_chapters: newTotal, 
+                last_book: book, 
+                last_chapter: chapter,
+                user_email: userProgress.user_email 
+            });
+            
+            if (onProgressUpdate) onProgressUpdate(updated);
+        } catch (e) {
+            console.error("Erro ao salvar progresso:", e);
+            onShowToast("Erro de conexão ao salvar. Verifique sua rede.", "error");
+        }
     };
 
     const handleNext = () => {
