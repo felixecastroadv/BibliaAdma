@@ -76,28 +76,57 @@ export default function App() {
       }
   }, [darkMode]);
 
-  // --- FUNÇÃO CRÍTICA DE SINCRONIZAÇÃO (ID FIXO) ---
+  // --- FUNÇÃO CRÍTICA DE SINCRONIZAÇÃO (ID FIXO + MIGRAÇÃO DE LEGADO) ---
   const loadProgress = async (email: string, nameFallback?: string) => {
     try {
-        const userId = generateUserId(email); // ID Determinístico
+        const userId = generateUserId(email); // ID Determinístico (Novo Padrão)
         console.log("Sincronizando usuário com ID Fixo:", userId);
         
-        // Tenta buscar pelo ID exato. A função .get() do database.ts já faz:
-        // 1. Busca Local (rápido)
-        // 2. Busca Nuvem (em background se online) e atualiza local
-        // Isso garante que se o usuário existe, ele É encontrado.
-        const p = await db.entities.ReadingProgress.get(userId);
+        // 1. Busca perfil no padrão NOVO
+        let p = await db.entities.ReadingProgress.get(userId);
         
-        if (p) {
-            console.log("Progresso carregado:", p);
-            setUserProgress(p);
-        } else {
-            // Se REALMENTE não achou nem no local nem na nuvem (Usuário Novo Zero Km)
+        // 2. LÓGICA DE RECUPERAÇÃO (MIGRAÇÃO):
+        // Se o perfil novo não existe OU existe mas está "vazio" (menos de 5 caps lidos, assumindo que usuários antigos têm mais),
+        // procuramos por perfis LEGADOS com o mesmo email para recuperar os dados.
+        if (!p || (p.total_chapters || 0) < 5) {
+            console.log("Verificando existência de perfil legado para migração...");
+            
+            // Busca TODOS os usuários com este email
+            const candidates = await db.entities.ReadingProgress.filter({ user_email: email });
+            
+            // Filtra: Pega qualquer um que NÃO seja o ID novo atual e tenha progresso relevante
+            const legacyProfile = candidates.find((c: any) => c.id !== userId && (c.total_chapters || 0) > 0);
+
+            if (legacyProfile) {
+                console.log("⚠️ LEGADO ENCONTRADO! Migrando dados de:", legacyProfile.id, "para", userId);
+                
+                // Mescla os dados: Mantém o ID NOVO, mas puxa o progresso do ANTIGO
+                const migratedData = {
+                    ...legacyProfile,
+                    id: userId, // CRÍTICO: Sobrescreve o ID antigo com o novo padrão determinístico
+                    user_name: nameFallback || legacyProfile.user_name // Atualiza nome se disponível
+                };
+
+                // Salva o perfil migrado no novo endereço
+                await db.entities.ReadingProgress.create(migratedData);
+                
+                // Define como perfil atual
+                p = migratedData;
+
+                // CRÍTICO: Deleta o perfil legado antigo para não duplicar no Ranking
+                // Isso resolve o problema de ter "Michel Felix (56 caps)" e "Michel Felix (0 caps)" ao mesmo tempo.
+                await db.entities.ReadingProgress.delete(legacyProfile.id);
+                showToast("Progresso antigo restaurado e migrado com sucesso!", "success");
+            }
+        }
+
+        // 3. Se após a tentativa de migração ainda não existir, cria perfil zerado
+        if (!p) {
             console.log("Nenhum registro encontrado. Iniciando perfil novo com ID Fixo...");
             const displayName = nameFallback || user?.user_name || email;
             
             const newProfile = {
-                id: userId, // Força o ID gerado pelo email
+                id: userId,
                 user_email: email, 
                 user_name: displayName, 
                 chapters_read: [], 
@@ -110,6 +139,9 @@ export default function App() {
 
             const created = await db.entities.ReadingProgress.create(newProfile);
             setUserProgress(created);
+        } else {
+            console.log("Progresso carregado:", p);
+            setUserProgress(p);
         }
     } catch (error) {
         console.error("Erro crítico de sincronização no App.tsx:", error);
