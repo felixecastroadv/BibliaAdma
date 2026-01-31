@@ -1,8 +1,8 @@
-
 import React, { useState } from 'react';
-import { BookOpen, User, ArrowRight, Loader2, Lock, ShieldAlert, KeyRound, CheckCircle, Database } from 'lucide-react';
+import { BookOpen, User, ArrowRight, Loader2, Lock, ShieldAlert, KeyRound, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { db, generateUserId } from '../../services/database';
+import { CHURCH_NAME, PASTOR_PRESIDENT } from '../../constants';
+import { db } from '../../services/database';
 
 interface LoginScreenProps {
   onLogin: (firstName: string, lastName: string) => void;
@@ -30,55 +30,30 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
 
     setIsProcessing(true);
     setErrorMsg('');
-    
+    const email = generateEmail(firstName, lastName);
+
     try {
-        // --- BUSCA AVANÇADA (FUZZY SEARCH) ---
-        // Recupera lista completa para garantir que encontra o usuário mesmo com diferenças de acentuação/case
-        const allUsers = await db.entities.ReadingProgress.list();
+        const users = await db.entities.ReadingProgress.filter({ user_email: email });
         
-        const norm = (s: string) => s ? s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
-        const targetEmail = generateEmail(firstName, lastName);
-        const targetName = `${firstName.trim()} ${lastName.trim()}`;
+        if (users.length > 0) {
+            const user = users[0];
+            setUserData(user);
 
-        // Filtra candidatos possíveis
-        const candidates = allUsers.filter(u => {
-            const uEmail = u.user_email || "";
-            const uName = u.user_name || "";
-            
-            // Match por Email Exato, Email Normalizado ou Nome Normalizado
-            return uEmail === targetEmail || 
-                   norm(uEmail) === norm(targetEmail) || 
-                   norm(uName) === norm(targetName);
-        });
-        
-        let foundUser = null;
-
-        if (candidates && candidates.length > 0) {
-            // Ordena por progresso (descrescente) para priorizar a conta principal
-            candidates.sort((a: any, b: any) => (b.total_chapters || 0) - (a.total_chapters || 0));
-            foundUser = candidates[0];
-            console.log("Melhor candidato encontrado:", foundUser.user_name, foundUser.total_chapters);
-        }
-
-        if (foundUser) {
-            setUserData(foundUser);
-
-            if (foundUser.is_blocked) {
+            if (user.is_blocked) {
                 setStep('BLOCKED');
-            } else if (!foundUser.password_pin || foundUser.password_pin === '') {
-                // Usuário encontrado mas sem senha (Legado) -> Pede para definir
+            } else if (!user.password_pin || user.password_pin === '') {
+                // Usuário antigo sem senha ou resetada pelo admin -> Cria nova
                 setStep('CREATE_PIN');
             } else {
                 // Usuário com senha -> Pede senha
                 setStep('ENTER_PIN');
             }
         } else {
-            // Nenhum registro encontrado -> Cria nova conta
+            // Novo usuário -> Cria senha
             setStep('CREATE_PIN');
         }
     } catch (err) {
-        setErrorMsg('Erro de conexão. Verifique sua internet.');
-        console.error(err);
+        setErrorMsg('Erro ao conectar. Tente novamente.');
     } finally {
         setIsProcessing(false);
     }
@@ -99,19 +74,16 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
       
       try {
           if (userData) {
-              // Atualiza usuário existente (Recuperação)
+              // Atualiza usuário existente (reset ou migração)
               await db.entities.ReadingProgress.update(userData.id, { 
                   password_pin: pin,
-                  reset_requested: false 
+                  reset_requested: false // Limpa flag se existia
               });
           } else {
-              // Cria novo usuário
+              // Cria novo usuário já com o PIN
               const email = generateEmail(firstName, lastName);
               const fullName = `${firstName.trim()} ${lastName.trim()}`;
-              const userId = generateUserId(email);
-
               await db.entities.ReadingProgress.create({
-                  id: userId,
                   user_email: email,
                   user_name: fullName,
                   password_pin: pin,
@@ -120,9 +92,10 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
               });
           }
           
+          // Login sucesso
           onLogin(firstName, lastName);
       } catch (e) {
-          setErrorMsg('Erro ao salvar. Tente novamente.');
+          setErrorMsg('Erro ao salvar senha.');
       } finally {
           setIsProcessing(false);
       }
@@ -255,23 +228,10 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
                     onSubmit={handleCreatePin} 
                     className="space-y-4"
                 >
-                    {userData ? (
-                        <div className="bg-[#8B0000]/5 dark:bg-[#8B0000]/20 border border-[#8B0000]/20 dark:border-[#8B0000]/40 p-4 rounded-2xl mb-4 text-center animate-in zoom-in duration-300">
-                            <div className="flex items-center justify-center gap-2 text-[#8B0000] dark:text-[#C5A059] mb-1">
-                                <Database className="w-4 h-4" />
-                                <span className="font-bold text-xs uppercase tracking-wider">Conta Encontrada</span>
-                            </div>
-                            <p className="text-3xl font-cinzel font-black text-[#1a0f0f] dark:text-white mt-1">
-                                {userData.total_chapters || 0} <span className="text-xs font-sans font-normal opacity-70">Capítulos</span>
-                            </p>
-                            <p className="text-[10px] text-gray-500 dark:text-gray-300 mt-2 font-bold">Defina um PIN para proteger este progresso.</p>
-                        </div>
-                    ) : (
-                        <div className="text-center mb-4">
-                            <h2 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#C5A059]">Criar Senha de Acesso</h2>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Primeiro acesso? Crie seu PIN pessoal.</p>
-                        </div>
-                    )}
+                    <div className="text-center mb-4">
+                        <h2 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#C5A059]">Criar Senha de Acesso</h2>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Crie um PIN numérico de 6 dígitos para proteger sua conta.</p>
+                    </div>
 
                     <div className="space-y-2">
                         <label className="font-montserrat text-xs font-bold text-gray-500 uppercase ml-2">Senha (6 números)</label>
@@ -302,7 +262,7 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
                     {errorMsg && <p className="text-red-500 text-xs text-center font-bold">{errorMsg}</p>}
 
                     <button type="submit" disabled={isProcessing} className="w-full bg-[#8B0000] text-white font-bold py-4 rounded-2xl mt-4 flex justify-center items-center gap-2">
-                        {isProcessing ? <Loader2 className="animate-spin" /> : <CheckCircle />} {userData ? 'Vincular Conta' : 'Criar Conta'}
+                        {isProcessing ? <Loader2 className="animate-spin" /> : <CheckCircle />} Salvar e Entrar
                     </button>
                 </motion.form>
             )}
