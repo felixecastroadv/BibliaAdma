@@ -1,4 +1,3 @@
-
 // --- INDEXED DB FOR BIBLE AND CONTENT (ADMA Supreme DB v3 - Offline First) ---
 const DB_NAME = 'adma_supreme_db';
 const BIBLE_STORE = 'bible_verses';
@@ -71,14 +70,6 @@ const idbManager = {
                 request.onerror = () => reject(request.error);
             });
         } catch (e) { return false; }
-    },
-    clearStore: async (store: string) => {
-        try {
-            const db = await openDB();
-            const tx = db.transaction([store], 'readwrite');
-            tx.objectStore(store).clear();
-            return true;
-        } catch (e) { return false; }
     }
 };
 
@@ -103,10 +94,11 @@ export const bibleStorage = {
 };
 
 const apiCall = async (action: string, collection: string, payload: any = {}) => {
+    // Se estiver offline e não for uma ação de salvar, nem tenta a rede para economizar bateria/erro
     if (typeof navigator !== 'undefined' && !navigator.onLine && action !== 'save') return null;
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000); 
+    const timeout = setTimeout(() => controller.abort(), 6000);
     
     try {
         const res = await fetch('/api/storage', {
@@ -116,21 +108,17 @@ const apiCall = async (action: string, collection: string, payload: any = {}) =>
             signal: controller.signal
         });
         clearTimeout(timeout);
-        if (!res.ok) {
-            const errorText = await res.text();
-            console.error(`API Error (${res.status}):`, errorText);
-            return null;
-        }
+        if (!res.ok) return null;
         return await res.json();
     } catch (e) {
         clearTimeout(timeout);
-        console.error("API Fetch Fatal Error:", e);
         return null; 
     }
 };
 
 const createHelpers = (col: string) => ({
     list: async () => {
+        // Tenta rede primeiro para atualizar cache, mas falha silenciosamente
         const cloudData = await apiCall('list', col);
         if (cloudData && Array.isArray(cloudData)) {
             for(const item of cloudData) {
@@ -138,34 +126,38 @@ const createHelpers = (col: string) => ({
             }
             return cloudData;
         }
+        // Se rede falhar ou estiver offline, usa local
         return await idbManager.list(CONTENT_STORE, col);
     },
     filter: async (criteria: any) => {
-        // BUSCA NA NUVEM VIA SERVIDOR (Eficiente e Universal)
-        if (typeof navigator !== 'undefined' && navigator.onLine) {
-            const cloudResults = await apiCall('filter', col, { criteria });
-            if (cloudResults && Array.isArray(cloudResults)) {
-                // Sincroniza os resultados localmente para uso offline futuro
-                for(const item of cloudResults) {
-                    await idbManager.save(CONTENT_STORE, `${col}_${item.id}`, { ...item, __adma_col: col });
-                }
-                return cloudResults;
-            }
-        }
-
-        // FALLBACK LOCAL
+        // OTIMIZAÇÃO: Filtra local primeiro. Se achar algo, nem vai na nuvem.
         const localItems = await idbManager.list(CONTENT_STORE, col);
-        return localItems.filter((item: any) => 
-            Object.keys(criteria).every(k => String(item[k]) === String(criteria[k]))
+        const filteredLocal = localItems.filter((item: any) => 
+            Object.keys(criteria).every(k => item[k] === criteria[k])
         );
-    },
-    get: async (id?: string, forceRefresh: boolean = false) => {
-        if (!id) return null;
-        
-        if (!forceRefresh) {
-            const local = await idbManager.get(CONTENT_STORE, `${col}_${id}`);
-            if (local) return local;
+
+        if (filteredLocal.length > 0) return filteredLocal;
+
+        // Se não tiver local, busca na nuvem
+        const cloudData = await apiCall('list', col);
+        if (cloudData && Array.isArray(cloudData)) {
+            for(const item of cloudData) {
+                await idbManager.save(CONTENT_STORE, `${col}_${item.id}`, { ...item, __adma_col: col });
+            }
+            return cloudData.filter((item: any) => 
+                Object.keys(criteria).every(k => item[k] === criteria[k])
+            );
         }
+        return [];
+    },
+    getCloud: async (id: string) => {
+        return await apiCall('get', col, { id });
+    },
+    get: async (id?: string) => {
+        if (!id) return null;
+        // OTIMIZAÇÃO SUPREMA: Tenta local primeiro. Economiza 100% da rede se o dado existir.
+        const local = await idbManager.get(CONTENT_STORE, `${col}_${id}`);
+        if (local) return local;
 
         const cloudItem = await apiCall('get', col, { id });
         if (cloudItem) {
@@ -175,7 +167,7 @@ const createHelpers = (col: string) => ({
         return null;
     },
     create: async (data: any) => {
-        const id = data.id || data.study_key || data.chapter_key || Date.now().toString();
+        const id = data.id || Date.now().toString();
         const newItem = { ...data, id };
         await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...newItem, __adma_col: col });
         await apiCall('save', col, { item: newItem });
@@ -183,23 +175,21 @@ const createHelpers = (col: string) => ({
     },
     update: async (id: string, updates: any) => {
         let existing = await idbManager.get(CONTENT_STORE, `${col}_${id}`);
-        if (!existing && typeof navigator !== 'undefined' && navigator.onLine) {
-            existing = await apiCall('get', col, { id });
-        }
-        const merged = { ...existing, ...updates, id };
+        const merged = { ...existing, ...updates };
         await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...merged, __adma_col: col });
-        await apiCall('save', col, { item: merged });
+        // Salva na nuvem em background
+        apiCall('save', col, { item: merged });
         return merged;
     },
     delete: async (id: string) => {
         await idbManager.delete(CONTENT_STORE, `${col}_${id}`);
-        await apiCall('delete', col, { id });
+        apiCall('delete', col, { id });
     },
     save: async (data: any) => {
-        const id = data.id || data.study_key || data.chapter_key || Date.now().toString();
+        const id = data.id || data.chapter_key || Date.now().toString();
         const item = { ...data, id };
         await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...item, __adma_col: col });
-        await apiCall('save', col, { item });
+        apiCall('save', col, { item });
         return item;
     }
 });
@@ -214,8 +204,29 @@ const createBibleHelpers = () => ({
     saveUniversal: async (key: string, verses: string[]) => {
         await idbManager.save(BIBLE_STORE, key, verses);
         await apiCall('save', 'bible_chapters', { item: { id: key, verses } });
+    },
+    list: async () => {
+        const cloudList = await apiCall('list', 'bible_chapters');
+        return cloudList || [];
     }
 });
+
+export const syncManager = {
+    fullSync: async () => {
+        if (typeof window === 'undefined' || !navigator.onLine) return;
+        const collections = ['panorama_biblico', 'announcements', 'chapter_metadata', 'devotionals', 'dynamic_modules', 'app_config'];
+        for (const col of collections) {
+            try {
+                const cloudData = await apiCall('list', col);
+                if (cloudData && Array.isArray(cloudData)) {
+                    for(const item of cloudData) {
+                        await idbManager.save(CONTENT_STORE, `${col}_${item.id}`, { ...item, __adma_col: col });
+                    }
+                }
+            } catch (e) {}
+        }
+    }
+};
 
 export const db = {
     entities: {
