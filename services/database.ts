@@ -1,8 +1,17 @@
+
 // --- INDEXED DB FOR BIBLE AND CONTENT (ADMA Supreme DB v3 - Offline First) ---
 const DB_NAME = 'adma_supreme_db';
 const BIBLE_STORE = 'bible_verses';
 const CONTENT_STORE = 'adma_content_store'; 
 const DB_VERSION = 3;
+
+// --- UTILS ---
+// Gera um ID único e consistente baseado no email. 
+// Ex: michel.felix@adma.local -> user_michel_felix_adma_local
+export const generateUserId = (email: string) => {
+    if (!email) return 'user_unknown';
+    return 'user_' + email.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+};
 
 const openDB = (): Promise<IDBDatabase> => {
     if (typeof window === 'undefined') return Promise.reject("No window context");
@@ -18,7 +27,7 @@ const openDB = (): Promise<IDBDatabase> => {
             }
         };
         request.onsuccess = (event: any) => resolve(event.target.result);
-        request.onerror = (event: any) => reject(event.target.error);
+        request.onerror = (event: any) => reject(request.error);
     });
 };
 
@@ -98,31 +107,35 @@ const apiCall = async (action: string, collection: string, payload: any = {}) =>
     if (typeof navigator !== 'undefined' && !navigator.onLine && action !== 'save') return null;
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
+    const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout
     
     try {
         const res = await fetch('/api/storage', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action, collection, ...payload }),
-            signal: controller.signal
+            signal: controller.signal,
+            keepalive: true // <--- CRÍTICO: Garante que o salvamento termine mesmo se a aba fechar
         });
         clearTimeout(timeout);
         if (!res.ok) return null;
         return await res.json();
     } catch (e) {
         clearTimeout(timeout);
+        console.warn("API Call failed (Network/Timeout):", e);
         return null; 
     }
 };
 
 const createHelpers = (col: string) => ({
     list: async () => {
-        // Tenta rede primeiro para atualizar cache, mas falha silenciosamente
+        // Tenta rede primeiro para atualizar cache
         const cloudData = await apiCall('list', col);
         if (cloudData && Array.isArray(cloudData)) {
             for(const item of cloudData) {
-                await idbManager.save(CONTENT_STORE, `${col}_${item.id}`, { ...item, __adma_col: col });
+                // Se tiver ID, salva com ID. Se não, tenta gerar algo único.
+                const itemId = item.id || `item_${Date.now()}`;
+                await idbManager.save(CONTENT_STORE, `${col}_${itemId}`, { ...item, __adma_col: col });
             }
             return cloudData;
         }
@@ -130,35 +143,53 @@ const createHelpers = (col: string) => ({
         return await idbManager.list(CONTENT_STORE, col);
     },
     filter: async (criteria: any) => {
-        // OTIMIZAÇÃO: Filtra local primeiro. Se achar algo, nem vai na nuvem.
-        const localItems = await idbManager.list(CONTENT_STORE, col);
-        const filteredLocal = localItems.filter((item: any) => 
-            Object.keys(criteria).every(k => item[k] === criteria[k])
-        );
-
-        if (filteredLocal.length > 0) return filteredLocal;
-
-        // Se não tiver local, busca na nuvem
-        const cloudData = await apiCall('list', col);
-        if (cloudData && Array.isArray(cloudData)) {
-            for(const item of cloudData) {
-                await idbManager.save(CONTENT_STORE, `${col}_${item.id}`, { ...item, __adma_col: col });
+        // ESTRATÉGIA NETWORK FIRST (Prioridade Nuvem para Dados Críticos como Progresso)
+        if (typeof navigator !== 'undefined' && navigator.onLine) {
+            try {
+                // Busca diretamente no servidor com o filtro
+                const cloudData = await apiCall('filter', col, { criteria });
+                if (cloudData && Array.isArray(cloudData) && cloudData.length > 0) {
+                    // Atualiza cache local com o dado mais fresco da nuvem
+                    for(const item of cloudData) {
+                        const id = item.id || item.study_key || item.chapter_key;
+                        if (id) {
+                             await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...item, __adma_col: col });
+                        }
+                    }
+                    return cloudData; // Retorna dado da nuvem
+                }
+            } catch (e) {
+                console.warn("Falha ao filtrar na nuvem, usando local", e);
             }
-            return cloudData.filter((item: any) => 
-                Object.keys(criteria).every(k => item[k] === criteria[k])
-            );
         }
-        return [];
+
+        // Fallback: Busca Local (Offline ou erro de rede)
+        const localItems = await idbManager.list(CONTENT_STORE, col);
+        return localItems.filter((item: any) => 
+            Object.keys(criteria).every(k => String(item[k]) === String(criteria[k]))
+        );
     },
     getCloud: async (id: string) => {
         return await apiCall('get', col, { id });
     },
     get: async (id?: string) => {
         if (!id) return null;
-        // OTIMIZAÇÃO SUPREMA: Tenta local primeiro. Economiza 100% da rede se o dado existir.
+        
+        // 1. TENTA LOCAL PRIMEIRO (Stale-While-Revalidate)
         const local = await idbManager.get(CONTENT_STORE, `${col}_${id}`);
+        
+        // Se estiver online, busca atualização silenciosa no background (Cloud)
+        if (typeof navigator !== 'undefined' && navigator.onLine) {
+            apiCall('get', col, { id }).then(async (cloudItem) => {
+                if (cloudItem) {
+                    await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...cloudItem, __adma_col: col });
+                }
+            }).catch(err => console.warn("Background sync failed", err));
+        }
+
         if (local) return local;
 
+        // Se não tinha local, espera a nuvem (primeiro acesso)
         const cloudItem = await apiCall('get', col, { id });
         if (cloudItem) {
             await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...cloudItem, __adma_col: col });
@@ -167,29 +198,32 @@ const createHelpers = (col: string) => ({
         return null;
     },
     create: async (data: any) => {
-        const id = data.id || Date.now().toString();
+        // Se o dado já vier com ID (ex: generateUserId), usa ele.
+        const id = (data.id || data.study_key || data.chapter_key || Date.now().toString()).toString();
         const newItem = { ...data, id };
         await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...newItem, __adma_col: col });
         await apiCall('save', col, { item: newItem });
         return newItem;
     },
     update: async (id: string, updates: any) => {
+        // 1. Pega versão local
         let existing = await idbManager.get(CONTENT_STORE, `${col}_${id}`);
-        const merged = { ...existing, ...updates };
+        // 2. Mescla
+        const merged = { ...existing, ...updates, id: id.toString() };
+        // 3. Salva Local (Instantâneo)
         await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...merged, __adma_col: col });
-        // Salva na nuvem em background
-        apiCall('save', col, { item: merged });
-        return merged;
+        // 4. Salva Nuvem (Assíncrono com KeepAlive)
+        return await apiCall('save', col, { item: merged });
     },
     delete: async (id: string) => {
         await idbManager.delete(CONTENT_STORE, `${col}_${id}`);
         apiCall('delete', col, { id });
     },
     save: async (data: any) => {
-        const id = data.id || data.chapter_key || Date.now().toString();
+        const id = (data.id || data.chapter_key || Date.now().toString()).toString();
         const item = { ...data, id };
         await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...item, __adma_col: col });
-        apiCall('save', col, { item });
+        await apiCall('save', col, { item });
         return item;
     }
 });
