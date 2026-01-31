@@ -76,21 +76,31 @@ export default function App() {
       }
   }, [darkMode]);
 
-  // --- FUNÇÃO CRÍTICA DE RECUPERAÇÃO DE CONTA ---
+  // --- FUNÇÃO CRÍTICA DE RECUPERAÇÃO DE CONTA (FUZZY MATCHING) ---
   const loadProgress = async (email: string, nameFallback?: string) => {
     try {
         console.log("Sincronizando usuário para email:", email);
         
-        // 1. ESTRATÉGIA DE BUSCA AMPLA:
-        // Buscamos TODOS os perfis que possuem este e-mail.
-        const candidates = await db.entities.ReadingProgress.filter({ user_email: email });
+        // 1. ESTRATÉGIA DE BUSCA AMPLA (LISTAR TUDO E FILTRAR LOCALMENTE)
+        // Isso evita problemas de case sensitivity e acentuação no backend
+        const allUsers = await db.entities.ReadingProgress.list();
+        
+        const norm = (s: string) => s ? s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+        const targetEmail = norm(email);
+        const targetName = norm(nameFallback || "");
+
+        // Filtra todos os candidatos possíveis
+        const candidates = allUsers.filter(u => {
+            const uEmail = norm(u.user_email);
+            const uName = norm(u.user_name);
+            return uEmail === targetEmail || (targetName.length > 5 && uName === targetName);
+        });
         
         let bestProfile = null;
 
         if (candidates && candidates.length > 0) {
             // 2. ORDENAÇÃO POR PROGRESSO:
             // Colocamos em primeiro lugar aquele que tem mais capítulos lidos.
-            // Isso resolve o conflito entre "Conta Antiga Cheia" vs "Conta Nova Vazia".
             candidates.sort((a: any, b: any) => (b.total_chapters || 0) - (a.total_chapters || 0));
             
             // Seleciona o campeão
@@ -99,8 +109,11 @@ export default function App() {
         }
 
         if (bestProfile) {
-            // Usa o perfil encontrado (seja ele o legado ou o novo, o que tiver mais dados)
+            // Usa o perfil encontrado
             setUserProgress(bestProfile);
+            if (bestProfile.total_chapters > 0) {
+               showToast(`Dados recuperados: ${bestProfile.total_chapters} capítulos lidos.`, "success");
+            }
         } else {
             // Se realmente não existir nada, cria um novo zerado
             console.log("Nenhum registro encontrado. Iniciando perfil novo...");
