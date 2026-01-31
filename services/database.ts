@@ -9,6 +9,7 @@ const DB_VERSION = 3;
 export const generateUserId = (email: string) => {
     if (!email) return 'user_unknown';
     // Remove caracteres especiais e cria um ID seguro e único baseado no email
+    // Ex: michel.felix@adma.local -> user_michel_felix_adma_local
     return 'user_' + email.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
 };
 
