@@ -106,7 +106,7 @@ const apiCall = async (action: string, collection: string, payload: any = {}) =>
     if (typeof navigator !== 'undefined' && !navigator.onLine && action !== 'save') return null;
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000); 
+    const timeout = setTimeout(() => controller.abort(), 15000); // Aumentado para 15s para conexões lentas
     
     try {
         const res = await fetch('/api/storage', {
@@ -144,32 +144,26 @@ const createHelpers = (col: string) => ({
         return await apiCall('list_minimal', col);
     },
     filter: async (criteria: any) => {
+        // 1. TENTA NUVEM PRIMEIRO se estiver online (Essencial para Login em Novos Aparelhos)
+        if (typeof navigator !== 'undefined' && navigator.onLine) {
+            const cloudData = await apiCall('list', col);
+            if (cloudData && Array.isArray(cloudData)) {
+                // Sincroniza localmente
+                for(const item of cloudData) {
+                    await idbManager.save(CONTENT_STORE, `${col}_${item.id}`, { ...item, __adma_col: col });
+                }
+                // Filtra os dados da nuvem
+                return cloudData.filter((item: any) => 
+                    Object.keys(criteria).every(k => String(item[k]) === String(criteria[k]))
+                );
+            }
+        }
+
+        // 2. FALLBACK LOCAL (Se offline ou falha na nuvem)
         const localItems = await idbManager.list(CONTENT_STORE, col);
-        const filteredLocal = localItems.filter((item: any) => 
-            Object.keys(criteria).every(k => item[k] === criteria[k])
+        return localItems.filter((item: any) => 
+            Object.keys(criteria).every(k => String(item[k]) === String(criteria[k]))
         );
-
-        if (filteredLocal.length > 0) return filteredLocal;
-
-        if (criteria.study_key || criteria.id) {
-            const targetId = criteria.study_key || criteria.id;
-            const item = await apiCall('get', col, { id: targetId });
-            if (item) {
-                await idbManager.save(CONTENT_STORE, `${col}_${item.id}`, { ...item, __adma_col: col });
-                return [item];
-            }
-        }
-
-        const cloudData = await apiCall('list', col);
-        if (cloudData && Array.isArray(cloudData)) {
-            for(const item of cloudData) {
-                await idbManager.save(CONTENT_STORE, `${col}_${item.id}`, { ...item, __adma_col: col });
-            }
-            return cloudData.filter((item: any) => 
-                Object.keys(criteria).every(k => item[k] === criteria[k])
-            );
-        }
-        return [];
     },
     get: async (id?: string, forceRefresh: boolean = false) => {
         if (!id) return null;
@@ -212,7 +206,6 @@ const createHelpers = (col: string) => ({
         return item;
     },
     clearLocal: async () => {
-        // Limpa apenas o cache local desta entidade para forçar novo download
         await idbManager.clearStore(CONTENT_STORE);
     }
 });
@@ -237,7 +230,7 @@ const createBibleHelpers = () => ({
 export const syncManager = {
     fullSync: async () => {
         if (typeof window === 'undefined' || !navigator.onLine) return;
-        const collections = ['announcements', 'chapter_metadata', 'devotionals', 'dynamic_modules', 'app_config'];
+        const collections = ['announcements', 'chapter_metadata', 'devotionals', 'dynamic_modules', 'app_config', 'reading_progress'];
         for (const col of collections) {
             try {
                 const cloudData = await apiCall('list', col);
