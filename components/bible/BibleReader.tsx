@@ -299,7 +299,7 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
 
     }, [book, chapter]); // Reinicia sempre que muda o capítulo
 
-    // FIX: Garante que o timer zere assim que o status de leitura for confirmado (carregamento assíncrono)
+    // FIX: Garante que o timer zere assim que o status de leitura for confirmado (carregamento assíncrono ou atualização de estado)
     useEffect(() => {
         if (isRead) {
             setReadingTimer(0);
@@ -480,8 +480,17 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
 
         let newRead = isRead ? userProgress.chapters_read.filter((k: string) => k !== chapterKey) : [...(userProgress.chapters_read || []), chapterKey];
         let newTotal = isRead ? Math.max(0, (userProgress.total_chapters || 0) - 1) : (userProgress.total_chapters || 0) + 1;
+        
         onShowToast(isRead ? "Marcado como não lido" : "Capítulo concluído!", isRead ? "info" : "success");
-        const updated = await db.entities.ReadingProgress.update(userProgress.id, { chapters_read: newRead, total_chapters: newTotal, last_book: book, last_chapter: chapter });
+        
+        // PERSISTÊNCIA ROBUSTA: Atualiza no servidor e localmente via db wrapper
+        const updated = await db.entities.ReadingProgress.update(userProgress.id, { 
+            chapters_read: newRead, 
+            total_chapters: newTotal, 
+            last_book: book, 
+            last_chapter: chapter 
+        });
+        
         if (onProgressUpdate) onProgressUpdate(updated);
     };
 
