@@ -99,20 +99,22 @@ const apiCall = async (action: string, collection: string, payload: any = {}) =>
     if (typeof navigator !== 'undefined' && !navigator.onLine && action !== 'save') return null;
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000); // Aumentado para 10s para garantir carga de dados
+    const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout
     
     try {
         const res = await fetch('/api/storage', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action, collection, ...payload }),
-            signal: controller.signal
+            signal: controller.signal,
+            keepalive: true // <--- CRÍTICO: Garante que o salvamento termine mesmo se a aba fechar
         });
         clearTimeout(timeout);
         if (!res.ok) return null;
         return await res.json();
     } catch (e) {
         clearTimeout(timeout);
+        console.warn("API Call failed (Network/Timeout):", e);
         return null; 
     }
 };
@@ -181,12 +183,17 @@ const createHelpers = (col: string) => ({
         return newItem;
     },
     update: async (id: string, updates: any) => {
+        // 1. Pega versão local
         let existing = await idbManager.get(CONTENT_STORE, `${col}_${id}`);
+        // 2. Mescla
         const merged = { ...existing, ...updates, id: id.toString() };
+        // 3. Salva Local (Instantâneo)
         await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...merged, __adma_col: col });
-        // FIXED: Await cloud save to ensure persistence before refresh
-        await apiCall('save', col, { item: merged });
-        return merged;
+        // 4. Salva Nuvem (Assíncrono com KeepAlive)
+        // Não usamos 'await' aqui se quisermos liberar a UI rápido, mas para segurança de dados,
+        // é bom que o chamador saiba quando terminou. 
+        // O keepalive no fetch garante que o browser termine isso em background.
+        return await apiCall('save', col, { item: merged });
     },
     delete: async (id: string) => {
         await idbManager.delete(CONTENT_STORE, `${col}_${id}`);
