@@ -99,7 +99,7 @@ const apiCall = async (action: string, collection: string, payload: any = {}) =>
     if (typeof navigator !== 'undefined' && !navigator.onLine && action !== 'save') return null;
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
+    const timeout = setTimeout(() => controller.abort(), 10000); // Aumentado para 10s para garantir carga de dados
     
     try {
         const res = await fetch('/api/storage', {
@@ -119,7 +119,7 @@ const apiCall = async (action: string, collection: string, payload: any = {}) =>
 
 const createHelpers = (col: string) => ({
     list: async () => {
-        // Tenta rede primeiro para atualizar cache, mas falha silenciosamente
+        // Tenta rede primeiro para atualizar cache
         const cloudData = await apiCall('list', col);
         if (cloudData && Array.isArray(cloudData)) {
             for(const item of cloudData) {
@@ -131,32 +131,38 @@ const createHelpers = (col: string) => ({
         return await idbManager.list(CONTENT_STORE, col);
     },
     filter: async (criteria: any) => {
-        // OTIMIZAÇÃO: Filtra local primeiro. Se achar algo, nem vai na nuvem.
+        // ESTRATÉGIA NETWORK FIRST (Prioridade Nuvem para Dados Críticos como Progresso)
+        if (typeof navigator !== 'undefined' && navigator.onLine) {
+            try {
+                // Busca diretamente no servidor com o filtro
+                const cloudData = await apiCall('filter', col, { criteria });
+                if (cloudData && Array.isArray(cloudData) && cloudData.length > 0) {
+                    // Atualiza cache local com o dado mais fresco da nuvem
+                    for(const item of cloudData) {
+                        const id = item.id || item.study_key || item.chapter_key;
+                        if (id) {
+                             await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...item, __adma_col: col });
+                        }
+                    }
+                    return cloudData; // Retorna dado da nuvem
+                }
+            } catch (e) {
+                console.warn("Falha ao filtrar na nuvem, usando local", e);
+            }
+        }
+
+        // Fallback: Busca Local (Offline ou erro de rede)
         const localItems = await idbManager.list(CONTENT_STORE, col);
-        const filteredLocal = localItems.filter((item: any) => 
+        return localItems.filter((item: any) => 
             Object.keys(criteria).every(k => String(item[k]) === String(criteria[k]))
         );
-
-        if (filteredLocal.length > 0) return filteredLocal;
-
-        // Se não tiver local, busca na nuvem
-        const cloudData = await apiCall('list', col);
-        if (cloudData && Array.isArray(cloudData)) {
-            for(const item of cloudData) {
-                await idbManager.save(CONTENT_STORE, `${col}_${item.id}`, { ...item, __adma_col: col });
-            }
-            return cloudData.filter((item: any) => 
-                Object.keys(criteria).every(k => String(item[k]) === String(criteria[k]))
-            );
-        }
-        return [];
     },
     getCloud: async (id: string) => {
         return await apiCall('get', col, { id });
     },
     get: async (id?: string) => {
         if (!id) return null;
-        // OTIMIZAÇÃO SUPREMA: Tenta local primeiro. Economiza 100% da rede se o dado existir.
+        // OTIMIZAÇÃO: Tenta local primeiro para leitura rápida de conteúdo estático
         const local = await idbManager.get(CONTENT_STORE, `${col}_${id}`);
         if (local) return local;
 
