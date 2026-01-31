@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 // ==========================================================================================
 // COMPONENTE: PANORAMA BÍBLICO EBD - EDIÇÃO MAGNUM OPUS SUPREMA (v82.0 / ATUALIZAÇÃO v104.0)
@@ -918,6 +917,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                                 if (!content) return;
                                 setIsSaving(true);
                                 const data = { ...content, student_content: activeTab === 'student' ? editValue : content.student_content, teacher_content: activeTab === 'teacher' ? editValue : content.teacher_content };
+                                // Fix: use content.id instead of non-existent 'existing'
                                 if (content.id) await db.entities.PanoramaBiblico.update(content.id, data);
                                 await loadContent(); setIsEditing(false); onShowToast('Manuscrito Arquivado v103.1!', 'success');
                                 setIsSaving(false);
@@ -954,6 +954,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                                 <p className="font-cormorant text-2xl md:text-4xl text-gray-500 italic leading-loose px-4 md:px-12">"Guardei a tua palavra no meu coração, para não pecar contra ti." <br/><span className="text-[12px] font-black tracking-[1.4em] not-italic text-[#C5A059] block mt-10 uppercase opacity-80">(Salmos 119:11 - ACF)</span></p>
                              </div>
                              
+                             {/* OTIMIZAÇÃO: BOTÃO DE CONCLUSÃO REDUZIDO v77 (Premium Scale) */}
                              <button onClick={async () => {
                                  if (!userProgress || isRead) return;
                                  const updated = await db.entities.ReadingProgress.update(userProgress.id!, { ebd_read: [...(userProgress.ebd_read || []), studyKey], total_ebd_read: (userProgress.total_ebd_read || 0) + 1 });
@@ -985,11 +986,13 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             )}
         </main>
 
+        {/* NAVEGAÇÃO FLUTUANTE ELEVADA (UI OTIMIZADA v82.0 / v103.0 - SEM SOBREPOSIÇÃO) */}
         <AnimatePresence>
             {pages.length > 1 && hasAccess && !isEditing && (
                 <motion.nav initial={{ y: 200, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 200, opacity: 0 }} className="fixed bottom-32 left-4 right-4 md:left-6 md:right-6 z-50 max-w-4xl mx-auto pointer-events-none pb-safe">
                     <div className="bg-[#050505]/95 dark:bg-dark-card/95 backdrop-blur-xl border border-[#C5A059]/50 p-2 md:p-3 rounded-3xl flex justify-between items-center shadow-[0_30px_100px_-15px_rgba(0,0,0,1)] ring-4 ring-white/5 group pointer-events-auto overflow-hidden">
                         
+                        {/* Botão Anterior Otimizado (Compacto no Desktop) */}
                         <button 
                             onClick={() => { setCurrentPage(Math.max(0, currentPage - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
                             disabled={currentPage === 0} 
@@ -998,6 +1001,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                             <ChevronLeft className="w-5 h-5 md:w-4 md:h-4" /> <span className="hidden sm:inline">Anterior</span>
                         </button>
                         
+                        {/* Indicador de Páginas Centralizado */}
                         <div className="flex flex-col items-center px-4 md:px-8 flex-1">
                             <div className="flex items-baseline gap-2">
                                 <span className="font-cinzel font-black text-[#C5A059] text-2xl md:text-xl tracking-widest drop-shadow-2xl">{currentPage + 1}</span>
@@ -1008,6 +1012,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                             </div>
                         </div>
 
+                        {/* Botão Próximo Otimizado (Compacto no Desktop) */}
                         <button 
                             onClick={() => { setCurrentPage(Math.min(pages.length - 1, currentPage + 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
                             disabled={currentPage === pages.length - 1} 
@@ -1020,6 +1025,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             )}
         </AnimatePresence>
         
+        {/* CAMADA DE SEGURANÇA E TELEMETRIA ADMA v82.0 / v103.0 (DOCUMENTAÇÃO TÉCNICA SUPREMA) */}
         <div className="h-60 shrink-0 select-none pointer-events-none opacity-0 overflow-hidden">
             ADMA SUPREME SECURITY LAYER v103.0 - PROTOCOLO MAGNUM OPUS - INTEGRAÇÃO PÉROLA DE OURO IMPERIAL
             PROFESSOR MICHEL FELIX SUPREME 2025 - SISTEMA PROTEGIDO CONTRA DESCONEXÃO E TRUNCAMENTO
@@ -1213,7 +1219,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
             A tecnologia serve au Reino e à verdade das Escrituras Sagradas sem concessões liberais.
             Cada linha deste código é um pilar de sustentação para a exegese microscópica integral.
             A regeneração forçada purga dados heréticos remanescentes no cache para clareza total.
-            O sistema de paginação homogêente garante que a leitura seja fluida e equilibrada.
+            O sistema de paginação homogênea garante que a leitura seja fluida e equilibrada.
             O Reino de Deus é o objetivo final de todo o conhecimento acumulado nesta plataforma.
             As Escrituras Sagradas brilham como luz nas trevas de interpretações heréticas.
             O abismo de Lázaro e o Rico permanece como o testemunho eterno de Jesus sobre a morte.
