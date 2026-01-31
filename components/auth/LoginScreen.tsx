@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { BookOpen, User, ArrowRight, Loader2, Lock, ShieldAlert, KeyRound, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -31,26 +32,28 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
     setIsProcessing(true);
     setErrorMsg('');
     const email = generateEmail(firstName, lastName);
-    const userId = generateUserId(email); // Gera o ID determinístico seguro
-
+    
     try {
-        // 1. Tenta buscar pelo ID fixo (Padrão Novo)
-        let user = await db.entities.ReadingProgress.get(userId);
+        // --- BUSCA INTELIGENTE (SMART RECOVERY) ---
+        // 1. Busca TODOS os registros vinculados a este e-mail
+        const candidates = await db.entities.ReadingProgress.filter({ user_email: email });
         
-        // 2. Se não achar pelo ID, tenta buscar pelo e-mail (Padrão Antigo/Legado)
-        if (!user) {
-            const usersByEmail = await db.entities.ReadingProgress.filter({ user_email: email });
-            if (usersByEmail.length > 0) {
-                user = usersByEmail[0];
-            }
-        }
-        
-        if (user) {
-            setUserData(user);
+        let foundUser = null;
 
-            if (user.is_blocked) {
+        if (candidates && candidates.length > 0) {
+            // 2. Ordena por progresso (do maior para o menor)
+            // Isso garante que se existir uma conta com 56 caps e uma com 0, pegamos a de 56.
+            candidates.sort((a: any, b: any) => (b.total_chapters || 0) - (a.total_chapters || 0));
+            foundUser = candidates[0];
+            console.log("Conta recuperada:", foundUser.id, "Caps:", foundUser.total_chapters);
+        }
+
+        if (foundUser) {
+            setUserData(foundUser);
+
+            if (foundUser.is_blocked) {
                 setStep('BLOCKED');
-            } else if (!user.password_pin || user.password_pin === '') {
+            } else if (!foundUser.password_pin || foundUser.password_pin === '') {
                 // Usuário antigo sem senha ou resetada pelo admin -> Cria nova
                 setStep('CREATE_PIN');
             } else {
@@ -58,11 +61,12 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
                 setStep('ENTER_PIN');
             }
         } else {
-            // Novo usuário (nem ID nem Email existem) -> Cria senha
+            // Novo usuário (nenhum registro encontrado) -> Cria senha
             setStep('CREATE_PIN');
         }
     } catch (err) {
         setErrorMsg('Erro ao conectar. Tente novamente.');
+        console.error(err);
     } finally {
         setIsProcessing(false);
     }
@@ -95,7 +99,7 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
               const userId = generateUserId(email);
 
               await db.entities.ReadingProgress.create({
-                  id: userId, // Força o ID Fixo
+                  id: userId, // ID Fixo Determinístico
                   user_email: email,
                   user_name: fullName,
                   password_pin: pin,
