@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, ChevronRight, List, Book, ChevronDown, RefreshCw, WifiOff, Zap, Volume2, X, FastForward, Search, Trash2, Sparkles, Loader2, Clock, Lock, Bookmark } from 'lucide-react';
 import VersePanel from './VersePanel';
@@ -399,12 +398,21 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
         }
     };
 
-    // Fixed: the standard get method in createHelpers already handles local-then-cloud retrieval.
     const loadMetadata = async () => {
         setMetadata(null);
         try {
-            // Tenta pegar os metadados; db.entities.ChapterMetadata.get(chapterKey) tenta local primeiro e depois nuvem
-            const meta = await db.entities.ChapterMetadata.get(chapterKey);
+            // Tenta pegar local primeiro
+            let meta = await db.entities.ChapterMetadata.get(chapterKey);
+            
+            if (!meta) {
+               // Tenta pegar da nuvem
+               const cloudMeta = await db.entities.ChapterMetadata.getCloud(chapterKey);
+               if (cloudMeta) {
+                   meta = cloudMeta;
+                   // Sincroniza localmente para o futuro
+                   await db.entities.ChapterMetadata.save(meta);
+               }
+            }
             
             if (meta) {
                 setMetadata(meta);
