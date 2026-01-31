@@ -1,5 +1,6 @@
+
 import { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, ChevronRight, List, Book, ChevronDown, RefreshCw, WifiOff, Zap, Volume2, X, FastForward, Search, Trash2, Sparkles, Loader2, Clock, Lock, Bookmark } from 'lucide-react';
+import { ChevronLeft, Settings, Type, Play, Pause, CheckCircle, ChevronRight, List, Book, ChevronDown, RefreshCw, WifiOff, Zap, Volume2, X, FastForward, Search, Trash2, Sparkles, Loader2, Clock, Lock, Bookmark, Cloud } from 'lucide-react';
 import VersePanel from './VersePanel';
 import { db } from '../../services/database';
 import { generateChapterKey, BIBLE_BOOKS } from '../../constants';
@@ -257,6 +258,9 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
     const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
     const [selectedVoice, setSelectedVoice] = useState<string>('');
     const [playbackRate, setPlaybackRate] = useState(1);
+
+    // Novo estado de salvamento em andamento
+    const [isSavingProgress, setIsSavingProgress] = useState(false);
     
     // --- LÓGICA DO TIMER DE LEITURA (RANKING JUSTO) ---
     const READING_TIME_SEC = 40;
@@ -504,8 +508,11 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
 
         // Atualiza a UI imediatamente (Feedback Otimista)
         if (onProgressUpdate) onProgressUpdate(optimisticData);
-        onShowToast(isRead ? "Marcado como não lido" : "Capítulo concluído e salvo!", isRead ? "info" : "success");
+        // Não mostramos toast aqui se for 'marcar como lido', pois o botão já vai mudar para 'Salvando...'
+        if(isRead) onShowToast("Marcado como não lido", "info"); 
         
+        setIsSavingProgress(true); // Ativa spinner
+
         try {
             // Salva no Banco de Dados (IndexedDB + Cloud)
             // IMPORTANTE: Envia o objeto completo com user_email para garantir vínculo
@@ -522,6 +529,8 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
             onShowToast("Erro de conexão ao salvar. Verifique sua rede.", "error");
             // Em caso de erro, reverte (opcional, mas boa prática)
             if (onProgressUpdate) onProgressUpdate(userProgress);
+        } finally {
+            setIsSavingProgress(false); // Desativa spinner
         }
     };
 
@@ -561,7 +570,7 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                     
                     <button 
                         onClick={toggleRead} 
-                        disabled={isLocked}
+                        disabled={isLocked || isSavingProgress}
                         className={`p-2 rounded-full transition-all active:scale-90 relative ${
                             isRead 
                             ? 'text-green-400 bg-green-900/20' 
@@ -570,7 +579,9 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
                                 : 'hover:bg-white/10 text-white/70'
                         }`}
                     >
-                        {isLocked ? (
+                        {isSavingProgress ? (
+                             <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : isLocked ? (
                             <div className="relative">
                                 <Lock className="w-5 h-5" />
                                 <span className="absolute -top-2 -right-2 text-[8px] font-bold bg-[#C5A059] text-black px-1 rounded-full">{readingTimer}</span>
@@ -725,27 +736,35 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
 
                  <button 
                     onClick={toggleRead}
-                    disabled={isLocked}
+                    disabled={isLocked || isSavingProgress}
                     className={`pointer-events-auto px-6 py-3 rounded-full font-cinzel font-bold shadow-xl transition-all transform active:scale-95 flex items-center gap-2 text-sm border backdrop-blur-md ${
-                        isRead 
-                        ? 'bg-green-600/90 text-white border-green-500 shadow-green-500/30' 
-                        : isLocked
-                            ? 'bg-gray-400/90 text-gray-100 border-gray-500 cursor-not-allowed grayscale'
-                            : 'bg-[#8B0000]/90 text-white border-red-800 shadow-red-900/30 hover:scale-105'
+                        isSavingProgress
+                        ? 'bg-[#C5A059] text-white border-[#C5A059]'
+                        : isRead 
+                            ? 'bg-green-600/90 text-white border-green-500 shadow-green-500/30' 
+                            : isLocked
+                                ? 'bg-gray-400/90 text-gray-100 border-gray-500 cursor-not-allowed grayscale'
+                                : 'bg-[#8B0000]/90 text-white border-red-800 shadow-red-900/30 hover:scale-105'
                     }`}
                  >
-                    {isRead ? (
-                        <CheckCircle className="w-4 h-4" />
+                    {isSavingProgress ? (
+                        <>
+                            <Cloud className="w-4 h-4 animate-bounce" />
+                            SALVANDO...
+                        </>
+                    ) : isRead ? (
+                        <>
+                            <CheckCircle className="w-4 h-4" />
+                            LIDO
+                        </>
                     ) : isLocked ? (
-                        <Clock className="w-4 h-4 animate-spin-slow" />
-                    ) : null}
-                    
-                    {isRead 
-                        ? 'LIDO' 
-                        : isLocked 
-                            ? `LENDO (${readingTimer}s)` 
-                            : 'MARCAR LIDO'
-                    }
+                        <>
+                            <Clock className="w-4 h-4 animate-spin-slow" />
+                            LENDO ({readingTimer}s)
+                        </>
+                    ) : (
+                        'MARCAR LIDO'
+                    )}
                 </button>
 
                  <button onClick={handleNext} className="pointer-events-auto w-12 h-12 bg-white/90 dark:bg-[#1E1E1E]/90 backdrop-blur shadow-lg rounded-full flex items-center justify-center text-gray-600 dark:text-gray-300 hover:text-[#8B0000] hover:scale-110 active:scale-95 transition-all border border-gray-200 dark:border-gray-700">
