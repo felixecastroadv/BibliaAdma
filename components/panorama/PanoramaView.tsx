@@ -136,6 +136,11 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
   const [isMobile, setIsMobile] = useState(false);
   const minSwipeDistance = 60;
 
+  // --- Helpers de Navegação Dinâmica ---
+  const currentBookData = BIBLE_BOOKS.find(b => b.name === book);
+  const totalChapters = currentBookData?.chapters || 150;
+  const chaptersList = Array.from({ length: totalChapters }, (_, i) => i + 1);
+
   // ==========================================================================================
   // DICIONÁRIO DE STATUS
   // ==========================================================================================
@@ -768,13 +773,17 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
         <div className="bg-white dark:bg-dark-card p-6 border-b border-[#C5A059]/20 flex gap-4 shadow-xl shrink-0 items-center w-full max-w-full">
              <div className="flex-1 relative min-w-0">
                  <Compass className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-[#C5A059] opacity-70" />
-                 <select value={book} onChange={e => setBook(e.target.value)} className="w-full pl-16 pr-6 py-5 border-2 border-[#C5A059]/20 rounded-3xl font-cinzel text-lg dark:bg-gray-800 dark:text-white outline-none appearance-none font-bold shadow-sm truncate">
+                 <select value={book} onChange={e => { setBook(e.target.value); setChapter(1); }} className="w-full pl-16 pr-6 py-5 border-2 border-[#C5A059]/20 rounded-3xl font-cinzel text-lg dark:bg-gray-800 dark:text-white outline-none appearance-none font-bold shadow-sm truncate">
                     {BIBLE_BOOKS.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
                  </select>
+                 <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[#C5A059] pointer-events-none opacity-80" />
              </div>
              <div className="w-32 md:w-40 relative flex-shrink-0">
                  <HistoryIcon className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-[#C5A059] opacity-70" />
-                 <input type="number" value={chapter} onChange={e => setChapter(Number(e.target.value))} className="w-full pl-16 pr-6 py-5 border-2 border-[#C5A059]/20 rounded-3xl font-cinzel text-lg dark:bg-gray-800 dark:text-white font-bold shadow-sm" min={1} />
+                 <select value={chapter} onChange={e => setChapter(Number(e.target.value))} className="w-full pl-16 pr-6 py-5 border-2 border-[#C5A059]/20 rounded-3xl font-cinzel text-lg dark:bg-gray-800 dark:text-white outline-none appearance-none font-bold shadow-sm">
+                    {chaptersList.map(c => <option key={c} value={c}>{c}</option>)}
+                 </select>
+                 <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[#C5A059] pointer-events-none opacity-80" />
              </div>
         </div>
 
