@@ -25,9 +25,9 @@ export default async function handler(request, response) {
     // Procuramos pela Chave Anônima (Mapeando os nomes traduzidos que vimos no PDF)
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
                         process.env.SUPABASE_ANON_KEY || 
-                        process.env.SUPABASE_PUBLISHABLE_KEY || // Nome que aparece no seu PDF (pág 5)
-                        process.env.PRÓXIMA_CHAVE_ANÔN_SUPABASE_PÚBLICA || // Tradução do navegador que vimos no print
-                        process.env.PRÓXIMA_CHAVE_PÚBLICA_SUPABASE_PUB || // Outra variação do print
+                        process.env.SUPABASE_PUBLISHABLE_KEY || 
+                        process.env.PRÓXIMA_CHAVE_ANÔN_SUPABASE_PÚBLICA || 
+                        process.env.PRÓXIMA_CHAVE_PÚBLICA_SUPABASE_PUB || 
                         process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
                         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uaGF0eXZydGxia3lmYWR1bXFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU1Mzk1NDYsImV4cCI6MjA4MTExNTU0Nn0.F_020GSnZ_jQiSSPFfAxY9Q8dU6FmjUDixOeZl4YHDg';
 
@@ -118,6 +118,13 @@ export default async function handler(request, response) {
 
   } catch (error) {
     console.error("Storage Critical Error:", error.message);
+    // Erro 42P01 significa que a tabela não existe no banco
+    if (error.code === '42P01') {
+        return response.status(500).json({ 
+            error: "Tabela adma_content não encontrada.", 
+            help: "Vá ao SQL Editor no Supabase e rode o comando de criação da tabela." 
+        });
+    }
     return response.status(500).json({ error: error.message });
   }
 }
