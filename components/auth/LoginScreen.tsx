@@ -22,7 +22,12 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
   const [errorMsg, setErrorMsg] = useState('');
   const [userData, setUserData] = useState<any>(null);
 
-  const generateEmail = (first: string, last: string) => `${first.trim().toLowerCase()}.${last.trim().toLowerCase()}@adma.local`;
+  // Normalização agressiva para garantir que "Michel Félix" e "michel felix" gerem o mesmo email
+  const generateEmail = (first: string, last: string) => {
+      const cleanFirst = first.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const cleanLast = last.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      return `${cleanFirst}.${cleanLast}@adma.local`;
+  };
 
   const handleIdentitySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,47 +40,47 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
         const targetEmail = generateEmail(firstName, lastName);
         const targetId = generateUserId(targetEmail);
         
-        console.log("Tentando login para:", targetEmail, "ID:", targetId);
+        console.log("Tentando login para:", targetEmail, "ID Normalizado:", targetId);
 
-        // 1. Busca Direta por ID (Prioritária)
-        // A nova lógica de banco garante que se existir localmente, retorna.
+        // 1. Busca Direta por ID (Obrigatória antes de listar)
         let foundUser = await db.entities.ReadingProgress.get(targetId);
 
-        // 2. Busca Fuzzy (Backup se ID direto falhar)
+        // 2. Busca Fuzzy (Backup APENAS se ID direto falhar)
         if (!foundUser) {
             const allUsers = await db.entities.ReadingProgress.list();
-            const norm = (s: string) => s ? s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+            const norm = (s: string) => s ? s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() : "";
             const tEmailNorm = norm(targetEmail);
             const tNameNorm = norm(`${firstName} ${lastName}`);
 
             const candidates = allUsers.filter(u => {
-                const uEmail = norm(u.user_email);
-                const uName = norm(u.user_name);
-                return uEmail === tEmailNorm || (tNameNorm.length > 5 && uName === tNameNorm);
+                const uEmail = norm(u.user_email || "");
+                const uName = norm(u.user_name || "");
+                // Verifica email exato OU nome exato
+                return uEmail === tEmailNorm || (uName.length > 3 && uName === tNameNorm);
             });
 
             if (candidates.length > 0) {
+                // Se achou alguém com nome/email igual, USA ELE. Não cria novo.
                 candidates.sort((a: any, b: any) => (b.total_chapters || 0) - (a.total_chapters || 0));
                 foundUser = candidates[0];
+                console.log("Usuário recuperado via Fuzzy Search:", foundUser.id);
             }
         }
 
         if (foundUser) {
-            console.log("Usuário encontrado:", foundUser);
             setUserData(foundUser);
 
             if (foundUser.is_blocked) {
                 setStep('BLOCKED');
             } else if (!foundUser.password_pin || foundUser.password_pin === '') {
-                // Usuário encontrado mas sem senha (Legado) -> Pede para definir
                 setStep('CREATE_PIN');
             } else {
-                // Usuário com senha -> Pede senha
                 setStep('ENTER_PIN');
             }
         } else {
-            console.log("Nenhum usuário encontrado. Criando novo.");
-            // Nenhum registro encontrado -> Cria nova conta
+            console.log("Nenhum usuário encontrado. Iniciando criação de conta...");
+            // Passa os dados normalizados para a próxima etapa para garantir que o ID criado seja o mesmo que foi buscado
+            setUserData(null);
             setStep('CREATE_PIN');
         }
     } catch (err) {
@@ -108,21 +113,29 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
                   reset_requested: false 
               });
           } else {
-              // Cria novo usuário
+              // Cria novo usuário - COM NORMALIZAÇÃO GARANTIDA
               const email = generateEmail(firstName, lastName);
               const fullName = `${firstName.trim()} ${lastName.trim()}`;
-              const userId = generateUserId(email);
+              const userId = generateUserId(email); // Gera ID consistente
               
-              console.log("Criando novo usuário:", userId);
+              console.log("Criando novo usuário com ID:", userId);
 
-              await db.entities.ReadingProgress.create({
-                  id: userId,
-                  user_email: email,
-                  user_name: fullName,
-                  password_pin: pin,
-                  chapters_read: [],
-                  total_chapters: 0
-              });
+              // Tenta um último get antes de criar para evitar race condition
+              const doubleCheck = await db.entities.ReadingProgress.get(userId);
+              
+              if (doubleCheck) {
+                  // Se existir, atualiza em vez de tentar criar duplicado
+                  await db.entities.ReadingProgress.update(userId, { password_pin: pin });
+              } else {
+                  await db.entities.ReadingProgress.create({
+                      id: userId,
+                      user_email: email,
+                      user_name: fullName,
+                      password_pin: pin,
+                      chapters_read: [],
+                      total_chapters: 0
+                  });
+              }
           }
           
           onLogin(firstName, lastName);
