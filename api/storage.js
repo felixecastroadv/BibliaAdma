@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 
 // --- CONFIGURAÇÃO MANUAL (FALLBACK) ---
@@ -17,7 +18,7 @@ export default async function handler(request, response) {
   // O PULO DO GATO: Cache de Borda (Vercel Edge Cache)
   // s-maxage=3600: Cache no servidor da Vercel por 1 hora
   // stale-while-revalidate=86400: Serve o cache antigo enquanto atualiza em background por até 1 dia
-  response.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+  response.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=600'); // Reduzido para maior agilidade em atualizações
 
   if (request.method === 'OPTIONS') {
     return response.status(200).end();
@@ -50,7 +51,7 @@ export default async function handler(request, response) {
         return response.status(200).json({ status: 'ok' });
     }
 
-    // LIST
+    // LIST (Retorna TUDO - Cuidado com coleções grandes!)
     if (method === 'POST' && body.action === 'list') {
         const { collection } = body;
         const { data, error } = await supabase
@@ -61,6 +62,19 @@ export default async function handler(request, response) {
         if (error) throw error;
         const cleanList = data ? data.map(row => row.data) : [];
         return response.status(200).json(cleanList);
+    }
+
+    // LIST MINIMAL (Ação para economizar banda e contornar limite da Vercel)
+    if (method === 'POST' && body.action === 'list_minimal') {
+        const { collection } = body;
+        // Seleciona apenas id e campos básicos do JSONB data para evitar carregar student_content/teacher_content
+        const { data, error } = await supabase
+            .from('adma_content')
+            .select('id, data->title, data->study_key, data->book, data->chapter')
+            .eq('collection', collection);
+
+        if (error) throw error;
+        return response.status(200).json(data || []);
     }
 
     // GET
@@ -80,12 +94,14 @@ export default async function handler(request, response) {
     // SAVE
     if (method === 'POST' && body.action === 'save') {
         const { collection, item } = body;
-        if (!item.id) item.id = Date.now().toString();
+        // Garante que o ID seja consistente para permitir GET direto
+        const finalId = (item.id || item.study_key || item.chapter_key || Date.now().toString()).toString();
+        item.id = finalId;
 
         const { error } = await supabase
             .from('adma_content')
             .upsert({ 
-                id: item.id.toString(),
+                id: finalId,
                 collection: collection, 
                 data: item
             });
