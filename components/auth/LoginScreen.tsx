@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { BookOpen, User, ArrowRight, Loader2, Lock, ShieldAlert, KeyRound, CheckCircle, Database } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { db, generateUserId } from '../../services/database';
+import { db, generateUserId } from '@/services/database';
 
 interface LoginScreenProps {
   onLogin: (firstName: string, lastName: string) => void;
