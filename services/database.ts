@@ -106,7 +106,7 @@ const apiCall = async (action: string, collection: string, payload: any = {}) =>
     if (typeof navigator !== 'undefined' && !navigator.onLine && action !== 'save') return null;
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000); // Aumentado para 15s para conexões lentas
+    const timeout = setTimeout(() => controller.abort(), 15000); 
     
     try {
         const res = await fetch('/api/storage', {
@@ -140,26 +140,20 @@ const createHelpers = (col: string) => ({
         }
         return await idbManager.list(CONTENT_STORE, col);
     },
-    listMinimal: async () => {
-        return await apiCall('list_minimal', col);
-    },
     filter: async (criteria: any) => {
-        // 1. TENTA NUVEM PRIMEIRO se estiver online (Essencial para Login em Novos Aparelhos)
+        // BUSCA NA NUVEM VIA SERVIDOR (Eficiente e Universal)
         if (typeof navigator !== 'undefined' && navigator.onLine) {
-            const cloudData = await apiCall('list', col);
-            if (cloudData && Array.isArray(cloudData)) {
-                // Sincroniza localmente
-                for(const item of cloudData) {
+            const cloudResults = await apiCall('filter', col, { criteria });
+            if (cloudResults && Array.isArray(cloudResults)) {
+                // Sincroniza os resultados localmente para uso offline futuro
+                for(const item of cloudResults) {
                     await idbManager.save(CONTENT_STORE, `${col}_${item.id}`, { ...item, __adma_col: col });
                 }
-                // Filtra os dados da nuvem
-                return cloudData.filter((item: any) => 
-                    Object.keys(criteria).every(k => String(item[k]) === String(criteria[k]))
-                );
+                return cloudResults;
             }
         }
 
-        // 2. FALLBACK LOCAL (Se offline ou falha na nuvem)
+        // FALLBACK LOCAL
         const localItems = await idbManager.list(CONTENT_STORE, col);
         return localItems.filter((item: any) => 
             Object.keys(criteria).every(k => String(item[k]) === String(criteria[k]))
@@ -189,24 +183,24 @@ const createHelpers = (col: string) => ({
     },
     update: async (id: string, updates: any) => {
         let existing = await idbManager.get(CONTENT_STORE, `${col}_${id}`);
+        if (!existing && typeof navigator !== 'undefined' && navigator.onLine) {
+            existing = await apiCall('get', col, { id });
+        }
         const merged = { ...existing, ...updates, id };
         await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...merged, __adma_col: col });
-        apiCall('save', col, { item: merged });
+        await apiCall('save', col, { item: merged });
         return merged;
     },
     delete: async (id: string) => {
         await idbManager.delete(CONTENT_STORE, `${col}_${id}`);
-        apiCall('delete', col, { id });
+        await apiCall('delete', col, { id });
     },
     save: async (data: any) => {
         const id = data.id || data.study_key || data.chapter_key || Date.now().toString();
         const item = { ...data, id };
         await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...item, __adma_col: col });
-        apiCall('save', col, { item });
+        await apiCall('save', col, { item });
         return item;
-    },
-    clearLocal: async () => {
-        await idbManager.clearStore(CONTENT_STORE);
     }
 });
 
@@ -220,29 +214,8 @@ const createBibleHelpers = () => ({
     saveUniversal: async (key: string, verses: string[]) => {
         await idbManager.save(BIBLE_STORE, key, verses);
         await apiCall('save', 'bible_chapters', { item: { id: key, verses } });
-    },
-    list: async () => {
-        const cloudList = await apiCall('list', 'bible_chapters');
-        return cloudList || [];
     }
 });
-
-export const syncManager = {
-    fullSync: async () => {
-        if (typeof window === 'undefined' || !navigator.onLine) return;
-        const collections = ['announcements', 'chapter_metadata', 'devotionals', 'dynamic_modules', 'app_config', 'reading_progress'];
-        for (const col of collections) {
-            try {
-                const cloudData = await apiCall('list', col);
-                if (cloudData && Array.isArray(cloudData)) {
-                    for(const item of cloudData) {
-                        await idbManager.save(CONTENT_STORE, `${col}_${item.id}`, { ...item, __adma_col: col });
-                    }
-                }
-            } catch (e) {}
-        }
-    }
-};
 
 export const db = {
     entities: {
