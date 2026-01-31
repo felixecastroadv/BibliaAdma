@@ -299,7 +299,7 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
 
     }, [book, chapter]); // Reinicia sempre que muda o capítulo
 
-    // FIX: Garante que o timer zere assim que o status de leitura for confirmado (carregamento assíncrono ou atualização de estado)
+    // FIX: Garante que o timer zere assim que o status de leitura for confirmado
     useEffect(() => {
         if (isRead) {
             setReadingTimer(0);
@@ -481,7 +481,8 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
             return;
         }
 
-        // Calculation of new state
+        // --- LÓGICA DE PERSISTÊNCIA ROBUSTA (FIX) ---
+        // Calcula o novo estado localmente
         let newRead = [];
         if (isRead) {
             newRead = userProgress.chapters_read.filter((k: string) => k !== chapterKey);
@@ -489,26 +490,33 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
             newRead = [...(userProgress.chapters_read || []), chapterKey];
         }
         
-        // Ensure uniqueness just in case
+        // Remove duplicatas para garantir integridade
         newRead = [...new Set(newRead)];
         
-        // Recalculate total directly from array length for absolute correctness
+        // Calcula o total baseado estritamente no tamanho do array (Evita drift de contagem)
         const newTotal = newRead.length;
         
-        onShowToast(isRead ? "Marcado como não lido" : "Capítulo concluído!", isRead ? "info" : "success");
+        // Atualiza a UI imediatamente (Feedback Otimista)
+        onShowToast(isRead ? "Marcado como não lido" : "Capítulo concluído e salvo!", isRead ? "info" : "success");
         
         try {
-            // PERSISTÊNCIA ROBUSTA: Atualiza no servidor e localmente via db wrapper
-            // Envia o user_email também para garantir consistência em operações de upsert/filter
-            const updated = await db.entities.ReadingProgress.update(userProgress.id, { 
+            // Salva no Banco de Dados (IndexedDB + Cloud)
+            // IMPORTANTE: Envia o objeto completo para garantir que o 'total_chapters' seja o calculado aqui.
+            const updatedData = { 
+                ...userProgress,
                 chapters_read: newRead, 
                 total_chapters: newTotal, 
                 last_book: book, 
                 last_chapter: chapter,
                 user_email: userProgress.user_email 
-            });
+            };
+
+            // Chama o update e AGUARDA a confirmação
+            await db.entities.ReadingProgress.update(userProgress.id, updatedData);
             
-            if (onProgressUpdate) onProgressUpdate(updated);
+            // Atualiza o estado global da aplicação
+            if (onProgressUpdate) onProgressUpdate(updatedData);
+
         } catch (e) {
             console.error("Erro ao salvar progresso:", e);
             onShowToast("Erro de conexão ao salvar. Verifique sua rede.", "error");
