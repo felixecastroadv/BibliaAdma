@@ -18,19 +18,27 @@ export default function RankingView({ onBack, userProgress }: any) {
     try {
         const data = await db.entities.ReadingProgress.list();
         
-        // --- ADMA SYNC V2.0: Fusão de Dados Locais ---
-        // Garante que o progresso local (mais recente) substitua o dado da nuvem (possivelmente desatualizado)
-        // Isso resolve o problema do usuário ler e não ver a pontuação subir na hora.
+        // --- ADMA SYNC V3.0: Fusão de Dados Locais com Prioridade Absoluta ---
+        // Se temos dados locais (userProgress), usamos ELES para o usuário atual,
+        // pois podem estar mais atualizados que o retorno da nuvem (eventual consistency).
         let mergedData = [...(data || [])];
         
         if (userProgress && userProgress.user_email) {
             const idx = mergedData.findIndex(u => u.user_email === userProgress.user_email);
+            
+            // Cria um objeto unificado com os dados mais recentes
+            const currentUserData = {
+                ...userProgress,
+                // Garante que o total seja o maior valor encontrado (para evitar regressão visual)
+                total_chapters: Math.max(userProgress.total_chapters || 0, (idx >= 0 ? mergedData[idx].total_chapters : 0) || 0)
+            };
+
             if (idx >= 0) {
-                // Atualiza o usuário existente com os dados locais mais frescos
-                mergedData[idx] = { ...mergedData[idx], ...userProgress };
+                // Atualiza o usuário existente na lista
+                mergedData[idx] = { ...mergedData[idx], ...currentUserData };
             } else {
-                // Se o usuário não estiver na lista (ex: offline ou novo), adiciona
-                mergedData.push(userProgress);
+                // Se o usuário não estiver na lista da nuvem ainda, adiciona
+                mergedData.push(currentUserData);
             }
         }
 
