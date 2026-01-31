@@ -3,7 +3,7 @@ import { ChevronLeft, Trophy, Medal, Crown, User, Loader2, BookOpen, GraduationC
 import { db } from '../../services/database';
 import { AnimatePresence, motion } from 'framer-motion';
 
-export default function RankingView({ onBack }: any) {
+export default function RankingView({ onBack, userProgress }: any) {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'chapters' | 'ebd'>('chapters');
@@ -18,9 +18,25 @@ export default function RankingView({ onBack }: any) {
     try {
         const data = await db.entities.ReadingProgress.list();
         
-        if (data && Array.isArray(data)) {
+        // --- ADMA SYNC V2.0: Fusão de Dados Locais ---
+        // Garante que o progresso local (mais recente) substitua o dado da nuvem (possivelmente desatualizado)
+        // Isso resolve o problema do usuário ler e não ver a pontuação subir na hora.
+        let mergedData = [...(data || [])];
+        
+        if (userProgress && userProgress.user_email) {
+            const idx = mergedData.findIndex(u => u.user_email === userProgress.user_email);
+            if (idx >= 0) {
+                // Atualiza o usuário existente com os dados locais mais frescos
+                mergedData[idx] = { ...mergedData[idx], ...userProgress };
+            } else {
+                // Se o usuário não estiver na lista (ex: offline ou novo), adiciona
+                mergedData.push(userProgress);
+            }
+        }
+
+        if (mergedData && Array.isArray(mergedData)) {
             // Ordenação Decrescente (Maior Pontuação Primeiro)
-            const sorted = [...data].sort((a, b) => {
+            const sorted = mergedData.sort((a, b) => {
                 if (activeTab === 'chapters') {
                     // Ordena por capítulos lidos
                     const capsA = a.total_chapters || 0;
