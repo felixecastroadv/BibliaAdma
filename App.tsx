@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import LoginScreen from './components/auth/LoginScreen';
 import DashboardHome from './components/dashboard/DashboardHome';
@@ -13,7 +14,7 @@ import AdminPasswordModal from './components/modals/AdminPasswordModal';
 import Toast from './components/ui/Toast';
 import BottomNav from './components/ui/BottomNav';
 import NetworkStatus from './components/ui/NetworkStatus';
-import { db } from './services/database';
+import { db, generateUserId } from './services/database';
 import { AppConfig, DynamicModule } from './types';
 
 export default function App() {
@@ -36,12 +37,10 @@ export default function App() {
     // 1. Carrega Config Global
     const loadConfig = async () => {
         try {
-            // No schema, list() retorna a coleção. Pegamos o primeiro item.
             const configs = await db.entities.AppConfig.list();
             const cfg = configs[0];
             if (cfg) {
                 setAppConfig(cfg);
-                // Aplica Cores Dinâmicas via CSS Variables
                 if (cfg.theme) {
                     if (cfg.theme.primaryColor) document.documentElement.style.setProperty('--primary-color', cfg.theme.primaryColor);
                     if (cfg.theme.secondaryColor) document.documentElement.style.setProperty('--secondary-color', cfg.theme.secondaryColor);
@@ -77,26 +76,28 @@ export default function App() {
       }
   }, [darkMode]);
 
-  // --- FUNÇÃO CRÍTICA DE SINCRONIZAÇÃO ---
+  // --- FUNÇÃO CRÍTICA DE SINCRONIZAÇÃO (ID FIXO) ---
   const loadProgress = async (email: string, nameFallback?: string) => {
     try {
-        console.log("Iniciando sincronização de progresso para:", email);
+        const userId = generateUserId(email); // ID Determinístico
+        console.log("Sincronizando usuário com ID Fixo:", userId);
         
-        // ESTRATÉGIA DE REDE REFORÇADA (NETWORK FIRST):
-        // O método 'filter' do database.ts foi atualizado para tentar buscar na nuvem PRIMEIRO.
-        // Se a nuvem responder, ele atualiza o cache local e retorna os dados frescos.
-        // Se a nuvem falhar (offline), ele retorna o cache local.
-        const p = await db.entities.ReadingProgress.filter({ user_email: email });
+        // Tenta buscar pelo ID exato. A função .get() do database.ts já faz:
+        // 1. Busca Local (rápido)
+        // 2. Busca Nuvem (em background se online) e atualiza local
+        // Isso garante que se o usuário existe, ele É encontrado.
+        const p = await db.entities.ReadingProgress.get(userId);
         
-        if (p && p.length > 0) {
-            console.log("Progresso sincronizado com sucesso:", p[0]);
-            setUserProgress(p[0]);
+        if (p) {
+            console.log("Progresso carregado:", p);
+            setUserProgress(p);
         } else {
-            // Se não existir na nuvem nem local (Novo Usuário ou Limpeza de Cache), cria um novo perfil.
-            console.log("Nenhum progresso encontrado. Iniciando novo perfil cloud...");
+            // Se REALMENTE não achou nem no local nem na nuvem (Usuário Novo Zero Km)
+            console.log("Nenhum registro encontrado. Iniciando perfil novo com ID Fixo...");
             const displayName = nameFallback || user?.user_name || email;
             
-            const newProfile = { 
+            const newProfile = {
+                id: userId, // Força o ID gerado pelo email
                 user_email: email, 
                 user_name: displayName, 
                 chapters_read: [], 
@@ -107,13 +108,12 @@ export default function App() {
                 created_at: new Date().toISOString()
             };
 
-            // Salva na nuvem imediatamente para garantir persistência futura
             const created = await db.entities.ReadingProgress.create(newProfile);
             setUserProgress(created);
         }
     } catch (error) {
         console.error("Erro crítico de sincronização no App.tsx:", error);
-        showToast("Atenção: Falha na sincronização com a nuvem.", "error");
+        showToast("Falha na sincronização. Verifique conexão.", "error");
     }
   };
 
@@ -153,7 +153,6 @@ export default function App() {
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
   const handleNavigate = (v: string, params?: any) => {
-      // Se for navegação para módulo dinâmico
       if (v.startsWith('module_')) {
           if (params && params.module) {
               setActiveModule(params.module);
