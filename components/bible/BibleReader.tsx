@@ -299,6 +299,13 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
 
     }, [book, chapter]); // Reinicia sempre que muda o capítulo
 
+    // FIX: Garante que o timer zere assim que o status de leitura for confirmado (carregamento assíncrono)
+    useEffect(() => {
+        if (isRead) {
+            setReadingTimer(0);
+        }
+    }, [isRead]);
+
     // Efeito para contagem regressiva
     useEffect(() => {
         let interval: any;
