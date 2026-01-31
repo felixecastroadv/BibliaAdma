@@ -58,6 +58,7 @@ export default function App() {
         const u = JSON.parse(saved);
         setUser(u);
         setIsAuthenticated(true);
+        // Chama loadProgress imediatamente ao restaurar sessão
         loadProgress(u.user_email, u.user_name);
     }
     
@@ -76,22 +77,26 @@ export default function App() {
       }
   }, [darkMode]);
 
+  // --- FUNÇÃO CRÍTICA DE SINCRONIZAÇÃO ---
   const loadProgress = async (email: string, nameFallback?: string) => {
     try {
-        // ESTRATÉGIA DE REDE REFORÇADA:
-        // O método 'filter' do database.ts agora opera em modo "Network First".
-        // Isso força o app a baixar os dados mais recentes do Supabase ao carregar,
-        // garantindo que o progresso não seja perdido ou revertido para o cache local antigo.
+        console.log("Iniciando sincronização de progresso para:", email);
+        
+        // ESTRATÉGIA DE REDE REFORÇADA (NETWORK FIRST):
+        // O método 'filter' do database.ts foi atualizado para tentar buscar na nuvem PRIMEIRO.
+        // Se a nuvem responder, ele atualiza o cache local e retorna os dados frescos.
+        // Se a nuvem falhar (offline), ele retorna o cache local.
         const p = await db.entities.ReadingProgress.filter({ user_email: email });
         
         if (p && p.length > 0) {
-            console.log("Progresso sincronizado com a nuvem:", p[0]);
+            console.log("Progresso sincronizado com sucesso:", p[0]);
             setUserProgress(p[0]);
         } else {
-            // Se não existir na nuvem nem local, cria um novo perfil.
-            console.log("Nenhum progresso encontrado. Iniciando novo perfil...");
+            // Se não existir na nuvem nem local (Novo Usuário ou Limpeza de Cache), cria um novo perfil.
+            console.log("Nenhum progresso encontrado. Iniciando novo perfil cloud...");
             const displayName = nameFallback || user?.user_name || email;
-            const newP = await db.entities.ReadingProgress.create({ 
+            
+            const newProfile = { 
                 user_email: email, 
                 user_name: displayName, 
                 chapters_read: [], 
@@ -100,14 +105,15 @@ export default function App() {
                 ebd_read: [],
                 total_ebd_read: 0,
                 created_at: new Date().toISOString()
-            });
-            setUserProgress(newP);
+            };
+
+            // Salva na nuvem imediatamente para garantir persistência futura
+            const created = await db.entities.ReadingProgress.create(newProfile);
+            setUserProgress(created);
         }
     } catch (error) {
-        console.error("Erro crítico de sincronização:", error);
-        // Em caso de falha catastrófica de rede, o filter já tentou o local como fallback.
-        // Se chegou aqui, algo muito errado aconteceu com o IndexedDB ou a conexão.
-        showToast("Falha na sincronização. Verifique sua conexão.", "error");
+        console.error("Erro crítico de sincronização no App.tsx:", error);
+        showToast("Atenção: Falha na sincronização com a nuvem.", "error");
     }
   };
 
