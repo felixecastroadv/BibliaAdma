@@ -918,7 +918,7 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                      <div className="flex justify-between items-center mb-12 border-b-2 pb-8 dark:border-white/10">
                         <div className="flex items-center gap-8">
                             <div className="w-16 h-16 bg-blue-900/20 rounded-3xl flex items-center justify-center text-blue-900 shadow-xl"><PenTool className="w-10 h-10" /></div>
-                            <h3 className="font-cinzel font-black text-3xl text-[#8B0000] dark:text-[#ff6b6b]">Oficina do Manuscrito v103.1</h3>
+                            <h3 className="font-cinzel font-black text-3xl text-[#8B0000] dark:text-[#ff6b6b]03.1">Oficina do Manuscrito v103.1</h3>
                         </div>
                         <div className="flex gap-6">
                             <button onClick={() => setIsEditing(false)} className="px-10 py-4 text-[10px] font-black border-2 border-red-500 text-red-500 rounded-full hover:bg-red-50 uppercase tracking-widest transition-all">Descartar</button>
@@ -965,10 +965,36 @@ export default function PanoramaView({ isAdmin, onShowToast, onBack, userProgres
                              
                              {/* OTIMIZAÇÃO: BOTÃO DE CONCLUSÃO REDUZIDO v77 (Premium Scale) */}
                              <button onClick={async () => {
-                                 if (!userProgress || isRead) return;
-                                 const updated = await db.entities.ReadingProgress.update(userProgress.id!, { ebd_read: [...(userProgress.ebd_read || []), studyKey], total_ebd_read: (userProgress.total_ebd_read || 0) + 1 });
-                                 if (onProgressUpdate) onProgressUpdate(updated);
-                                 onShowToast('Concluído v103.1! Conhecimento arquivado no Ranking.', 'success');
+                                 if (!userProgress || !userProgress.id || isRead) return;
+                                 
+                                 try {
+                                     // 1. Calcula nova lista garantindo unicidade
+                                     const currentList = userProgress.ebd_read || [];
+                                     const newList = [...currentList, studyKey];
+                                     const uniqueList = [...new Set(newList)];
+                                     
+                                     // 2. Calcula total baseado no comprimento real (Autocorreção)
+                                     const newTotal = uniqueList.length;
+
+                                     // 3. Prepara objeto completo para persistência
+                                     const updatePayload = {
+                                         ...userProgress,
+                                         ebd_read: uniqueList,
+                                         total_ebd_read: newTotal,
+                                         user_email: userProgress.user_email // Garante vínculo
+                                     };
+
+                                     // 4. Salva no Banco (Await garante que só prossegue após o OK do servidor)
+                                     await db.entities.ReadingProgress.update(userProgress.id, updatePayload);
+                                     
+                                     // 5. Atualiza estado global
+                                     if (onProgressUpdate) onProgressUpdate(updatePayload);
+                                     
+                                     onShowToast('Concluído! Pontuação salva permanentemente.', 'success');
+                                 } catch (e) {
+                                     console.error("Erro ao salvar EBD:", e);
+                                     onShowToast('Erro de conexão. Tente novamente.', 'error');
+                                 }
                              }} disabled={isRead} className={`group relative px-10 py-5 rounded-full font-cinzel font-black text-lg shadow-2xl flex items-center justify-center gap-5 mx-auto overflow-hidden transition-all transform hover:scale-105 active:scale-95 border-4 border-white/10 ${isRead ? 'bg-green-600 text-white' : 'bg-gradient-to-r from-[#8B0000] via-[#D00010] to-[#600018] text-white'}`}>
                                  {isRead ? <CheckCircle className="w-6 h-6" /> : <GraduationCap className="w-7 h-7 group-hover:rotate-[360deg] transition-transform duration-[3s]" />}
                                  <span className="relative z-10 tracking-widest uppercase">{isRead ? 'ARQUIVADO v103.1' : 'CONCLUIR E PONTUAR'}</span>
