@@ -1,3 +1,4 @@
+
 // --- INDEXED DB FOR BIBLE AND CONTENT (ADMA Supreme DB v3 - Offline First) ---
 const DB_NAME = 'adma_supreme_db';
 const BIBLE_STORE = 'bible_verses';
@@ -18,7 +19,7 @@ const openDB = (): Promise<IDBDatabase> => {
             }
         };
         request.onsuccess = (event: any) => resolve(event.target.result);
-        request.onerror = (event: any) => reject(event.target.error);
+        request.onerror = (event: any) => reject(request.error);
     });
 };
 
@@ -133,7 +134,7 @@ const createHelpers = (col: string) => ({
         // OTIMIZAÇÃO: Filtra local primeiro. Se achar algo, nem vai na nuvem.
         const localItems = await idbManager.list(CONTENT_STORE, col);
         const filteredLocal = localItems.filter((item: any) => 
-            Object.keys(criteria).every(k => item[k] === criteria[k])
+            Object.keys(criteria).every(k => String(item[k]) === String(criteria[k]))
         );
 
         if (filteredLocal.length > 0) return filteredLocal;
@@ -145,7 +146,7 @@ const createHelpers = (col: string) => ({
                 await idbManager.save(CONTENT_STORE, `${col}_${item.id}`, { ...item, __adma_col: col });
             }
             return cloudData.filter((item: any) => 
-                Object.keys(criteria).every(k => item[k] === criteria[k])
+                Object.keys(criteria).every(k => String(item[k]) === String(criteria[k]))
             );
         }
         return [];
@@ -167,7 +168,7 @@ const createHelpers = (col: string) => ({
         return null;
     },
     create: async (data: any) => {
-        const id = data.id || Date.now().toString();
+        const id = (data.id || data.study_key || data.chapter_key || Date.now().toString()).toString();
         const newItem = { ...data, id };
         await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...newItem, __adma_col: col });
         await apiCall('save', col, { item: newItem });
@@ -175,10 +176,10 @@ const createHelpers = (col: string) => ({
     },
     update: async (id: string, updates: any) => {
         let existing = await idbManager.get(CONTENT_STORE, `${col}_${id}`);
-        const merged = { ...existing, ...updates };
+        const merged = { ...existing, ...updates, id: id.toString() };
         await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...merged, __adma_col: col });
-        // Salva na nuvem em background
-        apiCall('save', col, { item: merged });
+        // FIXED: Await cloud save to ensure persistence before refresh
+        await apiCall('save', col, { item: merged });
         return merged;
     },
     delete: async (id: string) => {
@@ -186,10 +187,10 @@ const createHelpers = (col: string) => ({
         apiCall('delete', col, { id });
     },
     save: async (data: any) => {
-        const id = data.id || data.chapter_key || Date.now().toString();
+        const id = (data.id || data.chapter_key || Date.now().toString()).toString();
         const item = { ...data, id };
         await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...item, __adma_col: col });
-        apiCall('save', col, { item });
+        await apiCall('save', col, { item });
         return item;
     }
 });
