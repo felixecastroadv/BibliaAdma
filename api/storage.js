@@ -16,27 +16,27 @@ export default async function handler(request, response) {
   }
 
   try {
-    // 1. DETECÇÃO INTELIGENTE DE CHAVES (Baseado nos seus prints da Vercel e chaves fornecidas)
-    // Procuramos pela URL (Fallback para a secret key fornecida conforme solicitado)
+    // 1. DETECÇÃO INTELIGENTE DE CHAVES (Baseado nos seus prints da Vercel)
+    // Procuramos pela URL
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 
                         process.env.SUPABASE_URL ||
-                        'sb_secret_9uCdIp5F0gKEJVMTvLpsAA_n_j68LOW';
+                        'https://nnhatyvrtlbkyfadumqo.supabase.co';
     
-    // Procuramos pela Chave Anônima/Pública
+    // Procuramos pela Chave Anônima (Mapeando os nomes traduzidos que vimos no PDF)
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
                         process.env.SUPABASE_ANON_KEY || 
-                        process.env.SUPABASE_PUBLISHABLE_KEY || 
-                        process.env.PRÓXIMA_CHAVE_ANÔN_SUPABASE_PÚBLICA || 
-                        process.env.PRÓXIMA_CHAVE_PÚBLICA_SUPABASE_PUB || 
+                        process.env.SUPABASE_PUBLISHABLE_KEY || // Nome que aparece no seu PDF (pág 5)
+                        process.env.PRÓXIMA_CHAVE_ANÔN_SUPABASE_PÚBLICA || // Tradução do navegador que vimos no print
+                        process.env.PRÓXIMA_CHAVE_PÚBLICA_SUPABASE_PUB || // Outra variação do print
                         process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-                        'sb_publishable_0uZeWa8FXTH-u-ki_NRHsQ_nYALzy9j';
+                        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uaGF0eXZydGxia3lmYWR1bXFvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU1Mzk1NDYsImV4cCI6MjA4MTExNTU0Nn0.F_020GSnZ_jQiSSPFfAxY9Q8dU6FmjUDixOeZl4YHDg';
 
     // 2. VALIDAÇÃO DE CONEXÃO
-    if (!supabaseUrl || !supabaseKey) {
-        console.error("ERRO: Variáveis do Supabase não encontradas no ambiente.");
+    if (!supabaseUrl || !supabaseKey || !supabaseUrl.startsWith('http')) {
+        console.error("ERRO: Variáveis do Supabase não encontradas no ambiente ou inválidas.");
         return response.status(500).json({ 
             error: "BANCO DE DADOS DESCONECTADO: O App não encontrou a URL ou a Chave do Supabase na Vercel.",
-            help: "Verifique se a variável NEXT_PUBLIC_SUPABASE_URL está configurada."
+            help: "Verifique se a variável NEXT_PUBLIC_SUPABASE_URL está configurada corretamente."
         });
     }
 
