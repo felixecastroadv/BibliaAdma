@@ -1,3 +1,4 @@
+
 // --- INDEXED DB FOR BIBLE AND CONTENT (ADMA Supreme DB v3 - Offline First) ---
 const DB_NAME = 'adma_supreme_db';
 const BIBLE_STORE = 'bible_verses';
@@ -94,11 +95,10 @@ export const bibleStorage = {
 };
 
 const apiCall = async (action: string, collection: string, payload: any = {}) => {
-    // Se estiver offline e não for uma ação de salvar, nem tenta a rede para economizar bateria/erro
     if (typeof navigator !== 'undefined' && !navigator.onLine && action !== 'save') return null;
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
+    const timeout = setTimeout(() => controller.abort(), 8000); // Aumentado timeout para payloads maiores
     
     try {
         const res = await fetch('/api/storage', {
@@ -118,7 +118,6 @@ const apiCall = async (action: string, collection: string, payload: any = {}) =>
 
 const createHelpers = (col: string) => ({
     list: async () => {
-        // Tenta rede primeiro para atualizar cache, mas falha silenciosamente
         const cloudData = await apiCall('list', col);
         if (cloudData && Array.isArray(cloudData)) {
             for(const item of cloudData) {
@@ -126,11 +125,12 @@ const createHelpers = (col: string) => ({
             }
             return cloudData;
         }
-        // Se rede falhar ou estiver offline, usa local
         return await idbManager.list(CONTENT_STORE, col);
     },
+    listMinimal: async () => {
+        return await apiCall('list_minimal', col);
+    },
     filter: async (criteria: any) => {
-        // OTIMIZAÇÃO: Filtra local primeiro. Se achar algo, nem vai na nuvem.
         const localItems = await idbManager.list(CONTENT_STORE, col);
         const filteredLocal = localItems.filter((item: any) => 
             Object.keys(criteria).every(k => item[k] === criteria[k])
@@ -138,7 +138,16 @@ const createHelpers = (col: string) => ({
 
         if (filteredLocal.length > 0) return filteredLocal;
 
-        // Se não tiver local, busca na nuvem
+        // Se for uma busca específica e não achou local, tenta buscar por ID se o critério permitir
+        if (criteria.study_key || criteria.id) {
+            const targetId = criteria.study_key || criteria.id;
+            const item = await apiCall('get', col, { id: targetId });
+            if (item) {
+                await idbManager.save(CONTENT_STORE, `${col}_${item.id}`, { ...item, __adma_col: col });
+                return [item];
+            }
+        }
+
         const cloudData = await apiCall('list', col);
         if (cloudData && Array.isArray(cloudData)) {
             for(const item of cloudData) {
@@ -150,12 +159,8 @@ const createHelpers = (col: string) => ({
         }
         return [];
     },
-    getCloud: async (id: string) => {
-        return await apiCall('get', col, { id });
-    },
     get: async (id?: string) => {
         if (!id) return null;
-        // OTIMIZAÇÃO SUPREMA: Tenta local primeiro. Economiza 100% da rede se o dado existir.
         const local = await idbManager.get(CONTENT_STORE, `${col}_${id}`);
         if (local) return local;
 
@@ -167,7 +172,7 @@ const createHelpers = (col: string) => ({
         return null;
     },
     create: async (data: any) => {
-        const id = data.id || Date.now().toString();
+        const id = data.id || data.study_key || data.chapter_key || Date.now().toString();
         const newItem = { ...data, id };
         await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...newItem, __adma_col: col });
         await apiCall('save', col, { item: newItem });
@@ -175,9 +180,8 @@ const createHelpers = (col: string) => ({
     },
     update: async (id: string, updates: any) => {
         let existing = await idbManager.get(CONTENT_STORE, `${col}_${id}`);
-        const merged = { ...existing, ...updates };
+        const merged = { ...existing, ...updates, id };
         await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...merged, __adma_col: col });
-        // Salva na nuvem em background
         apiCall('save', col, { item: merged });
         return merged;
     },
@@ -186,7 +190,7 @@ const createHelpers = (col: string) => ({
         apiCall('delete', col, { id });
     },
     save: async (data: any) => {
-        const id = data.id || data.chapter_key || Date.now().toString();
+        const id = data.id || data.study_key || data.chapter_key || Date.now().toString();
         const item = { ...data, id };
         await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...item, __adma_col: col });
         apiCall('save', col, { item });
@@ -214,7 +218,8 @@ const createBibleHelpers = () => ({
 export const syncManager = {
     fullSync: async () => {
         if (typeof window === 'undefined' || !navigator.onLine) return;
-        const collections = ['panorama_biblico', 'announcements', 'chapter_metadata', 'devotionals', 'dynamic_modules', 'app_config'];
+        // Removido 'panorama_biblico' do fullSync pois agora é Lazy Loaded (Página por Página)
+        const collections = ['announcements', 'chapter_metadata', 'devotionals', 'dynamic_modules', 'app_config'];
         for (const col of collections) {
             try {
                 const cloudData = await apiCall('list', col);
