@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(request, response) {
@@ -17,18 +16,20 @@ export default async function handler(request, response) {
   }
 
   try {
-    // 1. DETECÇÃO INTELIGENTE DE CHAVES (Baseado nos seus prints da Vercel)
-    // Procuramos pela URL
+    // 1. DETECÇÃO INTELIGENTE DE CHAVES (Baseado nos seus prints da Vercel e chaves fornecidas)
+    // Procuramos pela URL (Fallback para a secret key fornecida conforme solicitado)
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 
-                        process.env.SUPABASE_URL;
+                        process.env.SUPABASE_URL ||
+                        'sb_secret_9uCdIp5F0gKEJVMTvLpsAA_n_j68LOW';
     
-    // Procuramos pela Chave Anônima (Mapeando os nomes traduzidos que vimos no PDF)
+    // Procuramos pela Chave Anônima/Pública
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
                         process.env.SUPABASE_ANON_KEY || 
-                        process.env.SUPABASE_PUBLISHABLE_KEY || // Nome que aparece no seu PDF (pág 5)
-                        process.env.PRÓXIMA_CHAVE_ANÔN_SUPABASE_PÚBLICA || // Tradução do navegador que vimos no print
-                        process.env.PRÓXIMA_CHAVE_PÚBLICA_SUPABASE_PUB || // Outra variação do print
-                        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+                        process.env.SUPABASE_PUBLISHABLE_KEY || 
+                        process.env.PRÓXIMA_CHAVE_ANÔN_SUPABASE_PÚBLICA || 
+                        process.env.PRÓXIMA_CHAVE_PÚBLICA_SUPABASE_PUB || 
+                        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+                        'sb_publishable_0uZeWa8FXTH-u-ki_NRHsQ_nYALzy9j';
 
     // 2. VALIDAÇÃO DE CONEXÃO
     if (!supabaseUrl || !supabaseKey) {
