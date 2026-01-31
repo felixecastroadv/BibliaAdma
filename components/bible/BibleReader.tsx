@@ -290,21 +290,16 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
         fetchChapter();
         loadMetadata();
 
-        // Se já foi lido, timer é 0. Se não, inicia em 40s.
-        if (isRead) {
+        // FIX: Se já foi lido (confirmado pelo userProgress), zera o timer IMEDIATAMENTE
+        // A prop 'userProgress' vem atualizada do banco se a estratégia de carregamento estiver certa
+        const alreadyRead = userProgress?.chapters_read?.includes(generateChapterKey(book, chapter));
+        if (alreadyRead) {
             setReadingTimer(0);
         } else {
             setReadingTimer(READING_TIME_SEC);
         }
 
-    }, [book, chapter]); // Reinicia sempre que muda o capítulo
-
-    // FIX: Garante que o timer zere assim que o status de leitura for confirmado
-    useEffect(() => {
-        if (isRead) {
-            setReadingTimer(0);
-        }
-    }, [isRead]);
+    }, [book, chapter, userProgress]); // Adicionado userProgress para reatividade
 
     // Efeito para contagem regressiva
     useEffect(() => {
@@ -485,8 +480,10 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
         // Calcula o novo estado localmente
         let newRead = [];
         if (isRead) {
+            // Se o usuário quiser desmarcar
             newRead = userProgress.chapters_read.filter((k: string) => k !== chapterKey);
         } else {
+            // Se for marcar como lido
             newRead = [...(userProgress.chapters_read || []), chapterKey];
         }
         
@@ -496,30 +493,35 @@ export default function BibleReader({ onBack, isAdmin, onShowToast, initialBook,
         // Calcula o total baseado estritamente no tamanho do array (Evita drift de contagem)
         const newTotal = newRead.length;
         
+        // Cria objeto otimista para atualização imediata da UI
+        const optimisticData = { 
+            ...userProgress,
+            chapters_read: newRead, 
+            total_chapters: newTotal, 
+            last_book: book, 
+            last_chapter: chapter
+        };
+
         // Atualiza a UI imediatamente (Feedback Otimista)
+        if (onProgressUpdate) onProgressUpdate(optimisticData);
         onShowToast(isRead ? "Marcado como não lido" : "Capítulo concluído e salvo!", isRead ? "info" : "success");
         
         try {
             // Salva no Banco de Dados (IndexedDB + Cloud)
-            // IMPORTANTE: Envia o objeto completo para garantir que o 'total_chapters' seja o calculado aqui.
+            // IMPORTANTE: Envia o objeto completo com user_email para garantir vínculo
             const updatedData = { 
-                ...userProgress,
-                chapters_read: newRead, 
-                total_chapters: newTotal, 
-                last_book: book, 
-                last_chapter: chapter,
+                ...optimisticData,
                 user_email: userProgress.user_email 
             };
 
             // Chama o update e AGUARDA a confirmação
             await db.entities.ReadingProgress.update(userProgress.id, updatedData);
             
-            // Atualiza o estado global da aplicação
-            if (onProgressUpdate) onProgressUpdate(updatedData);
-
         } catch (e) {
             console.error("Erro ao salvar progresso:", e);
             onShowToast("Erro de conexão ao salvar. Verifique sua rede.", "error");
+            // Em caso de erro, reverte (opcional, mas boa prática)
+            if (onProgressUpdate) onProgressUpdate(userProgress);
         }
     };
 
