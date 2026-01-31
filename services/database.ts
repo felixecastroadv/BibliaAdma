@@ -71,6 +71,14 @@ const idbManager = {
                 request.onerror = () => reject(request.error);
             });
         } catch (e) { return false; }
+    },
+    clearStore: async (store: string) => {
+        try {
+            const db = await openDB();
+            const tx = db.transaction([store], 'readwrite');
+            tx.objectStore(store).clear();
+            return true;
+        } catch (e) { return false; }
     }
 };
 
@@ -98,7 +106,7 @@ const apiCall = async (action: string, collection: string, payload: any = {}) =>
     if (typeof navigator !== 'undefined' && !navigator.onLine && action !== 'save') return null;
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000); // Aumentado timeout para payloads maiores
+    const timeout = setTimeout(() => controller.abort(), 10000); 
     
     try {
         const res = await fetch('/api/storage', {
@@ -108,10 +116,15 @@ const apiCall = async (action: string, collection: string, payload: any = {}) =>
             signal: controller.signal
         });
         clearTimeout(timeout);
-        if (!res.ok) return null;
+        if (!res.ok) {
+            const errorText = await res.text();
+            console.error(`API Error (${res.status}):`, errorText);
+            return null;
+        }
         return await res.json();
     } catch (e) {
         clearTimeout(timeout);
+        console.error("API Fetch Fatal Error:", e);
         return null; 
     }
 };
@@ -138,7 +151,6 @@ const createHelpers = (col: string) => ({
 
         if (filteredLocal.length > 0) return filteredLocal;
 
-        // Se for uma busca específica e não achou local, tenta buscar por ID se o critério permitir
         if (criteria.study_key || criteria.id) {
             const targetId = criteria.study_key || criteria.id;
             const item = await apiCall('get', col, { id: targetId });
@@ -159,10 +171,13 @@ const createHelpers = (col: string) => ({
         }
         return [];
     },
-    get: async (id?: string) => {
+    get: async (id?: string, forceRefresh: boolean = false) => {
         if (!id) return null;
-        const local = await idbManager.get(CONTENT_STORE, `${col}_${id}`);
-        if (local) return local;
+        
+        if (!forceRefresh) {
+            const local = await idbManager.get(CONTENT_STORE, `${col}_${id}`);
+            if (local) return local;
+        }
 
         const cloudItem = await apiCall('get', col, { id });
         if (cloudItem) {
@@ -195,6 +210,10 @@ const createHelpers = (col: string) => ({
         await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...item, __adma_col: col });
         apiCall('save', col, { item });
         return item;
+    },
+    clearLocal: async () => {
+        // Limpa apenas o cache local desta entidade para forçar novo download
+        await idbManager.clearStore(CONTENT_STORE);
     }
 });
 
@@ -218,7 +237,6 @@ const createBibleHelpers = () => ({
 export const syncManager = {
     fullSync: async () => {
         if (typeof window === 'undefined' || !navigator.onLine) return;
-        // Removido 'panorama_biblico' do fullSync pois agora é Lazy Loaded (Página por Página)
         const collections = ['announcements', 'chapter_metadata', 'devotionals', 'dynamic_modules', 'app_config'];
         for (const col of collections) {
             try {
