@@ -129,45 +129,75 @@ const apiCall = async (action: string, collection: string, payload: any = {}) =>
 
 const createHelpers = (col: string) => ({
     list: async () => {
-        // Tenta rede primeiro para atualizar cache
-        const cloudData = await apiCall('list', col);
-        if (cloudData && Array.isArray(cloudData)) {
-            for(const item of cloudData) {
-                // Se tiver ID, salva com ID. Se não, tenta gerar algo único.
-                const itemId = item.id || `item_${Date.now()}`;
-                await idbManager.save(CONTENT_STORE, `${col}_${itemId}`, { ...item, __adma_col: col });
+        // 1. Busca Local (Sempre a base de verdade imediata)
+        const localData = await idbManager.list(CONTENT_STORE, col);
+        
+        // 2. Tenta rede para atualizar cache e mesclar
+        if (typeof navigator !== 'undefined' && navigator.onLine) {
+            const cloudData = await apiCall('list', col);
+            
+            if (cloudData && Array.isArray(cloudData)) {
+                // Atualiza cache local com dados da nuvem
+                for(const item of cloudData) {
+                    const itemId = item.id || `item_${Date.now()}`;
+                    await idbManager.save(CONTENT_STORE, `${col}_${itemId}`, { ...item, __adma_col: col });
+                }
+                
+                // ESTRATÉGIA DE FUSÃO (MERGE):
+                // Combina itens locais e da nuvem. Se houver conflito de ID, a nuvem vence (source of truth).
+                // Mas itens que SÓ existem localmente (ainda não syncados) são mantidos.
+                const mergedMap = new Map();
+                
+                // Adiciona locais primeiro
+                localData.forEach((item: any) => {
+                    if(item.id) mergedMap.set(item.id, item);
+                });
+                
+                // Sobrescreve/Adiciona com dados da nuvem
+                cloudData.forEach((item: any) => {
+                    if(item.id) mergedMap.set(item.id, item);
+                });
+                
+                return Array.from(mergedMap.values());
             }
-            return cloudData;
         }
-        // Se rede falhar ou estiver offline, usa local
-        return await idbManager.list(CONTENT_STORE, col);
+        
+        // Se offline ou falha na rede, retorna o que tem localmente
+        return localData;
     },
     filter: async (criteria: any) => {
-        // ESTRATÉGIA NETWORK FIRST (Prioridade Nuvem para Dados Críticos como Progresso)
+        // 1. Busca Local
+        const localData = await idbManager.list(CONTENT_STORE, col);
+        const localFiltered = localData.filter((item: any) => 
+            Object.keys(criteria).every(k => String(item[k]) === String(criteria[k]))
+        );
+
+        // 2. Tenta buscar na nuvem e mesclar (Critical Fix for "Lost User")
         if (typeof navigator !== 'undefined' && navigator.onLine) {
             try {
-                // Busca diretamente no servidor com o filtro
                 const cloudData = await apiCall('filter', col, { criteria });
-                if (cloudData && Array.isArray(cloudData) && cloudData.length > 0) {
-                    // Atualiza cache local com o dado mais fresco da nuvem
+                if (cloudData && Array.isArray(cloudData)) {
+                    // Salva no cache
                     for(const item of cloudData) {
                         const id = item.id || item.study_key || item.chapter_key;
                         if (id) {
                              await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...item, __adma_col: col });
                         }
                     }
-                    return cloudData; // Retorna dado da nuvem
+                    
+                    // Merge Strategy para Filter
+                    const mergedMap = new Map();
+                    localFiltered.forEach((item: any) => mergedMap.set(item.id, item));
+                    cloudData.forEach((item: any) => mergedMap.set(item.id, item));
+                    
+                    return Array.from(mergedMap.values());
                 }
             } catch (e) {
                 console.warn("Falha ao filtrar na nuvem, usando local", e);
             }
         }
 
-        // Fallback: Busca Local (Offline ou erro de rede)
-        const localItems = await idbManager.list(CONTENT_STORE, col);
-        return localItems.filter((item: any) => 
-            Object.keys(criteria).every(k => String(item[k]) === String(criteria[k]))
-        );
+        return localFiltered;
     },
     getCloud: async (id: string) => {
         return await apiCall('get', col, { id });
@@ -175,7 +205,7 @@ const createHelpers = (col: string) => ({
     get: async (id?: string) => {
         if (!id) return null;
         
-        // 1. TENTA LOCAL PRIMEIRO (Stale-While-Revalidate)
+        // 1. TENTA LOCAL PRIMEIRO (Prioridade para velocidade e dados recém-criados)
         const local = await idbManager.get(CONTENT_STORE, `${col}_${id}`);
         
         // Se estiver online, busca atualização silenciosa no background (Cloud)
@@ -189,7 +219,7 @@ const createHelpers = (col: string) => ({
 
         if (local) return local;
 
-        // Se não tinha local, espera a nuvem (primeiro acesso)
+        // Se não tinha local, espera a nuvem (primeiro acesso em novo dispositivo)
         const cloudItem = await apiCall('get', col, { id });
         if (cloudItem) {
             await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...cloudItem, __adma_col: col });
@@ -201,18 +231,27 @@ const createHelpers = (col: string) => ({
         // Se o dado já vier com ID (ex: generateUserId), usa ele.
         const id = (data.id || data.study_key || data.chapter_key || Date.now().toString()).toString();
         const newItem = { ...data, id };
+        
+        // 1. Salva Local (GARANTIA DE PERSISTÊNCIA IMEDIATA)
         await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...newItem, __adma_col: col });
-        await apiCall('save', col, { item: newItem });
+        
+        // 2. Tenta salvar na nuvem
+        apiCall('save', col, { item: newItem }).catch(err => {
+            console.error("Background save failed, item stored locally:", err);
+        });
+        
         return newItem;
     },
     update: async (id: string, updates: any) => {
         // 1. Pega versão local
-        let existing = await idbManager.get(CONTENT_STORE, `${col}_${id}`);
+        let existing = await idbManager.get(CONTENT_STORE, `${col}_${id}`) || {};
         // 2. Mescla
-        const merged = { ...existing, ...updates, id: id.toString() };
+        const merged = { ...existing, ...updates, id: id.toString(), __adma_col: col };
+        
         // 3. Salva Local (Instantâneo)
-        await idbManager.save(CONTENT_STORE, `${col}_${id}`, { ...merged, __adma_col: col });
-        // 4. Salva Nuvem (Assíncrono com KeepAlive)
+        await idbManager.save(CONTENT_STORE, `${col}_${id}`, merged);
+        
+        // 4. Salva Nuvem (Assíncrono)
         return await apiCall('save', col, { item: merged });
     },
     delete: async (id: string) => {
@@ -248,7 +287,7 @@ const createBibleHelpers = () => ({
 export const syncManager = {
     fullSync: async () => {
         if (typeof window === 'undefined' || !navigator.onLine) return;
-        const collections = ['panorama_biblico', 'announcements', 'chapter_metadata', 'devotionals', 'dynamic_modules', 'app_config'];
+        const collections = ['panorama_biblico', 'announcements', 'chapter_metadata', 'devotionals', 'dynamic_modules', 'app_config', 'reading_progress'];
         for (const col of collections) {
             try {
                 const cloudData = await apiCall('list', col);
