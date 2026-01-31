@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { BookOpen, User, ArrowRight, Loader2, Lock, ShieldAlert, KeyRound, CheckCircle, WifiOff } from 'lucide-react';
+import { BookOpen, User, ArrowRight, Loader2, Lock, ShieldAlert, KeyRound, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CHURCH_NAME, PASTOR_PRESIDENT } from '../../constants';
 import { db } from '../../services/database';
@@ -10,7 +9,7 @@ interface LoginScreenProps {
   loading: boolean;
 }
 
-type LoginStep = 'IDENTIFY' | 'CREATE_PIN' | 'ENTER_PIN' | 'BLOCKED' | 'FORGOT_PIN_SENT' | 'OFFLINE_ERROR';
+type LoginStep = 'IDENTIFY' | 'CREATE_PIN' | 'ENTER_PIN' | 'BLOCKED' | 'FORGOT_PIN_SENT';
 
 export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
   const [step, setStep] = useState<LoginStep>('IDENTIFY');
@@ -29,17 +28,11 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
     e.preventDefault();
     if (!firstName.trim() || !lastName.trim()) return;
 
-    if (!navigator.onLine) {
-        setStep('OFFLINE_ERROR');
-        return;
-    }
-
     setIsProcessing(true);
     setErrorMsg('');
     const email = generateEmail(firstName, lastName);
 
     try {
-        // Busca obrigatória na Nuvem (ajustada no database.ts)
         const users = await db.entities.ReadingProgress.filter({ user_email: email });
         
         if (users.length > 0) {
@@ -49,18 +42,18 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
             if (user.is_blocked) {
                 setStep('BLOCKED');
             } else if (!user.password_pin || user.password_pin === '') {
-                // Resetado ou Migração
+                // Usuário antigo sem senha ou resetada pelo admin -> Cria nova
                 setStep('CREATE_PIN');
             } else {
-                // Usuário reconhecido na nuvem
+                // Usuário com senha -> Pede senha
                 setStep('ENTER_PIN');
             }
         } else {
-            // Novo usuário de fato
+            // Novo usuário -> Cria senha
             setStep('CREATE_PIN');
         }
     } catch (err) {
-        setErrorMsg('Falha ao conectar com o servidor universal. Tente novamente.');
+        setErrorMsg('Erro ao conectar. Tente novamente.');
     } finally {
         setIsProcessing(false);
     }
@@ -81,11 +74,13 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
       
       try {
           if (userData) {
+              // Atualiza usuário existente (reset ou migração)
               await db.entities.ReadingProgress.update(userData.id, { 
                   password_pin: pin,
-                  reset_requested: false 
+                  reset_requested: false // Limpa flag se existia
               });
           } else {
+              // Cria novo usuário já com o PIN
               const email = generateEmail(firstName, lastName);
               const fullName = `${firstName.trim()} ${lastName.trim()}`;
               await db.entities.ReadingProgress.create({
@@ -93,11 +88,11 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
                   user_name: fullName,
                   password_pin: pin,
                   chapters_read: [],
-                  total_chapters: 0,
-                  ebd_read: [],
-                  total_ebd_read: 0
+                  total_chapters: 0
               });
           }
+          
+          // Login sucesso
           onLogin(firstName, lastName);
       } catch (e) {
           setErrorMsg('Erro ao salvar senha.');
@@ -148,6 +143,7 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
           transition={{ duration: 0.5, ease: "easeOut" }}
           className="bg-white/80 dark:bg-[#1E1E1E]/90 backdrop-blur-xl rounded-[32px] shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] p-8 md:p-10 border border-white/50 dark:border-white/5 relative overflow-hidden"
         >
+          {/* Decorative Gradient Line */}
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#8B0000] via-[#C5A059] to-[#8B0000]" />
           
           {step !== 'IDENTIFY' && (
@@ -167,11 +163,12 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
             </motion.div>
             
             <h1 className="font-cinzel text-3xl font-bold text-[#1a0f0f] dark:text-white mb-1 tracking-tight">Bíblia ADMA</h1>
-            <p className="font-cormorant text-[#1a0f0f]/70 dark:text-white/70 text-lg italic tracking-wide">Universal Sync v11.4</p>
+            <p className="font-cormorant text-[#1a0f0f]/70 dark:text-white/70 text-lg italic tracking-wide">Prof. Michel Felix</p>
           </div>
 
           <AnimatePresence mode="wait">
             
+            {/* ETAPA 1: IDENTIFICAÇÃO */}
             {step === 'IDENTIFY' && (
                 <motion.form 
                     key="identify"
@@ -213,18 +210,17 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
                     </div>
                     </div>
 
-                    {errorMsg && <p className="text-red-500 text-xs text-center font-bold px-2">{errorMsg}</p>}
-
                     <button
                     type="submit"
                     disabled={isProcessing || !firstName || !lastName}
                     className="w-full bg-gradient-to-r from-[#8B0000] to-[#600018] hover:to-[#800000] text-white font-cinzel font-bold py-4 rounded-2xl shadow-[0_10px_20px_-5px_rgba(139,0,0,0.3)] mt-4 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
                     >
-                    {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Identificar e Sincronizar <ArrowRight className="w-5 h-5" /></>}
+                    {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Continuar <ArrowRight className="w-5 h-5" /></>}
                     </button>
                 </motion.form>
             )}
 
+            {/* ETAPA 2: CRIAR PIN (NOVO USUÁRIO OU RESET) */}
             {step === 'CREATE_PIN' && (
                 <motion.form 
                     key="create-pin"
@@ -234,7 +230,7 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
                 >
                     <div className="text-center mb-4">
                         <h2 className="font-cinzel font-bold text-xl text-[#8B0000] dark:text-[#C5A059]">Criar Senha de Acesso</h2>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Sua conta será vinculada universalmente com este PIN.</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Crie um PIN numérico de 6 dígitos para proteger sua conta.</p>
                     </div>
 
                     <div className="space-y-2">
@@ -244,7 +240,7 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
                             <input
                                 type="password" inputMode="numeric" maxLength={6}
                                 value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                                className="block w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-[#252525] rounded-2xl font-mono text-lg tracking-widest text-center focus:ring-2 focus:ring-[#C5A059] dark:text-white"
+                                className="block w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-[#252525] rounded-2xl font-mono text-lg tracking-widest text-center focus:ring-2 focus:ring-[#C5A059]"
                                 placeholder="******" required
                             />
                         </div>
@@ -257,7 +253,7 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
                             <input
                                 type="password" inputMode="numeric" maxLength={6}
                                 value={confirmPin} onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, ''))}
-                                className="block w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-[#252525] rounded-2xl font-mono text-lg tracking-widest text-center focus:ring-2 focus:ring-[#C5A059] dark:text-white"
+                                className="block w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-[#252525] rounded-2xl font-mono text-lg tracking-widest text-center focus:ring-2 focus:ring-[#C5A059]"
                                 placeholder="******" required
                             />
                         </div>
@@ -266,11 +262,12 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
                     {errorMsg && <p className="text-red-500 text-xs text-center font-bold">{errorMsg}</p>}
 
                     <button type="submit" disabled={isProcessing} className="w-full bg-[#8B0000] text-white font-bold py-4 rounded-2xl mt-4 flex justify-center items-center gap-2">
-                        {isProcessing ? <Loader2 className="animate-spin" /> : <CheckCircle />} Concluir Cadastro
+                        {isProcessing ? <Loader2 className="animate-spin" /> : <CheckCircle />} Salvar e Entrar
                     </button>
                 </motion.form>
             )}
 
+            {/* ETAPA 3: DIGITAR PIN */}
             {step === 'ENTER_PIN' && (
                 <motion.form 
                     key="enter-pin"
@@ -279,8 +276,8 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
                     className="space-y-6"
                 >
                     <div className="text-center">
-                        <h2 className="font-cinzel font-bold text-xl text-[#1a0f0f] dark:text-white">Conta Encontrada!</h2>
-                        <p className="text-xs text-gray-500 mt-1">Bem-vindo(a), {firstName}. Digite sua senha.</p>
+                        <h2 className="font-cinzel font-bold text-xl text-[#1a0f0f] dark:text-white">Bem-vindo de volta, {firstName}!</h2>
+                        <p className="text-xs text-gray-500 mt-1">Digite sua senha numérica.</p>
                     </div>
 
                     <div className="relative">
@@ -288,7 +285,7 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
                         <input
                             type="password" inputMode="numeric" maxLength={6}
                             value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                            className="block w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-[#252525] rounded-2xl font-mono text-xl tracking-[0.5em] text-center focus:ring-2 focus:ring-[#8B0000] dark:text-white"
+                            className="block w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-[#252525] rounded-2xl font-mono text-xl tracking-[0.5em] text-center focus:ring-2 focus:ring-[#8B0000]"
                             placeholder="******" autoFocus
                         />
                     </div>
@@ -303,41 +300,32 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
                     )}
 
                     <button type="submit" disabled={pin.length < 6} className="w-full bg-[#8B0000] text-white font-bold py-4 rounded-2xl flex justify-center items-center gap-2 disabled:opacity-50">
-                        Acessar Conta <ArrowRight />
+                        Entrar <ArrowRight />
                     </button>
                 </motion.form>
             )}
 
+            {/* ETAPA 4: BLOQUEADO */}
             {step === 'BLOCKED' && (
                 <motion.div key="blocked" className="text-center py-6">
                     <ShieldAlert className="w-20 h-20 text-red-600 mx-auto mb-4" />
                     <h2 className="font-cinzel font-bold text-xl text-red-600">Acesso Bloqueado</h2>
                     <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm">
-                        Esta conta foi suspensa por motivos administrativos.
+                        Sua conta foi temporariamente suspensa pelo administrador. Entre em contato com a liderança.
                     </p>
                     <button onClick={resetForm} className="mt-6 text-sm underline">Voltar</button>
                 </motion.div>
             )}
 
-            {step === 'OFFLINE_ERROR' && (
-                <motion.div key="offline" className="text-center py-6">
-                    <WifiOff className="w-20 h-20 text-orange-500 mx-auto mb-4" />
-                    <h2 className="font-cinzel font-bold text-xl text-orange-600">Sem Conexão</h2>
-                    <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm">
-                        A primeira identificação exige internet para sincronizar seus dados universais.
-                    </p>
-                    <button onClick={resetForm} className="mt-6 bg-gray-200 dark:bg-gray-800 px-6 py-2 rounded-full text-sm font-bold">Tentar Novamente</button>
-                </motion.div>
-            )}
-
+            {/* ETAPA 5: CONFIRMAÇÃO DE RESET */}
             {step === 'FORGOT_PIN_SENT' && (
                 <motion.div key="forgot" className="text-center py-6">
                     <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-4" />
                     <h2 className="font-cinzel font-bold text-xl text-green-600">Solicitação Enviada</h2>
                     <p className="text-gray-600 dark:text-gray-400 mt-2 text-sm">
-                        O administrador foi notificado. Tente entrar em breve para criar um novo PIN.
+                        O administrador recebeu seu pedido de reset de senha. Aguarde a aprovação e tente entrar novamente mais tarde para criar uma nova senha.
                     </p>
-                    <button onClick={resetForm} className="mt-6 bg-gray-200 dark:bg-gray-800 px-6 py-2 rounded-full text-sm font-bold">Voltar</button>
+                    <button onClick={resetForm} className="mt-6 bg-gray-200 dark:bg-gray-800 px-6 py-2 rounded-full text-sm font-bold">Voltar ao Início</button>
                 </motion.div>
             )}
 
