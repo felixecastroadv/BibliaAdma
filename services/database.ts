@@ -7,10 +7,19 @@ const DB_VERSION = 3;
 
 // --- UTILS ---
 // Gera um ID único e consistente baseado no email. 
-// Ex: michel.felix@adma.local -> user_michel_felix_adma_local
+// AGORA NORMALIZA ACENTOS E ESPAÇOS PARA EVITAR DUPLICATAS
+// Ex: "Michel Félix " -> "michel.felix@..." -> "user_michel_felix_adma_local"
 export const generateUserId = (email: string) => {
     if (!email) return 'user_unknown';
-    return 'user_' + email.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+    // 1. Remove espaços das pontas
+    // 2. Converte para minúsculo
+    // 3. Remove acentos (NFD)
+    // 4. Remove tudo que não for letra ou número
+    const clean = email.trim().toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, '_');
+        
+    return 'user_' + clean;
 };
 
 const openDB = (): Promise<IDBDatabase> => {
@@ -145,7 +154,6 @@ const createHelpers = (col: string) => ({
                 
                 // ESTRATÉGIA DE FUSÃO (MERGE):
                 // Combina itens locais e da nuvem. Se houver conflito de ID, a nuvem vence (source of truth).
-                // Mas itens que SÓ existem localmente (ainda não syncados) são mantidos.
                 const mergedMap = new Map();
                 
                 // Adiciona locais primeiro
