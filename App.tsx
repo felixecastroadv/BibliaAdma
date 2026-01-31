@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import LoginScreen from './components/auth/LoginScreen';
 import DashboardHome from './components/dashboard/DashboardHome';
@@ -14,7 +13,7 @@ import AdminPasswordModal from './components/modals/AdminPasswordModal';
 import Toast from './components/ui/Toast';
 import BottomNav from './components/ui/BottomNav';
 import NetworkStatus from './components/ui/NetworkStatus';
-import { db, generateUserId } from './services/database';
+import { db } from './services/database';
 import { AppConfig, DynamicModule } from './types';
 
 export default function App() {
@@ -37,10 +36,12 @@ export default function App() {
     // 1. Carrega Config Global
     const loadConfig = async () => {
         try {
+            // No schema, list() retorna a coleção. Pegamos o primeiro item.
             const configs = await db.entities.AppConfig.list();
             const cfg = configs[0];
             if (cfg) {
                 setAppConfig(cfg);
+                // Aplica Cores Dinâmicas via CSS Variables
                 if (cfg.theme) {
                     if (cfg.theme.primaryColor) document.documentElement.style.setProperty('--primary-color', cfg.theme.primaryColor);
                     if (cfg.theme.secondaryColor) document.documentElement.style.setProperty('--secondary-color', cfg.theme.secondaryColor);
@@ -57,7 +58,6 @@ export default function App() {
         const u = JSON.parse(saved);
         setUser(u);
         setIsAuthenticated(true);
-        // Chama loadProgress imediatamente ao restaurar sessão
         loadProgress(u.user_email, u.user_name);
     }
     
@@ -76,68 +76,21 @@ export default function App() {
       }
   }, [darkMode]);
 
-  // --- FUNÇÃO CRÍTICA DE RECUPERAÇÃO DE CONTA (FUZZY MATCHING) ---
   const loadProgress = async (email: string, nameFallback?: string) => {
-    try {
-        console.log("Sincronizando usuário para email:", email);
-        
-        // 1. ESTRATÉGIA DE BUSCA AMPLA (LISTAR TUDO E FILTRAR LOCALMENTE)
-        // Isso evita problemas de case sensitivity e acentuação no backend
-        const allUsers = await db.entities.ReadingProgress.list();
-        
-        const norm = (s: string) => s ? s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
-        const targetEmail = norm(email);
-        const targetName = norm(nameFallback || "");
-
-        // Filtra todos os candidatos possíveis
-        const candidates = allUsers.filter(u => {
-            const uEmail = norm(u.user_email);
-            const uName = norm(u.user_name);
-            return uEmail === targetEmail || (targetName.length > 5 && uName === targetName);
+    const p = await db.entities.ReadingProgress.filter({ user_email: email });
+    if (p.length) setUserProgress(p[0]);
+    else {
+        const displayName = nameFallback || user?.user_name || email;
+        const newP = await db.entities.ReadingProgress.create({ 
+            user_email: email, 
+            user_name: displayName, 
+            chapters_read: [], 
+            total_chapters: 0,
+            active_plans: [],
+            ebd_read: [],
+            total_ebd_read: 0
         });
-        
-        let bestProfile = null;
-
-        if (candidates && candidates.length > 0) {
-            // 2. ORDENAÇÃO POR PROGRESSO:
-            // Colocamos em primeiro lugar aquele que tem mais capítulos lidos.
-            candidates.sort((a: any, b: any) => (b.total_chapters || 0) - (a.total_chapters || 0));
-            
-            // Seleciona o campeão
-            bestProfile = candidates[0];
-            console.log("Perfil carregado (Melhor Candidato):", bestProfile.id, "Caps:", bestProfile.total_chapters);
-        }
-
-        if (bestProfile) {
-            // Usa o perfil encontrado
-            setUserProgress(bestProfile);
-            if (bestProfile.total_chapters > 0) {
-               showToast(`Dados recuperados: ${bestProfile.total_chapters} capítulos lidos.`, "success");
-            }
-        } else {
-            // Se realmente não existir nada, cria um novo zerado
-            console.log("Nenhum registro encontrado. Iniciando perfil novo...");
-            const userId = generateUserId(email);
-            const displayName = nameFallback || user?.user_name || email;
-            
-            const newProfile = {
-                id: userId,
-                user_email: email, 
-                user_name: displayName, 
-                chapters_read: [], 
-                total_chapters: 0,
-                active_plans: [],
-                ebd_read: [],
-                total_ebd_read: 0,
-                created_at: new Date().toISOString()
-            };
-
-            const created = await db.entities.ReadingProgress.create(newProfile);
-            setUserProgress(created);
-        }
-    } catch (error) {
-        console.error("Erro crítico de sincronização no App.tsx:", error);
-        showToast("Falha na sincronização. Verifique conexão.", "error");
+        setUserProgress(newP);
     }
   };
 
@@ -177,6 +130,7 @@ export default function App() {
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
   const handleNavigate = (v: string, params?: any) => {
+      // Se for navegação para módulo dinâmico
       if (v.startsWith('module_')) {
           if (params && params.module) {
               setActiveModule(params.module);
@@ -232,7 +186,7 @@ export default function App() {
         case 'plans':
             return <PlansView onBack={() => setView('dashboard')} onNavigate={handleNavigate} userProgress={userProgress} />;
         case 'ranking':
-            return <RankingView onBack={() => setView('dashboard')} userProgress={userProgress} />;
+            return <RankingView onBack={() => setView('dashboard')} />;
         case 'messages':
             return <MessagesView onBack={() => setView('dashboard')} isAdmin={isAdmin} user={user} />;
         case 'dynamic_module':
