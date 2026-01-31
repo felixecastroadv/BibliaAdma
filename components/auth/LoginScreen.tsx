@@ -1,8 +1,9 @@
+
 import React, { useState } from 'react';
 import { BookOpen, User, ArrowRight, Loader2, Lock, ShieldAlert, KeyRound, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CHURCH_NAME, PASTOR_PRESIDENT } from '../../constants';
-import { db } from '../../services/database';
+import { db, generateUserId } from '../../services/database';
 
 interface LoginScreenProps {
   onLogin: (firstName: string, lastName: string) => void;
@@ -31,12 +32,13 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
     setIsProcessing(true);
     setErrorMsg('');
     const email = generateEmail(firstName, lastName);
+    const userId = generateUserId(email); // Gera o ID determinístico
 
     try {
-        const users = await db.entities.ReadingProgress.filter({ user_email: email });
+        // Busca direta pelo ID fixo (mais rápido e seguro)
+        const user = await db.entities.ReadingProgress.get(userId);
         
-        if (users.length > 0) {
-            const user = users[0];
+        if (user) {
             setUserData(user);
 
             if (user.is_blocked) {
@@ -49,7 +51,7 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
                 setStep('ENTER_PIN');
             }
         } else {
-            // Novo usuário -> Cria senha
+            // Novo usuário (ID não existe no banco) -> Cria senha
             setStep('CREATE_PIN');
         }
     } catch (err) {
@@ -80,10 +82,13 @@ export default function LoginScreen({ onLogin, loading }: LoginScreenProps) {
                   reset_requested: false // Limpa flag se existia
               });
           } else {
-              // Cria novo usuário já com o PIN
+              // Cria novo usuário já com o PIN e ID fixo
               const email = generateEmail(firstName, lastName);
               const fullName = `${firstName.trim()} ${lastName.trim()}`;
+              const userId = generateUserId(email);
+
               await db.entities.ReadingProgress.create({
+                  id: userId, // ID Fixo Determinístico
                   user_email: email,
                   user_name: fullName,
                   password_pin: pin,
